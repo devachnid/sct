@@ -93,6 +93,9 @@ fn run_concept_mode<R: std::io::Read>(
         if line.trim().is_empty() {
             continue;
         }
+        if crate::provenance::try_parse_ndjson_line(&line).is_some() {
+            continue;
+        }
 
         let record: ConceptRecord = serde_json::from_str(&line).context("parsing NDJSON record")?;
 
@@ -136,6 +139,9 @@ fn run_hierarchy_mode<R: std::io::Read>(
     for line in reader.lines() {
         let line = line.context("reading input")?;
         if line.trim().is_empty() {
+            continue;
+        }
+        if crate::provenance::try_parse_ndjson_line(&line).is_some() {
             continue;
         }
 

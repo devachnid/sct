@@ -316,6 +316,9 @@ fn load_ndjson(path: &PathBuf) -> Result<HashMap<String, ConceptRecord>> {
         if line.trim().is_empty() {
             continue;
         }
+        if crate::provenance::try_parse_ndjson_line(&line).is_some() {
+            continue;
+        }
         let record: ConceptRecord = serde_json::from_str(&line).context("parsing NDJSON record")?;
         map.insert(record.id.clone(), record);
     }

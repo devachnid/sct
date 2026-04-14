@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
+use crate::provenance;
 use crate::schema::ConceptRecord;
 
 #[derive(Parser, Debug)]
@@ -47,10 +48,15 @@ fn info_ndjson(path: &Path) -> Result<()> {
     let mut inactive_count: u64 = 0;
     let mut schema_version: Option<u32> = None;
     let mut hierarchy_counts: BTreeMap<String, u64> = BTreeMap::new();
+    let mut prov: Option<provenance::Provenance> = None;
 
     for line in reader.lines() {
         let line = line.context("reading line")?;
         if line.trim().is_empty() {
+            continue;
+        }
+        if let Some(p) = provenance::try_parse_ndjson_line(&line) {
+            prov = Some(p);
             continue;
         }
         let record: ConceptRecord = serde_json::from_str(&line).context("parsing NDJSON record")?;
@@ -67,9 +73,6 @@ fn info_ndjson(path: &Path) -> Result<()> {
             .or_insert(0) += 1;
     }
 
-    // Try to parse a release date from the filename (e.g. "…20260311…").
-    let source_date = extract_date_from_filename(path);
-
     println!("File:           {}", path.display());
     println!("Size:           {}", human_size(file_size));
     println!("Format:         NDJSON");
@@ -79,8 +82,22 @@ fn info_ndjson(path: &Path) -> Result<()> {
             .map(|v| v.to_string())
             .unwrap_or_else(|| "unknown".into())
     );
-    if let Some(date) = source_date {
-        println!("Release date:   {}", date);
+    if let Some(ref p) = prov {
+        if !p.edition_label.is_empty() {
+            println!("Edition:        {}", p.edition_label);
+        }
+        if !p.release_date.is_empty() {
+            println!("Release date:   {}", p.release_date);
+        }
+        if !p.release_id.is_empty() {
+            println!("Release id:     {}", p.release_id);
+        }
+        if !p.sct_version.is_empty() {
+            println!("Built by:       sct {}", p.sct_version);
+        }
+    } else if let Some(date) = extract_date_from_filename(path) {
+        // Older v3 NDJSONs without a header — fall back to filename heuristic.
+        println!("Release date:   {} (inferred from filename)", date);
     }
     println!("Concepts:       {}", fmt_count(count));
     if inactive_count > 0 {
@@ -170,6 +187,8 @@ fn info_db(path: &Path) -> Result<()> {
         .flatten()
         .collect();
 
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+
     println!("File:              {}", path.display());
     println!("Size:              {}", human_size(file_size));
     println!("Format:            SQLite (sct sqlite)");
@@ -179,6 +198,20 @@ fn info_db(path: &Path) -> Result<()> {
             .map(|v| v.to_string())
             .unwrap_or_else(|| "unknown".into())
     );
+    if let Some(ref p) = prov {
+        if !p.edition_label.is_empty() {
+            println!("Edition:           {}", p.edition_label);
+        }
+        if !p.release_date.is_empty() {
+            println!("Release date:      {}", p.release_date);
+        }
+        if !p.release_id.is_empty() {
+            println!("Release id:        {}", p.release_id);
+        }
+        if !p.sct_version.is_empty() {
+            println!("Built by:          sct {}", p.sct_version);
+        }
+    }
     println!("Concepts:          {}", fmt_count(concept_count));
     println!("FTS5 rows:         {}", fmt_count(fts_count));
     println!("IS-A edges:        {}", fmt_count(isa_count));

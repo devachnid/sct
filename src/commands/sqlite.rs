@@ -16,6 +16,7 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::time::Duration;
 
+use crate::provenance;
 use crate::schema::ConceptRecord;
 
 #[derive(Parser, Debug)]
@@ -78,6 +79,7 @@ pub fn run(args: Args) -> Result<()> {
     pb.set_message("Loading concepts...");
 
     let mut n = 0usize;
+    let mut captured_provenance: Option<provenance::Provenance> = None;
     {
         let tx = conn.transaction().context("beginning transaction")?;
 
@@ -103,6 +105,12 @@ pub fn run(args: Args) -> Result<()> {
         for line in reader.lines() {
             let line = line.context("reading input")?;
             if line.trim().is_empty() {
+                continue;
+            }
+
+            // Provenance header line (if present) — capture and skip.
+            if let Some(p) = provenance::try_parse_ndjson_line(&line) {
+                captured_provenance = Some(p);
                 continue;
             }
 
@@ -176,6 +184,14 @@ pub fn run(args: Args) -> Result<()> {
     pb.set_message("Building FTS index...");
     conn.execute_batch("INSERT INTO concepts_fts(concepts_fts) VALUES('rebuild')")?;
 
+    // Persist provenance (if the NDJSON had a header line). Older v3 NDJSONs
+    // without a header leave the metadata table empty — downstream commands
+    // treat that as "provenance not recorded" and degrade gracefully.
+    provenance::create_sqlite_table(&conn)?;
+    if let Some(ref p) = captured_provenance {
+        provenance::write_sqlite(&conn, p)?;
+    }
+
     pb.finish_with_message(format!("Done. {} concepts → {}", n, args.output.display()));
 
     if args.transitive_closure {
@@ -226,6 +242,13 @@ fn create_schema(conn: &Connection) -> Result<()> {
             refset_id                TEXT NOT NULL,
             referenced_component_id  TEXT NOT NULL,
             PRIMARY KEY (refset_id, referenced_component_id)
+        );
+
+        -- Release provenance as a flat key/value store. Written once at
+        -- `sct sqlite` time and read by every downstream query command.
+        CREATE TABLE IF NOT EXISTS metadata (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         );
 
         CREATE VIRTUAL TABLE IF NOT EXISTS concepts_fts USING fts5(

@@ -6,6 +6,7 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use crate::builder::build_records;
+use crate::provenance::Provenance;
 use crate::rf2::{discover_rf2_files, Rf2Dataset};
 
 /// Which reference sets to load from RF2.
@@ -139,6 +140,15 @@ pub fn run(args: Args) -> Result<()> {
     };
 
     let mut writer = writer;
+
+    // Provenance header line. Emitted before any concept records so that
+    // downstream tools (`sct sqlite`, `sct info`, etc.) can cite the source
+    // edition and release date without the user having to remember them.
+    let provenance = Provenance::from_rf2_paths(&args.rf2_dirs);
+    let prov_line = serde_json::to_string(&provenance).context("serialising provenance")?;
+    writer.write_all(prov_line.as_bytes())?;
+    writer.write_all(b"\n")?;
+
     for record in &records {
         let line = serde_json::to_string(record).context("serialising record")?;
         writer.write_all(line.as_bytes())?;
