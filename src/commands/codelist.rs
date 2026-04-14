@@ -217,7 +217,7 @@ pub struct FrontMatter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub methodology: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub signoffs: Option<Vec<serde_yml::Value>>,
+    pub signoffs: Option<Vec<serde_yaml_ng::Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub warnings: Option<Vec<Warning>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -318,7 +318,7 @@ fn parse_codelist(text: &str) -> Result<CodelistFile> {
     let body_part = body_part.trim_start_matches(['\n', '\r']);
 
     let front_matter: FrontMatter =
-        serde_yml::from_str(yaml_part).context("parsing YAML front-matter")?;
+        serde_yaml_ng::from_str(yaml_part).context("parsing YAML front-matter")?;
 
     let body = parse_body(body_part);
     Ok(CodelistFile { front_matter, body })
@@ -418,7 +418,8 @@ fn split_id_term(s: &str) -> Option<(String, String)> {
 }
 
 pub fn write_codelist(cl: &CodelistFile, path: &Path) -> Result<()> {
-    let yaml = serde_yml::to_string(&cl.front_matter).context("serialising YAML front-matter")?;
+    let yaml =
+        serde_yaml_ng::to_string(&cl.front_matter).context("serialising YAML front-matter")?;
     let mut out = format!("---\n{}---\n", yaml);
     if !cl.body.is_empty() {
         out.push('\n');
