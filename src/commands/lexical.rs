@@ -15,6 +15,7 @@ use rusqlite::params;
 use std::path::PathBuf;
 
 use crate::format::{ConceptFields, ConceptFormat};
+use crate::provenance::{self, OutputMode, ProvenanceFlags};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -41,10 +42,15 @@ pub struct Args {
     /// Override the FSN suffix template (rendered only when FSN differs from PT).
     #[arg(long)]
     pub format_fsn_suffix: Option<String>,
+
+    #[command(flatten)]
+    pub prov: ProvenanceFlags,
 }
 
 pub fn run(args: Args) -> Result<()> {
     let conn = crate::commands::open_db_readonly(&args.db, None)?;
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+    let show_prov = provenance::should_show(args.prov, OutputMode::HumanText);
 
     // Sanitise the FTS5 query: wrap in quotes if it looks like plain text
     // (no FTS5 operators), to avoid parse errors on bare terms with special chars.
@@ -97,6 +103,8 @@ pub fn run(args: Args) -> Result<()> {
             })
         );
     }
+
+    provenance::print_human_footer(prov.as_ref(), show_prov);
 
     Ok(())
 }

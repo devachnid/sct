@@ -16,6 +16,7 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 
 use crate::builder::strip_semantic_tag;
+use crate::provenance::{self, OutputMode, ProvenanceFlags};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -29,17 +30,27 @@ pub struct Args {
     /// Output raw JSON instead of human-readable format.
     #[arg(long)]
     pub json: bool,
+
+    #[command(flatten)]
+    pub prov: ProvenanceFlags,
 }
 
 pub fn run(args: Args) -> Result<()> {
     let conn = crate::commands::open_db_readonly(&args.db, None)?;
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+    let mode = if args.json {
+        OutputMode::Json
+    } else {
+        OutputMode::HumanText
+    };
+    let show_prov = provenance::should_show(args.prov, mode);
 
     let code = args.code.trim();
 
     // If the code looks numeric, try SCTID first.
     if code.chars().all(|c| c.is_ascii_digit()) {
         if let Some(concept) = lookup_sctid(&conn, code)? {
-            return print_concept(&concept, args.json);
+            return print_concept(concept, args.json, prov.as_ref(), show_prov);
         }
         println!("Concept {code} not found.");
         return Ok(());
@@ -59,7 +70,7 @@ pub fn run(args: Args) -> Result<()> {
         // Single mapping — show full concept detail.
         if let Some(concept) = lookup_sctid(&conn, &mapped[0].0)? {
             println!("CTV3 {code} → SCTID {}\n", mapped[0].0);
-            return print_concept(&concept, args.json);
+            return print_concept(concept, args.json, prov.as_ref(), show_prov);
         }
     }
 
@@ -81,6 +92,8 @@ pub fn run(args: Args) -> Result<()> {
     if mapped.len() > 1 {
         println!("\nUse `sct lookup <SCTID>` for full details on a specific concept.");
     }
+
+    provenance::print_human_footer(prov.as_ref(), show_prov);
 
     Ok(())
 }
@@ -178,11 +191,18 @@ fn lookup_ctv3(conn: &Connection, code: &str) -> Result<Vec<(String, String, Str
     Ok(rows)
 }
 
-fn print_concept(concept: &Value, as_json: bool) -> Result<()> {
+fn print_concept(
+    mut concept: Value,
+    as_json: bool,
+    prov: Option<&provenance::Provenance>,
+    show_prov: bool,
+) -> Result<()> {
     if as_json {
-        println!("{}", serde_json::to_string_pretty(concept)?);
+        provenance::inject_into_json(&mut concept, prov, show_prov);
+        println!("{}", serde_json::to_string_pretty(&concept)?);
         return Ok(());
     }
+    let concept = &concept;
 
     let id = concept["id"].as_str().unwrap_or("");
     let pt = concept["preferred_term"].as_str().unwrap_or("");
@@ -318,6 +338,8 @@ fn print_concept(concept: &Value, as_json: bool) -> Result<()> {
     // Metadata
     println!("  Module: {module}");
     println!("  Effective: {effective_time}");
+
+    provenance::print_human_footer(prov, show_prov);
 
     Ok(())
 }

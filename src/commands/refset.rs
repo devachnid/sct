@@ -20,6 +20,7 @@ use std::path::{Path, PathBuf};
 
 use crate::builder::strip_semantic_tag;
 use crate::format::{ConceptFields, ConceptFormat};
+use crate::provenance::{self, OutputMode, ProvenanceFlags};
 
 /// Sentinel passed to SQLite `LIMIT ?` meaning "no limit".
 const SQLITE_NO_LIMIT: i64 = -1;
@@ -56,6 +57,9 @@ pub struct ListArgs {
     /// Default: `{id} | {pt} ({count} members)`. See `docs/commands/refset.md`.
     #[arg(long)]
     pub format: Option<String>,
+
+    #[command(flatten)]
+    pub prov: ProvenanceFlags,
 }
 
 #[derive(Parser, Debug)]
@@ -70,6 +74,9 @@ pub struct InfoArgs {
     /// Output raw JSON instead of a human-readable summary.
     #[arg(long)]
     pub json: bool,
+
+    #[command(flatten)]
+    pub prov: ProvenanceFlags,
 }
 
 #[derive(Parser, Debug)]
@@ -98,6 +105,9 @@ pub struct MembersArgs {
     /// Pass an empty string (`--format-fsn-suffix ""`) to suppress it entirely.
     #[arg(long)]
     pub format_fsn_suffix: Option<String>,
+
+    #[command(flatten)]
+    pub prov: ProvenanceFlags,
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +211,14 @@ fn open_db(path: &Path) -> Result<Connection> {
 
 fn run_list(args: ListArgs) -> Result<()> {
     let conn = open_db(&args.db)?;
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+    let mode = if args.json {
+        OutputMode::Json
+    } else {
+        OutputMode::HumanText
+    };
+    let show_prov = provenance::should_show(args.prov, mode);
+
     let rows = list_refsets(&conn, None)?;
 
     if rows.is_empty() {
@@ -212,7 +230,15 @@ fn run_list(args: ListArgs) -> Result<()> {
     }
 
     if args.json {
-        println!("{}", serde_json::to_string_pretty(&rows)?);
+        // Preserve the existing top-level array shape unless the user opts in
+        // to provenance, in which case we wrap so we can attach _provenance.
+        if show_prov {
+            let mut value = serde_json::json!({ "refsets": rows });
+            provenance::inject_into_json(&mut value, prov.as_ref(), true);
+            println!("{}", serde_json::to_string_pretty(&value)?);
+        } else {
+            println!("{}", serde_json::to_string_pretty(&rows)?);
+        }
         return Ok(());
     }
 
@@ -235,11 +261,19 @@ fn run_list(args: ListArgs) -> Result<()> {
             })
         );
     }
+    provenance::print_human_footer(prov.as_ref(), show_prov);
     Ok(())
 }
 
 fn run_info(args: InfoArgs) -> Result<()> {
     let conn = open_db(&args.db)?;
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+    let mode = if args.json {
+        OutputMode::Json
+    } else {
+        OutputMode::HumanText
+    };
+    let show_prov = provenance::should_show(args.prov, mode);
 
     let meta = conn
         .query_row(
@@ -277,7 +311,9 @@ fn run_info(args: InfoArgs) -> Result<()> {
     }
 
     if args.json {
-        println!("{}", serde_json::to_string_pretty(&r)?);
+        let mut value = serde_json::to_value(&r)?;
+        provenance::inject_into_json(&mut value, prov.as_ref(), show_prov);
+        println!("{}", serde_json::to_string_pretty(&value)?);
         return Ok(());
     }
 
@@ -288,11 +324,20 @@ fn run_info(args: InfoArgs) -> Result<()> {
     }
     println!("  Module:  {}", r.module);
     println!("  Members: {}", r.member_count);
+    provenance::print_human_footer(prov.as_ref(), show_prov);
     Ok(())
 }
 
 fn run_members(args: MembersArgs) -> Result<()> {
     let conn = open_db(&args.db)?;
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+    let mode = if args.json {
+        OutputMode::Json
+    } else {
+        OutputMode::HumanText
+    };
+    let show_prov = provenance::should_show(args.prov, mode);
+
     let rows = list_refset_members(&conn, &args.id, args.limit.map(|n| n as i64))?;
 
     if rows.is_empty() {
@@ -301,7 +346,13 @@ fn run_members(args: MembersArgs) -> Result<()> {
     }
 
     if args.json {
-        println!("{}", serde_json::to_string_pretty(&rows)?);
+        if show_prov {
+            let mut value = serde_json::json!({ "members": rows });
+            provenance::inject_into_json(&mut value, prov.as_ref(), true);
+            println!("{}", serde_json::to_string_pretty(&value)?);
+        } else {
+            println!("{}", serde_json::to_string_pretty(&rows)?);
+        }
         return Ok(());
     }
 
@@ -319,5 +370,6 @@ fn run_members(args: MembersArgs) -> Result<()> {
             })
         );
     }
+    provenance::print_human_footer(prov.as_ref(), show_prov);
     Ok(())
 }

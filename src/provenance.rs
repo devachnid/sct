@@ -100,6 +100,92 @@ impl Provenance {
         }
         s
     }
+
+    /// JSON shape for embedding inside another JSON response under
+    /// a `_provenance` key. Identical to the NDJSON representation
+    /// minus the `_type` discriminator.
+    pub fn to_json_value(&self) -> serde_json::Value {
+        serde_json::json!({
+            "edition_label": self.edition_label,
+            "release_date": self.release_date,
+            "release_id": self.release_id,
+            "source_paths": self.source_paths,
+            "sct_version": self.sct_version,
+            "created_at": self.created_at,
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display flags + helpers for query commands
+// ---------------------------------------------------------------------------
+
+/// `--provenance` / `--no-provenance` flag pair, flattened into each query
+/// command's Args struct so the user can override the per-format default.
+#[derive(clap::Args, Debug, Clone, Copy, Default)]
+pub struct ProvenanceFlags {
+    /// Show release provenance (edition, release date) on this query's output.
+    /// Default: on for TTY text output, off for JSON or piped output.
+    #[arg(long, conflicts_with = "no_provenance")]
+    pub provenance: bool,
+
+    /// Suppress release provenance even in interactive output.
+    #[arg(long)]
+    pub no_provenance: bool,
+}
+
+/// Output mode for a query command — drives the default provenance behaviour
+/// when neither `--provenance` nor `--no-provenance` is set.
+#[derive(Debug, Clone, Copy)]
+pub enum OutputMode {
+    /// Plain human-readable text (the default for most query commands).
+    HumanText,
+    /// Structured JSON (the `--json` mode).
+    Json,
+}
+
+/// Should this command surface provenance, given the user's flags and the
+/// chosen output mode?
+///
+/// Defaults: text-to-TTY → on; text-to-pipe → off; JSON → off.
+/// `--provenance` forces on; `--no-provenance` forces off.
+pub fn should_show(flags: ProvenanceFlags, mode: OutputMode) -> bool {
+    if flags.no_provenance {
+        return false;
+    }
+    if flags.provenance {
+        return true;
+    }
+    match mode {
+        OutputMode::HumanText => {
+            use std::io::IsTerminal;
+            std::io::stdout().is_terminal()
+        }
+        OutputMode::Json => false,
+    }
+}
+
+/// Print the provenance footer if `show` is true and the database had
+/// provenance recorded. Called at the end of a query command's text output.
+pub fn print_human_footer(prov: Option<&Provenance>, show: bool) {
+    if !show {
+        return;
+    }
+    let Some(p) = prov else { return };
+    println!();
+    print!("{}", p.human_footer());
+}
+
+/// Inject `_provenance` into a top-level JSON object under that key
+/// if `show` is true. No-op if the value is not an object.
+pub fn inject_into_json(value: &mut serde_json::Value, prov: Option<&Provenance>, show: bool) {
+    if !show {
+        return;
+    }
+    let Some(p) = prov else { return };
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("_provenance".to_string(), p.to_json_value());
+    }
 }
 
 /// If a line is a `sct_provenance` metadata record, parse and return it.
