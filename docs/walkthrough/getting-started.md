@@ -6,19 +6,12 @@ Install `sct`, download a SNOMED CT release, and build the core artefacts.
 
 ## Installation
 
-```bash
-git clone https://github.com/pacharanero/sct.git
-cd sct
-cargo install --path . --features "tui gui"
-```
-
-We're working on packaging binaries for the usual distribution channels (Homebrew, PyPI, etc.) but for now you need Rust and Cargo to build from source. Feedback in Issues will help us decide which platforms and formats to prioritise for pre-built binaries.
+See the [Installation section of the README](https://github.com/pacharanero/sct#installation) for all supported install methods (shell installer, Homebrew, Scoop, `cargo install`, `cargo binstall`, and building from source).
 
 Verify installation:
 
 ```bash
 sct --version
-# sct 0.3.7
 ```
 
 > Optionally, you can generate [shell completions](../commands/completions.md) for your shell at this point.
