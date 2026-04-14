@@ -595,6 +595,17 @@ fn cmd_add(args: AddArgs) -> Result<()> {
     let conn = open_db(&args.db)?;
     let mut cl = read_codelist(&args.file)?;
 
+    // Auto-populate snomed_release from the DB's provenance the first time
+    // we touch this codelist with a real DB. Don't overwrite an existing
+    // value — the user may have set it deliberately to a different release.
+    if cl.front_matter.snomed_release.is_none() {
+        if let Ok(Some(p)) = crate::provenance::read_sqlite(&conn) {
+            if !p.release_date.is_empty() {
+                cl.front_matter.snomed_release = Some(p.release_date.clone());
+            }
+        }
+    }
+
     // Collect existing active IDs to deduplicate.
     let existing: HashSet<String> = cl
         .body

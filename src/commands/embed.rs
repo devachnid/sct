@@ -31,6 +31,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::provenance::{self, Provenance};
 use crate::schema::ConceptRecord;
 
 #[derive(Parser, Debug)]
@@ -117,12 +118,14 @@ pub fn run(args: Args) -> Result<()> {
     // Read all concepts (we must buffer to produce the Arrow batch later)
     let reader = BufReader::new(input);
     let mut concepts: Vec<ConceptRecord> = Vec::new();
+    let mut prov: Option<Provenance> = None;
     for line in reader.lines() {
         let line = line.context("reading input")?;
         if line.trim().is_empty() {
             continue;
         }
-        if crate::provenance::try_parse_ndjson_line(&line).is_some() {
+        if let Some(p) = provenance::try_parse_ndjson_line(&line) {
+            prov = Some(p);
             continue;
         }
         let record: ConceptRecord = serde_json::from_str(&line).context("parsing NDJSON record")?;
@@ -154,7 +157,7 @@ pub fn run(args: Args) -> Result<()> {
 
     pb.set_message("Writing Arrow IPC file...");
 
-    write_arrow(&concepts, &all_embeddings, dim, &args.output)?;
+    write_arrow(&concepts, &all_embeddings, dim, &args.output, prov.as_ref())?;
 
     pb.finish_with_message(format!(
         "Done. {} embeddings (dim={}) → {}",
@@ -210,11 +213,14 @@ fn call_ollama(base_url: &str, model: &str, texts: &[String]) -> Result<Vec<Vec<
 }
 
 /// Write an Arrow IPC file with columns: id, preferred_term, hierarchy, embedding.
+/// Provenance (if known) is attached to the schema-level metadata so that
+/// `sct semantic` and other readers can cite the source release.
 fn write_arrow(
     concepts: &[ConceptRecord],
     embeddings: &[Vec<f32>],
     dim: usize,
     path: &Path,
+    prov: Option<&Provenance>,
 ) -> Result<()> {
     anyhow::ensure!(
         concepts.len() == embeddings.len(),
@@ -224,7 +230,7 @@ fn write_arrow(
     );
 
     let item_field = Arc::new(Field::new("item", DataType::Float32, false));
-    let schema = Arc::new(Schema::new(vec![
+    let mut schema = Schema::new(vec![
         Field::new("id", DataType::Utf8, false),
         Field::new("preferred_term", DataType::Utf8, false),
         Field::new("hierarchy", DataType::Utf8, false),
@@ -233,7 +239,11 @@ fn write_arrow(
             DataType::FixedSizeList(item_field.clone(), dim as i32),
             false,
         ),
-    ]));
+    ]);
+    if let Some(p) = prov {
+        schema = schema.with_metadata(provenance::to_arrow_metadata(p));
+    }
+    let schema = Arc::new(schema);
 
     let ids = StringArray::from_iter_values(concepts.iter().map(|c| c.id.as_str()));
     let terms = StringArray::from_iter_values(concepts.iter().map(|c| c.preferred_term.as_str()));

@@ -116,6 +116,42 @@ impl Provenance {
     }
 }
 
+/// Serialise this provenance into a `HashMap<String,String>` suitable for
+/// embedding in an Arrow schema's metadata slot. Round-trips through
+/// `from_arrow_metadata` losslessly.
+pub fn to_arrow_metadata(p: &Provenance) -> std::collections::HashMap<String, String> {
+    let mut m = std::collections::HashMap::new();
+    m.insert("sct.edition_label".into(), p.edition_label.clone());
+    m.insert("sct.release_date".into(), p.release_date.clone());
+    m.insert("sct.release_id".into(), p.release_id.clone());
+    if let Ok(v) = serde_json::to_string(&p.source_paths) {
+        m.insert("sct.source_paths".into(), v);
+    }
+    m.insert("sct.sct_version".into(), p.sct_version.clone());
+    m.insert("sct.created_at".into(), p.created_at.clone());
+    m
+}
+
+/// Reconstruct a `Provenance` from an Arrow schema metadata map. Returns
+/// `None` if the map has no `sct.edition_label` key (i.e. the file was
+/// produced before this provenance scheme existed).
+pub fn from_arrow_metadata(m: &std::collections::HashMap<String, String>) -> Option<Provenance> {
+    let edition_label = m.get("sct.edition_label")?.clone();
+    let source_paths: Vec<String> = m
+        .get("sct.source_paths")
+        .and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or_default();
+    Some(Provenance {
+        type_tag: NDJSON_TYPE_TAG.to_string(),
+        edition_label,
+        release_date: m.get("sct.release_date").cloned().unwrap_or_default(),
+        release_id: m.get("sct.release_id").cloned().unwrap_or_default(),
+        source_paths,
+        sct_version: m.get("sct.sct_version").cloned().unwrap_or_default(),
+        created_at: m.get("sct.created_at").cloned().unwrap_or_default(),
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Display flags + helpers for query commands
 // ---------------------------------------------------------------------------

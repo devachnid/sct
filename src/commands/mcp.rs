@@ -38,6 +38,7 @@ use crate::commands::codelist::{
     CodelistFile, ConceptLine, FrontMatter, Warning,
 };
 use crate::commands::semantic;
+use crate::provenance::{self, Provenance};
 use crate::schema::SCHEMA_VERSION;
 
 #[derive(Parser, Debug)]
@@ -79,6 +80,10 @@ pub fn run(args: Args) -> Result<()> {
         ollama_url: args.ollama_url,
     });
 
+    // Read provenance once at startup so we can advertise it on every
+    // initialize handshake and inject it into per-concept tool responses.
+    let prov = provenance::read_sqlite(&conn).unwrap_or(None);
+
     let stdin = std::io::stdin();
     let stdout = std::io::stdout();
     let mut reader = BufReader::new(stdin.lock());
@@ -88,7 +93,9 @@ pub fn run(args: Args) -> Result<()> {
         match read_message(&mut reader) {
             Ok(Some(raw)) => {
                 if let Ok(msg) = serde_json::from_str::<Value>(&raw) {
-                    if let Some(response) = handle_message(&conn, &msg, semantic_cfg.as_ref()) {
+                    if let Some(response) =
+                        handle_message(&conn, &msg, semantic_cfg.as_ref(), prov.as_ref())
+                    {
                         let text = serde_json::to_string(&response)?;
                         write_message(&mut writer, &text)?;
                     }
@@ -271,6 +278,7 @@ fn handle_message(
     conn: &Connection,
     msg: &Value,
     semantic_cfg: Option<&SemanticConfig>,
+    prov: Option<&Provenance>,
 ) -> Option<Value> {
     let req: Request = serde_json::from_value(msg.clone()).ok()?;
 
@@ -285,9 +293,9 @@ fn handle_message(
     };
 
     let result = match req.method.as_str() {
-        "initialize" => handle_initialize(&req.params),
+        "initialize" => handle_initialize(&req.params, prov),
         "tools/list" => handle_tools_list(semantic_cfg),
-        "tools/call" => match handle_tools_call(conn, &req.params, semantic_cfg) {
+        "tools/call" => match handle_tools_call(conn, &req.params, semantic_cfg, prov) {
             Ok(v) => v,
             Err(e) => {
                 return Some(
@@ -306,7 +314,7 @@ fn handle_message(
     Some(serde_json::to_value(Response::ok(id, result)).unwrap())
 }
 
-fn handle_initialize(params: &Option<Value>) -> Value {
+fn handle_initialize(params: &Option<Value>, prov: Option<&Provenance>) -> Value {
     // Echo back the client's requested protocol version so that newer clients
     // (e.g. Claude Code ≥ 2.x using 2025-03-26) don't reject us.  We support
     // any version ≥ "2024-11-05"; fall back to that minimum if none is given.
@@ -318,15 +326,22 @@ fn handle_initialize(params: &Option<Value>) -> Value {
         .filter(|v| v.as_bytes() >= MIN_VERSION.as_bytes())
         .unwrap_or(MIN_VERSION);
 
+    let mut server_info = json!({
+        "name": "sct-mcp",
+        "version": env!("CARGO_PKG_VERSION"),
+    });
+    if let Some(p) = prov {
+        if let Some(obj) = server_info.as_object_mut() {
+            obj.insert("_provenance".to_string(), p.to_json_value());
+        }
+    }
+
     json!({
         "protocolVersion": protocol_version,
         "capabilities": {
             "tools": {}
         },
-        "serverInfo": {
-            "name": "sct-mcp",
-            "version": env!("CARGO_PKG_VERSION")
-        }
+        "serverInfo": server_info
     })
 }
 
@@ -605,6 +620,7 @@ fn handle_tools_call(
     conn: &Connection,
     params: &Option<Value>,
     semantic_cfg: Option<&SemanticConfig>,
+    prov: Option<&Provenance>,
 ) -> Result<Value> {
     let params = params.as_ref().context("tools/call requires params")?;
     let name = params["name"]
@@ -614,7 +630,7 @@ fn handle_tools_call(
 
     let text = match name {
         "snomed_search" => tool_search(conn, args)?,
-        "snomed_concept" => tool_concept(conn, args)?,
+        "snomed_concept" => tool_concept(conn, args, prov)?,
         "snomed_children" => tool_children(conn, args)?,
         "snomed_ancestors" => tool_ancestors(conn, args)?,
         "snomed_hierarchy" => tool_hierarchy(conn, args)?,
@@ -680,7 +696,7 @@ fn tool_search(conn: &Connection, args: &Value) -> Result<String> {
     Ok(serde_json::to_string_pretty(&rows)?)
 }
 
-fn tool_concept(conn: &Connection, args: &Value) -> Result<String> {
+fn tool_concept(conn: &Connection, args: &Value, prov: Option<&Provenance>) -> Result<String> {
     let id = args["id"].as_str().context("snomed_concept requires id")?;
 
     let result = conn.query_row(
@@ -714,6 +730,9 @@ fn tool_concept(conn: &Connection, args: &Value) -> Result<String> {
             let memberships =
                 crate::commands::lookup::lookup_refset_memberships(conn, id).unwrap_or_default();
             v["member_of"] = Value::Array(memberships);
+            // Always cite the source release in MCP responses — LLM clients
+            // benefit from being able to ground answers in a specific edition.
+            provenance::inject_into_json(&mut v, prov, true);
             Ok(serde_json::to_string_pretty(&v)?)
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(format!("Concept {} not found", id)),
@@ -1850,7 +1869,7 @@ mod tests {
     fn concept_found_by_id() {
         let conn = build_test_db();
         let args = json!({"id": "7000000"});
-        let result = tool_concept(&conn, &args).unwrap();
+        let result = tool_concept(&conn, &args, None).unwrap();
         let v: Value = serde_json::from_str(&result).unwrap();
         assert_eq!(
             v["preferred_term"].as_str().unwrap(),
@@ -1863,7 +1882,7 @@ mod tests {
     fn concept_not_found() {
         let conn = build_test_db();
         let args = json!({"id": "9999999999"});
-        let result = tool_concept(&conn, &args).unwrap();
+        let result = tool_concept(&conn, &args, None).unwrap();
         assert!(result.contains("not found"));
     }
 

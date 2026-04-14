@@ -240,6 +240,7 @@ fn info_arrow(path: &Path) -> Result<()> {
     let reader = FileReader::try_new(file, None).context("reading Arrow IPC file")?;
 
     let schema = reader.schema();
+    let prov = provenance::from_arrow_metadata(schema.metadata());
 
     // Determine embedding dimension from the FixedSizeList field
     let dim: Option<i32> = schema.fields().iter().find_map(|f| {
@@ -259,6 +260,20 @@ fn info_arrow(path: &Path) -> Result<()> {
     println!("File:             {}", path.display());
     println!("Size:             {}", human_size(file_size));
     println!("Format:           Arrow IPC (sct embed)");
+    if let Some(ref p) = prov {
+        if !p.edition_label.is_empty() {
+            println!("Edition:          {}", p.edition_label);
+        }
+        if !p.release_date.is_empty() {
+            println!("Release date:     {}", p.release_date);
+        }
+        if !p.release_id.is_empty() {
+            println!("Release id:       {}", p.release_id);
+        }
+        if !p.sct_version.is_empty() {
+            println!("Built by:         sct {}", p.sct_version);
+        }
+    }
     println!("Embeddings:       {}", fmt_count(row_count));
     println!(
         "Dimension:        {}",

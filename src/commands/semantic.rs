@@ -18,6 +18,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 use crate::format::{ConceptFields, ConceptFormat};
+use crate::provenance::{self, OutputMode, Provenance, ProvenanceFlags};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -44,6 +45,9 @@ pub struct Args {
     /// Default: `{score} | {id} | {pt}`. See `docs/commands/refset.md`.
     #[arg(long)]
     pub format: Option<String>,
+
+    #[command(flatten)]
+    pub prov: ProvenanceFlags,
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +80,9 @@ struct EmbedResponse {
 // ---------------------------------------------------------------------------
 
 pub fn run(args: Args) -> Result<()> {
+    let prov = read_arrow_provenance(&args.embeddings).unwrap_or(None);
+    let show_prov = provenance::should_show(args.prov, OutputMode::HumanText);
+
     let results = semantic_search(
         &args.embeddings,
         &args.ollama_url,
@@ -112,7 +119,19 @@ pub fn run(args: Args) -> Result<()> {
         );
     }
 
+    provenance::print_human_footer(prov.as_ref(), show_prov);
+
     Ok(())
+}
+
+/// Open the embeddings file just to read its schema-level metadata.
+/// Cheap because Arrow IPC stores the schema in the footer; we don't have
+/// to scan any record batches.
+pub fn read_arrow_provenance(path: &Path) -> Result<Option<Provenance>> {
+    let file = std::fs::File::open(path).with_context(|| format!("opening {}", path.display()))?;
+    let reader = FileReader::try_new(file, None).context("reading Arrow IPC file")?;
+    let schema = reader.schema();
+    Ok(provenance::from_arrow_metadata(schema.metadata()))
 }
 
 // ---------------------------------------------------------------------------
