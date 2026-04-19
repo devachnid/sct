@@ -1,0 +1,52 @@
+---
+id: mmr-vaccination-procedures
+title: MMR vaccination procedures
+description: SNOMED CT procedure concepts (with CTV3 maps where available) for recording administration of MMR, MMRV, MR, and single-component measles/mumps/rubella vaccinations. Covers active UK SNOMED CT concepts only; does not yet cover inactivated concepts or Read v2. Intended for identifying MMR-vaccination events in UK GP electronic health records.
+terminology: SNOMED CT
+created: 2026-04-18
+updated: 2026-04-18
+version: 5
+status: draft
+licence: CC-BY-4.0
+copyright: SNOMED CT content © IHTSDO, used under NHS England national licence.
+appropriate_use: Identifying MMR / MMRV / MR / single-component measles, mumps, or rubella vaccination events in UK primary-care records. Grouped by clinical intent (core MMR, MMRV, single-component, administrative) so downstream analyses can include/exclude each group as appropriate.
+misuse: Do not use this list to identify vaccine products (use the NHS dm+d vaccine-product refsets instead — refset 553391000001108, and specific-vaccine refsets such as 133231000001105 for MMR products). Does not resolve Read v2 codes (pre-2000 GP records may contain codes that will not match). Does not include inactivated SNOMED concepts — older records may reference retired SCTIDs that need resolving via a history/association refset (not yet supported in sct).
+warnings:
+- code: not-universal-definition
+  severity: info
+  message: This codelist was developed for a specific purpose and may not meet the needs of other studies.
+- code: draft-not-reviewed
+  severity: info
+  message: This codelist has not yet been reviewed. Check status before use.
+- code: snomed-release-age
+  severity: caution
+  message: Validate against the current SNOMED release before use in research.
+---
+
+# concepts
+
+38598009       Administration of measles and mumps and rubella vaccine  # core MMR
+170431005      Administration of booster dose of measles and mumps and rubella vaccine  # core MMR
+170432003      Administration of pre-school booster dose of measles and mumps and rubella vaccine  # core MMR
+170433008      Administration of second dose of measles and mumps and rubella vaccine  # core MMR
+571591000119106 Administration of live attenuated measles, mumps, and rubella vaccine  # core MMR
+170364006      Measles vaccination plus immunoglobulin  # core MMR
+308081000000105 Measles mumps and rubella vaccination - first dose  # core MMR
+505001000000109 Measles mumps rubella catch-up vaccination  # core MMR
+504481000000108 Measles mumps rubella catch-up vaccination programme enhanced services administration  # core MMR
+1091001000000108 Combined measles and rubella vaccination  # core MMR
+792896000      Administration of measles and rubella vaccine  # core MMR
+432636005      Administration of measles and mumps and rubella and varicella virus vaccine  # MMRV
+871909005      Administration of first dose of measles and mumps and rubella and varicella virus vaccine  # MMRV
+433733003      Administration of second dose of measles and mumps and rubella and varicella virus vaccine  # MMRV
+572511000119105 Administration of live attenuated measles and mumps and rubella and varicella-zoster vaccine  # MMRV
+2775101000000102 MMRV (measles, mumps, rubella and varicella) vaccination invitation  # MMRV
+47435007       Administration of measles vaccine  # single-component
+572481000119103 Administration of live attenuated measles vaccine  # single-component
+50583002       Administration of mumps vaccine  # single-component
+82314000       Administration of rubella vaccine  # single-component
+774621000000102 Measles, mumps and rubella vaccination invitation  # administrative
+838601000000103 Measles mumps rubella catch-up vaccination invitation  # administrative
+927251000000109 Measles mumps and rubella booster vaccination invitation first letter  # administrative
+927231000000102 Measles mumps and rubella booster vaccination invitation second letter  # administrative
+927211000000105 Measles mumps and rubella booster vaccination invitation third letter  # administrative
