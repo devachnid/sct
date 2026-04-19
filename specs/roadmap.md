@@ -151,3 +151,166 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
       SNOMED International IPS Free Set (freely available from MLDS without affiliate membership)
       to make `sct lexical`, `sct mcp`, and `sct serve` work out-of-the-box for IPS tooling
       without any RF2 download step. *Requires licence verification before distribution.*
+
+---
+
+## Exploration & data-science surfaces
+
+With the RF2 → NDJSON → SQLite/Parquet/Arrow pipeline and MCP server in place, `sct`
+is positioned to become the ontology backend for a much wider set of surfaces than a
+single CLI. The items below sketch what a "richer than a SNOMED browser, flexible like
+the CLI" middle ground could look like — roughly in priority order, with the first two
+being the next concrete pieces of work.
+
+### Next up (chosen targets)
+
+- [ ] **DuckDB integration** — ship a `sct duckdb` subcommand (or a documented recipe)
+      that exposes the SQLite DB as a set of DuckDB views plus helper macros. DuckDB is
+      where the data-science ecosystem is converging (Python/R/JS bindings, zero-install,
+      Parquet-native) and this is the single highest-leverage integration for analytical
+      users.
+
+      Concretely:
+      - `ATTACH 'snomed.db' AS sct (TYPE SQLITE)` gets us raw access; the goal is a
+        layer of views/macros that hide the RF2-ism of the schema.
+      - Macros to implement: `sct_is_a(child, ancestor)`, `sct_descendants(id)`,
+        `sct_ancestors(id)`, `sct_fsn(id)`, `sct_pt(id)`, `sct_in_refset(id, refset_id)`.
+        These should be thin wrappers over the existing `concept_isa` / `refset_members`
+        tables. Once `tct` (transitive closure) is built, `sct_descendants` becomes a
+        single indexed lookup instead of a recursive CTE.
+      - Also expose the Parquet artefact directly via `read_parquet()` — no attach
+        needed, great for Colab/Kaggle where the user just downloads the `.parquet`.
+      - Constraint: DuckDB's SQLite scanner is read-only and doesn't see FTS5 virtual
+        tables; lexical search must either go through `sct` CLI, or we materialise a
+        plain `concepts_text` table alongside FTS5 at `sqlite` build time.
+      - Pointer: <https://duckdb.org/docs/extensions/sqlite>
+
+- [ ] **Notebook entrypoints — marimo + Jupyter, layered over a `.sql` bootstrap**
+
+      Rather than pick one notebook system, ship the real artefact as plain SQL and
+      put veneers over it. DuckDB is the interop layer; every notebook system and every
+      language binding can host it, so "polyglot notebook" is a red herring — the SQL
+      itself is the same everywhere.
+
+      Three pieces, cheapest first:
+
+      1. **`examples/duckdb/bootstrap.sql`** — the lingua franca. Raw `ATTACH` + view
+         + macro definitions (see DuckDB item above). Works from any notebook, any
+         language binding, or a bare `duckdb` CLI. This is the real committed artefact;
+         the notebooks below are thin wrappers.
+
+      2. **`examples/marimo/snomed_explorer.py`** — the flagship interactive authoring
+         surface. Reactive DAG is the core win: change a refset picker and the codelist
+         preview re-renders automatically. Stored as plain `.py`, so it diffs cleanly,
+         reviews cleanly, and `ruff`/`mypy` just work. `marimo run` also serves it as a
+         standalone web app, which makes it *more* accessible to non-Python users than
+         a Jupyter kernel they'd have to install.
+         - Widgets: `mo.ui.text` for FTS search, `mo.ui.dropdown` over `snomed_refsets()`,
+           `mo.ui.multiselect` for hierarchy top-levels, `altair`/`plotly` for a
+           descendants sunburst.
+         - Output: every session ends with a `.codelist` file written to disk — authoring
+           tool, not just a viewer.
+         - Constraint: marimo is young (v0.9 as of Apr 2026); verify current release
+           before pinning, and check its SQL-cell story since raw DuckDB queries need
+           to feel first-class.
+         - Pointer: <https://marimo.io/>
+
+      3. **`examples/jupyter/quickstart.ipynb`** — the polyglot on-ramp. A thin notebook
+         showing `ATTACH 'snomed.db'` plus a handful of queries, with an "Open in Colab"
+         button in the README. Jupyter's strengths (kernels for R/Julia/JS, Colab/Kaggle
+         ubiquity, `.ipynb` rendering on GitHub) make it the right choice for the demo
+         surface; its weaknesses (non-reactive, ugly diffs, hidden state) make it the
+         wrong choice for the authoring tool. Splitting the roles lets both shine.
+
+      **Why not Jupyter for the authoring tool:** `.ipynb` is JSON-with-embedded-outputs
+      so diffs and PR review are painful; cells aren't reactive so the "filter upstream,
+      codelist downstream" UX requires manual re-runs; hidden state from out-of-order
+      execution is a real hazard when the output is a committed codelist.
+
+      **Why not marimo for the demo:** Python-only cells; younger ecosystem; less
+      familiar to the average clinical-data-science user arriving from Colab.
+
+### Further exploration surfaces
+
+- [ ] **JupyterLab magic + IPython reprs** — `%sct` magic wrapping the CLI, plus
+      `_repr_html_` on a `ConceptId` type so `8517006` renders as a rich card (FSN,
+      parents, children, refset memberships) inline. Pandas accessor: `series.sct.describe()`
+      on any Series of SCTIDs. Lower-ceiling than marimo but meets users where they are.
+
+- [ ] **NetworkX / igraph adapter** over the IS-A closure. Enables centrality,
+      community detection, shortest-path queries ("semantic distance between asthma
+      and COPD"). Probably just a helper function `sct.to_networkx(db_path, root=...)`
+      that materialises a subgraph — the full 4.5M-edge graph is too large for
+      interactive NetworkX use.
+
+- [ ] **Kuzu graph export** — embedded, Cypher, no server. Better fit than Neo4j for
+      a local-first tool. Export the full relationship graph (not just IS-A) so users
+      can run `MATCH (d:Disorder)-[:FINDING_SITE]->(b:BodyStructure) WHERE ...`.
+      Constraint: the current NDJSON schema captures relationships; need to confirm
+      the Kuzu DDL generation story.
+
+- [ ] **HuggingFace datasets card** publishing the embeddings + concept metadata as a
+      reusable dataset. Instant reach into clinical-NLP / LLM-eval repos. Licence
+      implication: only publishable for the IPS Free Set or user-ingested content, not
+      the UK release.
+
+- [ ] **LangChain / LlamaIndex retriever** — a `SnomedRetriever` class that RAG apps
+      can import. Turns `sct` into infrastructure for clinical agents rather than a
+      standalone tool. Thin wrapper over `sct semantic` + `sct lexical`.
+
+- [ ] **DSPy recipe for concept normalisation** — free-text symptom → candidate SCTID
+      with confidence, as a reusable DSPy signature. Good demo of the embeddings
+      + FTS combo and a natural "ship a notebook" artefact.
+
+- [ ] **UMAP / HDBSCAN embedding dashboard** — drop concepts on a 2D canvas, lasso-select,
+      export the selection as a codelist. "SNOMED microscope." Likely implemented inside
+      the marimo notebook rather than as a separate surface.
+
+- [ ] **Observable / D3 hierarchical viewer** served by a local `sct serve --ui` — radial
+      tree of descendants, zoomable, with refset overlay colouring. Complements the
+      notebook story for users who want a GUI without installing Python.
+
+### Clinical-data interoperability
+
+- [ ] **MIMIC / eICU crosswalk notebook** — joins the public MIT ICU datasets to SCT via
+      existing ICD-10 / dm+d maps, produces prevalence heatmaps by hierarchy top-level.
+      Strong Colab/Kaggle demo because the ICU data is already on those platforms.
+      Constraint: MIMIC requires PhysioNet credentialled access; the notebook should work
+      against the demo subset for unauthenticated users.
+      Pointer: <https://physionet.org/content/mimiciv-demo/>
+
+- [ ] **OMOP CDM bridge** — bidirectional mapping between OMOP `concept_id` /
+      vocabulary IDs and SCTIDs. Would land `sct` inside the OHDSI workflow. Needs
+      ingestion of the OMOP vocabulary CSVs (Athena download) and a `concept_maps`
+      extension. Pointer: <https://athena.ohdsi.org/>
+
+- [ ] **FHIR ValueSet / ConceptMap round-trip** — emit a `.codelist` as a FHIR
+      `ValueSet` resource and re-ingest the result of a terminology server `$expand`.
+      Makes `sct codelist` interoperable with Ontoserver, Snowstorm, and the NHS FHIR
+      Terminology Server. Natural pairing with the in-progress `sct serve` work —
+      same data model, opposite direction.
+
+### LLM-assisted authoring
+
+- [ ] **"Explain this refset" agent** — an MCP client + small model prompt that writes
+      plain-English rationale for every member of a refset, flagging outliers ("this
+      concept sits under X, unlike the other 27 members which sit under Y — intentional?").
+      Run nightly on curated refsets; commit diffs as a form of continuous review.
+      Uses: detecting refset drift, onboarding new curators, sanity-checking imports.
+
+- [ ] **Semantic drift summariser** — layer on top of `sct diff`. Raw row counts become
+      an LLM-summarised narrative: "Release added 412 concepts, mostly under
+      Pharmaceutical/biologic product (COVID-19 boosters); 37 concepts inactivated in
+      Clinical finding, of which 31 replaced by more specific children." Much higher
+      signal-to-noise than the current diff output.
+
+### The too-wild one
+
+- [ ] **`sct mud` — SNOMED as a text adventure.** Rooms are concepts, exits are
+      relationships. `> go finding-site` walks from *Myocardial infarction* into *Heart
+      structure*; `> look` shows FSN, synonyms, and sibling concepts as "other travellers
+      here"; `> inventory` is your in-progress codelist. An optional LLM dungeon-master
+      narrates the clinical picture as you wander. Absurd on the surface, but it's the
+      first interface that would make a medical student *play* with the ontology, and
+      the traversal patterns discovered during play are genuinely useful codelist seeds.
+      Ship as a subcommand; minimal dependencies; pure terminal UX.
