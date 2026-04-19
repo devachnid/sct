@@ -73,7 +73,20 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
 - [x] `sct codelist stats <file>` — concept counts, hierarchy breakdown, staleness
 - [x] `sct codelist diff <file-a> <file-b>` — compare two `.codelist` files
 - [x] `sct codelist export <file> --format csv/opencodelists-csv/markdown`
+- [x] `sct codelist export <file> --include-maps <terminologies> --db <path>` —
+      append crosswalk columns (currently `ctv3`; future: `read2`, `icd10`, `opcs4`
+      as those maps are ingested). Multiple codes per SCTID joined with `|`. SNOMED
+      stays canonical; crosswalks fall out of the `concept_maps` join at export time
+      rather than being maintained inline. Not supported for `opencodelists-csv`
+      (fixed schema). Missing terminologies emit a stderr warning and leave the
+      column empty rather than failing.
 - [ ] `sct codelist export <file> --format fhir-json/rf2` — remaining export formats
+- [ ] **Multi-terminology codelists (format v2)** — future extension once Read v2 /
+      ICD-10 / OPCS-4 maps are fully ingested. Would allow `terminology: [SNOMED CT,
+      CTV3]` with first-class non-SNOMED codes (for historical Read v2 codes that
+      have no modern SNOMED equivalent). The `--include-maps` export above is the
+      interim solution for SNOMED-canonical lists; v2 is for genuinely cross-terminology
+      source artefacts.
 - [ ] `sct codelist search <file> <query>` — interactive FTS5 search → include/exclude
 - [ ] `sct codelist import --from <source>` — OCL, CSV, RF2, FHIR import
 - [ ] `sct codelist publish --to opencodelists` — publish to OpenCodelists

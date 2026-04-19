@@ -137,6 +137,14 @@ pub struct ExportArgs {
     /// Write to file instead of stdout.
     #[arg(long, short)]
     pub output: Option<PathBuf>,
+    /// Comma-separated list of crosswalk terminologies to append as extra columns
+    /// (e.g. `ctv3`, `ctv3,read2`). Requires `--db`. Multiple codes per SCTID in
+    /// one terminology are joined with `|`. Not supported for `opencodelists-csv`.
+    #[arg(long, value_delimiter = ',')]
+    pub include_maps: Vec<String>,
+    /// SNOMED CT SQLite database (required when `--include-maps` is set).
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -1010,9 +1018,33 @@ fn cmd_export(args: ExportArgs) -> Result<()> {
         })
         .collect();
 
+    let terminologies: Vec<String> = args
+        .include_maps
+        .iter()
+        .map(|t| t.trim().to_lowercase())
+        .filter(|t| !t.is_empty())
+        .collect();
+
+    if !terminologies.is_empty() && args.format == "opencodelists-csv" {
+        bail!("--include-maps is not supported for opencodelists-csv (fixed schema: code,term)");
+    }
+
+    let maps: Option<CrosswalkMaps> = if terminologies.is_empty() {
+        None
+    } else {
+        let db = args.db.as_ref().context(
+            "--include-maps requires --db <path> to resolve crosswalks from concept_maps",
+        )?;
+        let conn = open_db(db)?;
+        let sctids: Vec<&str> = active.iter().map(|(id, _)| *id).collect();
+        Some(lookup_crosswalks(&conn, &sctids, &terminologies)?)
+    };
+
     let output = match args.format.as_str() {
-        "csv" => export_csv(&active),
-        "markdown" => export_markdown(&cl.front_matter, &active),
+        "csv" => export_csv_with_maps(&active, &terminologies, maps.as_ref()),
+        "markdown" => {
+            export_markdown_with_maps(&cl.front_matter, &active, &terminologies, maps.as_ref())
+        }
         "opencodelists-csv" => export_opencodelists_csv(&active),
         other => {
             bail!("unsupported export format: {other}\nSupported: csv, opencodelists-csv, markdown")
@@ -1031,9 +1063,28 @@ fn cmd_export(args: ExportArgs) -> Result<()> {
 }
 
 pub fn export_csv(active: &[(&str, &str)]) -> String {
-    let mut out = String::from("sctid,preferred_term\n");
+    export_csv_with_maps(active, &[], None)
+}
+
+pub fn export_csv_with_maps(
+    active: &[(&str, &str)],
+    terminologies: &[String],
+    maps: Option<&CrosswalkMaps>,
+) -> String {
+    let mut out = String::from("sctid,preferred_term");
+    for t in terminologies {
+        out.push(',');
+        out.push_str(t);
+    }
+    out.push('\n');
     for (id, term) in active {
-        out.push_str(&format!("{},{}\n", id, csv_escape(term)));
+        out.push_str(&format!("{},{}", id, csv_escape(term)));
+        for t in terminologies {
+            let joined = maps.map(|m| m.codes_for(id, t)).unwrap_or_default();
+            out.push(',');
+            out.push_str(&csv_escape(&joined));
+        }
+        out.push('\n');
     }
     out
 }
@@ -1047,17 +1098,137 @@ pub fn export_opencodelists_csv(active: &[(&str, &str)]) -> String {
 }
 
 pub fn export_markdown(fm: &FrontMatter, active: &[(&str, &str)]) -> String {
+    export_markdown_with_maps(fm, active, &[], None)
+}
+
+pub fn export_markdown_with_maps(
+    fm: &FrontMatter,
+    active: &[(&str, &str)],
+    terminologies: &[String],
+    maps: Option<&CrosswalkMaps>,
+) -> String {
     let mut out = format!("# {}\n\n", fm.title);
     out.push_str(&format!("**Description:** {}\n\n", fm.description));
     out.push_str(&format!(
         "**Terminology:** {} | **Version:** {} | **Status:** {} | **Updated:** {}\n\n",
         fm.terminology, fm.version, fm.status, fm.updated
     ));
-    out.push_str("| SCTID | Preferred Term |\n|---|---|\n");
+
+    out.push_str("| SCTID | Preferred Term");
+    for t in terminologies {
+        out.push_str(" | ");
+        out.push_str(t);
+    }
+    out.push_str(" |\n|---|---");
+    for _ in terminologies {
+        out.push_str("|---");
+    }
+    out.push_str("|\n");
+
     for (id, term) in active {
-        out.push_str(&format!("| `{id}` | {term} |\n"));
+        out.push_str(&format!("| `{id}` | {term}"));
+        for t in terminologies {
+            let joined = maps.map(|m| m.codes_for(id, t)).unwrap_or_default();
+            out.push_str(" | ");
+            out.push_str(&joined);
+        }
+        out.push_str(" |\n");
     }
     out
+}
+
+/// Crosswalk map lookup: sctid → terminology (lowercased) → sorted codes.
+#[derive(Default)]
+pub struct CrosswalkMaps {
+    inner: HashMap<String, HashMap<String, Vec<String>>>,
+}
+
+impl CrosswalkMaps {
+    /// Return all crosswalk codes for the given SCTID in the given terminology,
+    /// joined with `|`. Empty string if none.
+    pub fn codes_for(&self, sctid: &str, terminology: &str) -> String {
+        self.inner
+            .get(sctid)
+            .and_then(|m| m.get(terminology))
+            .map(|v| v.join("|"))
+            .unwrap_or_default()
+    }
+}
+
+/// Load crosswalk codes for a set of SCTIDs across the given terminologies.
+///
+/// Terminology names are compared case-insensitively against the lowercased
+/// values stored in `concept_maps.terminology`. Missing terminologies are
+/// silently absent from the result (caller can detect this by getting empty
+/// strings from `codes_for`); we also emit a stderr warning once per missing
+/// terminology so users know the DB didn't have the requested crosswalk.
+pub fn lookup_crosswalks(
+    conn: &Connection,
+    sctids: &[&str],
+    terminologies: &[String],
+) -> Result<CrosswalkMaps> {
+    let mut maps = CrosswalkMaps::default();
+    if sctids.is_empty() || terminologies.is_empty() {
+        return Ok(maps);
+    }
+
+    let available: HashSet<String> = {
+        let mut stmt = conn.prepare("SELECT DISTINCT lower(terminology) FROM concept_maps")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+        rows.collect::<std::result::Result<_, _>>()?
+    };
+
+    for t in terminologies {
+        if !available.contains(t) {
+            eprintln!(
+                "warning: terminology '{t}' not present in concept_maps; column will be empty. \
+                 Available: {}",
+                available.iter().cloned().collect::<Vec<_>>().join(", ")
+            );
+        }
+    }
+
+    let placeholders = std::iter::repeat_n("?", sctids.len())
+        .collect::<Vec<_>>()
+        .join(",");
+    let term_placeholders = std::iter::repeat_n("?", terminologies.len())
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!(
+        "SELECT concept_id, lower(terminology), code
+         FROM concept_maps
+         WHERE concept_id IN ({placeholders})
+           AND lower(terminology) IN ({term_placeholders})
+         ORDER BY concept_id, lower(terminology), code"
+    );
+
+    let mut params_vec: Vec<&dyn rusqlite::ToSql> =
+        Vec::with_capacity(sctids.len() + terminologies.len());
+    for id in sctids {
+        params_vec.push(id);
+    }
+    for t in terminologies {
+        params_vec.push(t);
+    }
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params_vec.as_slice(), |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    })?;
+    for row in rows {
+        let (sctid, terminology, code) = row?;
+        maps.inner
+            .entry(sctid)
+            .or_default()
+            .entry(terminology)
+            .or_default()
+            .push(code);
+    }
+    Ok(maps)
 }
 
 fn csv_escape(s: &str) -> String {
@@ -1391,6 +1562,103 @@ misuse: Not for clinical decision support.
             csv.contains(r#""Anxiety, unspecified""#),
             "comma-containing term must be CSV-quoted; got: {csv}"
         );
+    }
+
+    #[test]
+    fn export_csv_with_maps_appends_crosswalk_columns() {
+        let active = vec![
+            ("38598009", "Administration of MMR vaccine"),
+            ("170431005", "MMR booster"),
+        ];
+        let mut maps = CrosswalkMaps::default();
+        maps.inner.insert(
+            "38598009".to_string(),
+            [("ctv3".to_string(), vec!["65M1.".to_string()])]
+                .into_iter()
+                .collect(),
+        );
+        // 170431005 deliberately absent -> empty column
+
+        let terminologies = vec!["ctv3".to_string()];
+        let csv = export_csv_with_maps(&active, &terminologies, Some(&maps));
+        let mut lines = csv.lines();
+        assert_eq!(lines.next().unwrap(), "sctid,preferred_term,ctv3");
+        assert_eq!(
+            lines.next().unwrap(),
+            "38598009,Administration of MMR vaccine,65M1."
+        );
+        assert_eq!(lines.next().unwrap(), "170431005,MMR booster,");
+    }
+
+    #[test]
+    fn export_csv_with_maps_joins_multiple_codes_with_pipe() {
+        let active = vec![("123", "Concept with two CTV3 maps")];
+        let mut maps = CrosswalkMaps::default();
+        maps.inner.insert(
+            "123".to_string(),
+            [(
+                "ctv3".to_string(),
+                vec!["AAA..".to_string(), "BBB..".to_string()],
+            )]
+            .into_iter()
+            .collect(),
+        );
+        let terminologies = vec!["ctv3".to_string()];
+        let csv = export_csv_with_maps(&active, &terminologies, Some(&maps));
+        assert!(
+            csv.contains("AAA..|BBB.."),
+            "multiple codes must be pipe-joined; got: {csv}"
+        );
+    }
+
+    #[test]
+    fn export_csv_no_maps_matches_legacy_output() {
+        // With no --include-maps, export_csv_with_maps must produce identical
+        // output to the legacy export_csv so existing consumers are unaffected.
+        let active = vec![("195967001", "Asthma (disorder)")];
+        let legacy = export_csv(&active);
+        let new_path = export_csv_with_maps(&active, &[], None);
+        assert_eq!(legacy, new_path);
+    }
+
+    #[test]
+    fn export_markdown_with_maps_appends_columns() {
+        let fm = FrontMatter {
+            id: "test".to_string(),
+            title: "Test".to_string(),
+            description: "Test".to_string(),
+            terminology: "SNOMED CT".to_string(),
+            created: "2026-04-18".to_string(),
+            updated: "2026-04-18".to_string(),
+            version: 1,
+            status: "draft".to_string(),
+            licence: String::new(),
+            copyright: String::new(),
+            appropriate_use: String::new(),
+            misuse: String::new(),
+            snomed_release: None,
+            authors: None,
+            organisation: None,
+            methodology: None,
+            signoffs: None,
+            warnings: None,
+            population: None,
+            care_setting: None,
+            tags: None,
+            opencodelists_id: None,
+            opencodelists_url: None,
+        };
+        let active = vec![("38598009", "Admin MMR")];
+        let mut maps = CrosswalkMaps::default();
+        maps.inner.insert(
+            "38598009".to_string(),
+            [("ctv3".to_string(), vec!["65M1.".to_string()])]
+                .into_iter()
+                .collect(),
+        );
+        let md = export_markdown_with_maps(&fm, &active, &["ctv3".to_string()], Some(&maps));
+        assert!(md.contains("| SCTID | Preferred Term | ctv3 |"));
+        assert!(md.contains("| `38598009` | Admin MMR | 65M1. |"));
     }
 
     #[test]
