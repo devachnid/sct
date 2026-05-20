@@ -25,11 +25,11 @@ cargo generate-lockfile --manifest-path "$CARGO_TOML"
 git add "$CARGO_TOML" Cargo.lock
 git commit -m "bump version to ${next}"
 
-# Tag
-git tag "v${next}"
-
-# Push
+# Push. The auto-tag GitHub Actions workflow (.github/workflows/auto-tag.yml)
+# detects the Cargo.toml change on main, creates the matching v<version>
+# tag, and invokes release.yml. Tagging used to happen here; do not re-add
+# it — a local tag plus the CI-created tag would race and produce noisy
+# duplicate-tag failures on push.
 git push
-git push --tags
 
-echo "Released v${next}"
+echo "Pushed bump to ${next}. CI will create the v${next} tag and release."
