@@ -3,7 +3,7 @@
 //!
 //! The goal is a single, grep-friendly, `wc -l`-accurate line per concept
 //! with a format the user can tune per-invocation (CLI flag) or globally
-//! (`~/.config/sct/config.toml`):
+//! (`$SCT_CONFIG_HOME/config.toml` — see [`crate::paths`]):
 //!
 //! ```toml
 //! [format]
@@ -43,9 +43,6 @@
 //! shared across commands without breaking those that lack the field.
 //!
 //! Unknown `{names}` are left as literal text so typos are visible.
-
-use serde::Deserialize;
-use std::path::PathBuf;
 
 use crate::builder::strip_semantic_tag;
 
@@ -95,29 +92,22 @@ impl ConceptFormat {
         out
     }
 
-    /// Load the format from `~/.config/sct/config.toml`, falling back to
-    /// [`Default::default`] on any error (missing file, parse error, etc.).
+    /// Load the format from the shared config file, falling back to
+    /// [`Default::default`] when the file or `[format]` section is absent.
     pub fn load() -> Self {
-        Self::load_from_home().unwrap_or_default()
+        let cfg = crate::paths::load_config();
+        Self::from_config(cfg.format.as_ref())
     }
 
-    fn load_from_home() -> Option<Self> {
-        let home = std::env::var("HOME").ok()?;
-        let path = PathBuf::from(home)
-            .join(".config")
-            .join("sct")
-            .join("config.toml");
-        if !path.exists() {
-            return None;
-        }
-        let contents = std::fs::read_to_string(&path).ok()?;
-        let root: RootConfig = toml::from_str(&contents).ok()?;
-        let f = root.format?;
+    fn from_config(f: Option<&crate::paths::FormatConfig>) -> Self {
         let d = Self::default();
-        Some(Self {
-            line: f.concept.unwrap_or(d.line),
-            fsn_suffix: f.concept_fsn_suffix.unwrap_or(d.fsn_suffix),
-        })
+        match f {
+            None => d,
+            Some(f) => Self {
+                line: f.concept.clone().unwrap_or(d.line),
+                fsn_suffix: f.concept_fsn_suffix.clone().unwrap_or(d.fsn_suffix),
+            },
+        }
     }
 
     /// Override the line and/or suffix templates (e.g. from CLI flags).
@@ -219,21 +209,6 @@ fn semantic_tag(fsn: &str) -> &str {
         }
     }
     ""
-}
-
-// ---------------------------------------------------------------------------
-// Config file
-// ---------------------------------------------------------------------------
-
-#[derive(Deserialize)]
-struct RootConfig {
-    format: Option<FormatSection>,
-}
-
-#[derive(Deserialize)]
-struct FormatSection {
-    concept: Option<String>,
-    concept_fsn_suffix: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

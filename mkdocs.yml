@@ -68,6 +68,7 @@ nav:
       - sct trud: commands/trud.md
       - sct tui: commands/tui.md
   - Reference:
+    - Path Resolution: path-resolution.md
     - UK Edition Structure: uk-edition-structure.md
     - Benchmarks: benchmarks.md
     - Vector Search Landscape: vector-search-landscape.md

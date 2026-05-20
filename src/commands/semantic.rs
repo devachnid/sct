@@ -26,8 +26,9 @@ pub struct Args {
     pub query: String,
 
     /// Arrow IPC embeddings file produced by `sct embed`.
-    #[arg(long, short, default_value = "snomed-embeddings.arrow")]
-    pub embeddings: PathBuf,
+    /// See `docs/path-resolution.md` for the discovery order when omitted.
+    #[arg(long, short)]
+    pub embeddings: Option<PathBuf>,
 
     /// Ollama embedding model — must match the model used by `sct embed`.
     #[arg(long, default_value = "nomic-embed-text")]
@@ -80,11 +81,12 @@ struct EmbedResponse {
 // ---------------------------------------------------------------------------
 
 pub fn run(args: Args) -> Result<()> {
-    let prov = read_arrow_provenance(&args.embeddings).unwrap_or(None);
+    let embeddings = crate::paths::resolve_embeddings(args.embeddings.as_deref())?.path;
+    let prov = read_arrow_provenance(&embeddings).unwrap_or(None);
     let show_prov = provenance::should_show(args.prov, OutputMode::HumanText);
 
     let results = semantic_search(
-        &args.embeddings,
+        &embeddings,
         &args.ollama_url,
         &args.model,
         &args.query,
@@ -92,7 +94,7 @@ pub fn run(args: Args) -> Result<()> {
     )?;
 
     if results.is_empty() {
-        println!("No embeddings found in {}", args.embeddings.display());
+        println!("No embeddings found in {}", embeddings.display());
         return Ok(());
     }
 

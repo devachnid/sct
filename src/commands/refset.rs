@@ -45,9 +45,10 @@ pub enum Command {
 
 #[derive(Parser, Debug)]
 pub struct ListArgs {
-    /// SQLite database produced by `sct sqlite`.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SQLite database produced by `sct sqlite`. See `docs/path-resolution.md`
+    /// for the discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 
     /// Output raw JSON instead of a human-readable table.
     #[arg(long)]
@@ -67,9 +68,10 @@ pub struct InfoArgs {
     /// SCTID of the refset (which is itself a SNOMED CT concept).
     pub id: String,
 
-    /// SQLite database produced by `sct sqlite`.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SQLite database produced by `sct sqlite`. See `docs/path-resolution.md`
+    /// for the discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 
     /// Output raw JSON instead of a human-readable summary.
     #[arg(long)]
@@ -84,9 +86,10 @@ pub struct MembersArgs {
     /// SCTID of the refset.
     pub id: String,
 
-    /// SQLite database produced by `sct sqlite`.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SQLite database produced by `sct sqlite`. See `docs/path-resolution.md`
+    /// for the discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 
     /// Maximum number of members to display (default: all).
     #[arg(long)]
@@ -210,7 +213,8 @@ fn open_db(path: &Path) -> Result<Connection> {
 }
 
 fn run_list(args: ListArgs) -> Result<()> {
-    let conn = open_db(&args.db)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
     let mode = if args.json {
         OutputMode::Json
@@ -266,7 +270,8 @@ fn run_list(args: ListArgs) -> Result<()> {
 }
 
 fn run_info(args: InfoArgs) -> Result<()> {
-    let conn = open_db(&args.db)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
     let mode = if args.json {
         OutputMode::Json
@@ -329,7 +334,8 @@ fn run_info(args: InfoArgs) -> Result<()> {
 }
 
 fn run_members(args: MembersArgs) -> Result<()> {
-    let conn = open_db(&args.db)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
     let mode = if args.json {
         OutputMode::Json

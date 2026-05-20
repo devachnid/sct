@@ -19,7 +19,7 @@ sct semantic <QUERY> [--embeddings <FILE>] [--model <MODEL>] [--ollama-url <URL>
 | Flag | Default | Description |
 |---|---|---|
 | `<QUERY>` | *(required)* | Natural-language search query. |
-| `--embeddings <FILE>` | `snomed-embeddings.arrow` | Arrow IPC file produced by `sct embed`. |
+| `--embeddings <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | Arrow IPC file produced by `sct embed`. |
 | `--model <MODEL>` | `nomic-embed-text` | Ollama model — must match the model used when building the embeddings. |
 | `--ollama-url <URL>` | `http://localhost:11434` | Ollama base URL. |
 | `--limit <N>` | `10` | Maximum number of results. |

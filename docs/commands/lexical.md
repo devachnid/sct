@@ -17,7 +17,7 @@ sct lexical <QUERY> [--db <FILE>] [--hierarchy <NAME>] [--limit <N>]
 | Argument / Flag | Default | Description |
 |---|---|---|
 | `<QUERY>` | *(required)* | Search query. FTS5 syntax: `"exact phrase"`, `prefix*`, `term AND term`, etc. |
-| `--db <FILE>` | `snomed.db` (cwd or `$SCT_DB`) | SQLite database produced by `sct sqlite`. |
+| `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 | `--hierarchy <NAME>` | *(all)* | Restrict results to a top-level hierarchy (e.g. `"Clinical finding"`). |
 | `--limit <N>` | `10` | Maximum number of results. |
 

@@ -20,7 +20,7 @@ Subcommands:
 | `info <ID>` | Show metadata and member count for a single refset. |
 | `members <ID>` | List the concepts belonging to a refset. |
 
-All subcommands accept `--db <PATH>` (default `snomed.db`) and `--json` for machine-readable output.
+All subcommands accept `--db <PATH>` (auto-discovered when omitted — see [Path resolution](../path-resolution.md)) and `--json` for machine-readable output.
 
 ---
 

@@ -53,6 +53,9 @@ enum Command {
     /// Download SNOMED CT RF2 releases via the NHS TRUD API.
     Trud(commands::trud::Args),
 
+    /// Show where sct looks for databases, embeddings, and config files.
+    Paths(commands::paths::Args),
+
     /// Look up a SNOMED CT concept by SCTID or CTV3 code.
     Lookup(commands::lookup::Args),
 
@@ -106,6 +109,7 @@ fn main() -> Result<()> {
         Command::Refset(args) => commands::refset::run(args),
         Command::Tct(args) => commands::tct::run(args),
         Command::Trud(args) => commands::trud::run(args),
+        Command::Paths(args) => commands::paths::run(args),
         Command::Lookup(args) => commands::lookup::run(args),
         Command::Lexical(args) => commands::lexical::run(args),
         Command::Semantic(args) => commands::semantic::run(args),

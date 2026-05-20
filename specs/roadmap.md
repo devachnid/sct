@@ -95,6 +95,18 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
 
 ## Completed
 
+- [x] **Unified path resolution** (v0.3.11) — every read-side command
+      (`sct lookup`, `lexical`, `refset`, `codelist`, `mcp`, `semantic`, `tui`,
+      `gui`) now discovers `--db` and `--embeddings` through a single chain:
+      env var → cwd → config `[paths]` → `$SCT_DATA_HOME/data/<canonical>` →
+      newest matching file in the data dir. Closes
+      [#19](https://github.com/pacharanero/sct/issues/19) — `sct trud download
+      --pipeline` output is now auto-discovered by every subsequent command.
+      New `sct paths` subcommand prints the resolved locations and which rule
+      won. Full spec in [`specs/path-resolution.md`](path-resolution.md);
+      user-facing docs in
+      [`docs/path-resolution.md`](../docs/path-resolution.md).
+
 - [x] **TRUD integration** — `sct trud` subcommand authenticates with the NHS TRUD API and
       downloads UK releases automatically, with SHA-256 verification, pre-flight health check,
       optional `--pipeline` / `--pipeline-full` chaining, and standardised `~/.local/share/sct/`

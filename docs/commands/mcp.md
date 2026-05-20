@@ -9,15 +9,15 @@ Single binary, no runtime dependencies, starts in under 5 ms. The SNOMED CT data
 ## Usage
 
 ```
-sct mcp --db <DB> [--embeddings <ARROW>] [--model <MODEL>] [--ollama-url <URL>]
+sct mcp [--db <DB>] [--embeddings <ARROW>] [--model <MODEL>] [--ollama-url <URL>]
 ```
 
 ## Options
 
 | Flag | Default | Description |
 |---|---|---|
-| `--db <FILE>` | *(required)* | SQLite database produced by `sct sqlite`. |
-| `--embeddings <FILE>` | — | Arrow IPC embeddings file produced by `sct embed`. When supplied, the `snomed_semantic_search` tool is registered. |
+| `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
+| `--embeddings <FILE>` | — | Arrow IPC embeddings file produced by `sct embed`. When supplied, the `snomed_semantic_search` tool is registered. Not auto-discovered — requires explicit opt-in because the tool needs Ollama. |
 | `--model <MODEL>` | `nomic-embed-text` | Ollama embedding model (must match the model used by `sct embed`). |
 | `--ollama-url <URL>` | `http://localhost:11434` | Ollama API base URL. |
 

@@ -15,16 +15,18 @@ A code list is a curated collection of clinical codes used to identify a patient
 sct codelist new codelists/asthma-diagnosis.codelist \
   --title "Asthma diagnosis" --author "Your Name"
 
-# 2. Add concepts (resolved from the database)
+# 2. Add concepts (database auto-discovered — see Path resolution)
 sct codelist add codelists/asthma-diagnosis.codelist \
-  195967001 389145006 266361008 --db snomed.db
+  195967001 389145006 266361008
 
 # 3. Validate
-sct codelist validate codelists/asthma-diagnosis.codelist --db snomed.db
+sct codelist validate codelists/asthma-diagnosis.codelist
 
 # 4. Export for use
 sct codelist export codelists/asthma-diagnosis.codelist --format csv
 ```
+
+The `--db` flag is optional on every subcommand below — when omitted, `sct codelist` follows the [path resolution chain](../path-resolution.md) to find a SNOMED CT SQLite database (cwd → config → `$SCT_DATA_HOME/data/`). Pass `--db <path>` to override.
 
 ---
 
@@ -101,18 +103,20 @@ sct codelist new codelists/asthma-diagnosis.codelist \
 Add one or more concepts, resolved against the SNOMED CT database.
 
 ```bash
-# Add individual concepts
-sct codelist add codelists/asthma.codelist 195967001 389145006 --db snomed.db
+# Add individual concepts (DB auto-discovered)
+sct codelist add codelists/asthma.codelist 195967001 389145006
 
 # Add a concept and all its active descendants
 sct codelist add codelists/asthma.codelist 195967001 \
-  --db snomed.db \
   --include-descendants
 
 # Add with an annotation
 sct codelist add codelists/asthma.codelist 195967001 \
-  --db snomed.db \
   --comment "confirmed by clinical lead"
+
+# Explicitly point at a specific database
+sct codelist add codelists/asthma.codelist 195967001 \
+  --db /data/snomed.db
 ```
 
 Deduplicates silently. Bumps `version` and updates `updated` date.
@@ -138,7 +142,7 @@ CI-ready validation. Checks:
 - Signoffs present if `status: published`
 
 ```bash
-sct codelist validate codelists/asthma.codelist --db snomed.db
+sct codelist validate codelists/asthma.codelist
 ```
 
 Exit code 0 = warnings only. Exit code 1 = errors. Suitable for CI.
@@ -146,7 +150,7 @@ Exit code 0 = warnings only. Exit code 1 = errors. Suitable for CI.
 ### `sct codelist stats <file>`
 
 ```bash
-sct codelist stats codelists/asthma.codelist --db snomed.db
+sct codelist stats codelists/asthma.codelist
 ```
 
 Prints: concept count, hierarchy breakdown, leaf/intermediate ratio, excluded count, pending review count, and SNOMED release age.
@@ -233,10 +237,10 @@ git add codelists/asthma-diagnosis.codelist
 git commit -m "codelist: scaffold asthma-diagnosis"
 
 sct codelist add codelists/asthma-diagnosis.codelist \
-  195967001 266361008 389145006 --db snomed.db
+  195967001 266361008 389145006
 git commit -m "codelist: add core asthma concepts"
 
-sct codelist validate codelists/asthma-diagnosis.codelist --db snomed.db
+sct codelist validate codelists/asthma-diagnosis.codelist
 git tag codelist/asthma-diagnosis/v1
 ```
 

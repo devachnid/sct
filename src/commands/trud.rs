@@ -21,6 +21,8 @@ use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use crate::paths::{self, Config};
+
 // ---------------------------------------------------------------------------
 // TRUD endpoint constants — change here if NHS TRUD ever moves their API.
 // ---------------------------------------------------------------------------
@@ -35,22 +37,14 @@ const TRUD_ACCOUNT_URL: &str =
 const TRUD_HEALTH_URL: &str = "https://isd.digital.nhs.uk/trud/users/guest/filters/0/home";
 
 // ---------------------------------------------------------------------------
-// sct directory layout constants
+// sct directory layout
 // ---------------------------------------------------------------------------
 //
-// All sct-managed files live under a single base directory:
-//
-//   ~/.local/share/sct/          ($SCT_DATA_HOME overrides the whole base)
-//   ├── releases/                 downloaded RF2 zip files from TRUD
-//   └── data/                    built artefacts: .ndjson, .db, .parquet, .arrow
-//
-// Override the base with $SCT_DATA_HOME, or individual subdirs via config file
-// fields (download_dir, data_dir) or CLI flags (--output-dir, --data-dir).
+// Directory layout, env vars, and config schema are defined in
+// `crate::paths` and `specs/path-resolution.md`. This module only re-exports
+// the data-dir subdirectory constants for write-side use.
 
-/// Sub-directory under the sct base for downloaded release zip files.
-const RELEASES_SUBDIR: &str = "releases";
-/// Sub-directory under the sct base for built artefacts (.ndjson, .db, etc.).
-const DATA_SUBDIR: &str = "data";
+use crate::paths::{DATA_SUBDIR, RELEASES_SUBDIR};
 
 // ---------------------------------------------------------------------------
 // CLI types
@@ -198,30 +192,8 @@ struct TrudRelease {
 }
 
 // ---------------------------------------------------------------------------
-// Config file types  (~/.config/sct/config.toml)
+// Config schema lives in crate::paths.
 // ---------------------------------------------------------------------------
-
-#[derive(Deserialize, Default)]
-struct Config {
-    trud: Option<TrudConfig>,
-}
-
-#[derive(Deserialize, Default)]
-struct TrudConfig {
-    api_key: Option<String>,
-    /// Override for the RF2 zip download directory (default: $SCT_DATA_HOME/releases).
-    download_dir: Option<String>,
-    /// Override for the built-artefact directory (default: $SCT_DATA_HOME/data).
-    data_dir: Option<String>,
-    #[allow(dead_code)]
-    default_edition: Option<String>,
-    editions: Option<HashMap<String, EditionProfile>>,
-}
-
-#[derive(Deserialize)]
-struct EditionProfile {
-    trud_item: u32,
-}
 
 // ---------------------------------------------------------------------------
 // Built-in edition definitions
@@ -761,22 +733,6 @@ fn resolve_item_id(flag_item: Option<u32>, edition: &str, config: &Config) -> Re
 // Directory resolution
 // ---------------------------------------------------------------------------
 
-/// Returns the sct base data directory.
-///
-/// Resolution order:
-///   1. `$SCT_DATA_HOME` environment variable
-///   2. `~/.local/share/sct` (XDG_DATA_HOME convention)
-fn sct_data_home() -> PathBuf {
-    if let Ok(val) = std::env::var("SCT_DATA_HOME") {
-        let val = val.trim().to_string();
-        if !val.is_empty() {
-            return expand_tilde(&val);
-        }
-    }
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home).join(".local").join("share").join("sct")
-}
-
 /// Resolve the directory for downloaded RF2 zip files.
 ///
 /// Resolution order: --output-dir flag → config download_dir → $SCT_DATA_HOME/releases
@@ -786,10 +742,10 @@ fn resolve_releases_dir(flag_dir: Option<&Path>, config: &Config) -> PathBuf {
     }
     if let Some(trud) = &config.trud {
         if let Some(dir) = &trud.download_dir {
-            return expand_tilde(dir);
+            return paths::expand_tilde(dir);
         }
     }
-    sct_data_home().join(RELEASES_SUBDIR)
+    paths::data_home().join(RELEASES_SUBDIR)
 }
 
 /// Resolve the directory for built artefacts (.ndjson, .db, .parquet, .arrow).
@@ -801,52 +757,19 @@ fn resolve_data_dir(flag_dir: Option<&Path>, config: &Config) -> PathBuf {
     }
     if let Some(trud) = &config.trud {
         if let Some(dir) = &trud.data_dir {
-            return expand_tilde(dir);
+            return paths::expand_tilde(dir);
         }
     }
-    sct_data_home().join(DATA_SUBDIR)
-}
-
-fn expand_tilde(path: &str) -> PathBuf {
-    if let Some(rest) = path.strip_prefix("~/") {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-        PathBuf::from(home).join(rest)
-    } else {
-        PathBuf::from(path)
-    }
+    paths::data_home().join(DATA_SUBDIR)
 }
 
 // ---------------------------------------------------------------------------
-// Config file
+// Config file — schema in crate::paths, this thin wrapper preserves the
+// historic helper name so tests don't need to be rewritten.
 // ---------------------------------------------------------------------------
 
 fn load_config() -> Config {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let path = PathBuf::from(home)
-        .join(".config")
-        .join("sct")
-        .join("config.toml");
-    load_config_from_path(&path)
-}
-
-/// Inner loader — accepts an explicit path so tests can supply a temp file.
-fn load_config_from_path(path: &Path) -> Config {
-    if !path.exists() {
-        return Config::default();
-    }
-    match std::fs::read_to_string(path) {
-        Err(e) => {
-            eprintln!("Warning: could not read {}: {e}", path.display());
-            Config::default()
-        }
-        Ok(contents) => match toml::from_str(&contents) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Warning: could not parse {}: {e}", path.display());
-                Config::default()
-            }
-        },
-    }
+    paths::load_config()
 }
 
 // ---------------------------------------------------------------------------
@@ -977,6 +900,7 @@ fn human_size(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::{EditionProfile, TrudConfig};
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -1012,7 +936,7 @@ mod tests {
         // Safe to set HOME here because this test doesn't read it via load_config.
         unsafe { std::env::set_var("HOME", "/users/test") };
         assert_eq!(
-            expand_tilde("~/foo/bar"),
+            paths::expand_tilde("~/foo/bar"),
             PathBuf::from("/users/test/foo/bar")
         );
     }
@@ -1020,11 +944,11 @@ mod tests {
     #[test]
     fn expand_tilde_no_tilde_is_unchanged() {
         assert_eq!(
-            expand_tilde("/absolute/path"),
+            paths::expand_tilde("/absolute/path"),
             PathBuf::from("/absolute/path")
         );
         assert_eq!(
-            expand_tilde("relative/path"),
+            paths::expand_tilde("relative/path"),
             PathBuf::from("relative/path")
         );
     }
@@ -1076,6 +1000,7 @@ mod tests {
                 api_key: Some("config-key".into()),
                 ..TrudConfig::default()
             }),
+            ..Config::default()
         };
         let key = resolve_api_key(None, None, &config).unwrap();
         assert_eq!(key, "config-key");
@@ -1139,6 +1064,7 @@ mod tests {
                 editions: Some(editions),
                 ..TrudConfig::default()
             }),
+            ..Config::default()
         };
         assert_eq!(resolve_item_id(None, "uk_monolith", &config).unwrap(), 9876);
     }
@@ -1152,6 +1078,7 @@ mod tests {
                 editions: Some(editions),
                 ..TrudConfig::default()
             }),
+            ..Config::default()
         };
         assert_eq!(resolve_item_id(None, "my_custom", &config).unwrap(), 42);
     }
@@ -1211,27 +1138,27 @@ mod tests {
     // --- directory resolution ---------------------------------------------------
 
     #[test]
-    fn sct_data_home_defaults_under_home() {
+    fn data_home_defaults_under_home() {
         // Without SCT_DATA_HOME, should derive from $HOME.
         unsafe { std::env::remove_var("SCT_DATA_HOME") };
         unsafe { std::env::set_var("HOME", "/users/test") };
-        let base = sct_data_home();
+        let base = paths::data_home();
         assert_eq!(base, PathBuf::from("/users/test/.local/share/sct"));
     }
 
     #[test]
-    fn sct_data_home_respects_env_override() {
+    fn data_home_respects_env_override() {
         unsafe { std::env::set_var("SCT_DATA_HOME", "/custom/sct") };
-        let base = sct_data_home();
+        let base = paths::data_home();
         unsafe { std::env::remove_var("SCT_DATA_HOME") };
         assert_eq!(base, PathBuf::from("/custom/sct"));
     }
 
     #[test]
-    fn sct_data_home_env_override_expands_tilde() {
+    fn data_home_env_override_expands_tilde() {
         unsafe { std::env::set_var("SCT_DATA_HOME", "~/my-sct") };
         unsafe { std::env::set_var("HOME", "/users/test") };
-        let base = sct_data_home();
+        let base = paths::data_home();
         unsafe { std::env::remove_var("SCT_DATA_HOME") };
         assert_eq!(base, PathBuf::from("/users/test/my-sct"));
     }
@@ -1292,6 +1219,7 @@ mod tests {
                 download_dir: Some("/config/releases".into()),
                 ..TrudConfig::default()
             }),
+            ..Config::default()
         };
         let dir = resolve_releases_dir(None, &config);
         assert_eq!(dir, PathBuf::from("/config/releases"));
@@ -1304,6 +1232,7 @@ mod tests {
                 data_dir: Some("/config/data".into()),
                 ..TrudConfig::default()
             }),
+            ..Config::default()
         };
         let dir = resolve_data_dir(None, &config);
         assert_eq!(dir, PathBuf::from("/config/data"));
@@ -1316,6 +1245,7 @@ mod tests {
                 download_dir: Some("/config/releases".into()),
                 ..TrudConfig::default()
             }),
+            ..Config::default()
         };
         let dir = resolve_releases_dir(Some(Path::new("/flag/releases")), &config);
         assert_eq!(dir, PathBuf::from("/flag/releases"));
@@ -1326,7 +1256,7 @@ mod tests {
         let mut f = NamedTempFile::new().unwrap();
         writeln!(f, "[trud]").unwrap();
         writeln!(f, r#"data_dir = "/my/data""#).unwrap();
-        let config = load_config_from_path(f.path());
+        let config = paths::load_config_from(f.path());
         assert_eq!(config.trud.unwrap().data_dir.unwrap(), "/my/data");
     }
 
@@ -1358,12 +1288,12 @@ mod tests {
         assert!(TRUD_HEALTH_URL.starts_with("https://isd.digital.nhs.uk/"));
     }
 
-    // --- load_config_from_path -------------------------------------------------
+    // --- paths::load_config_from ----------------------------------------------
 
     #[test]
     fn config_missing_file_returns_default() {
         let tmp = PathBuf::from("/tmp/sct-test-nonexistent-config-file.toml");
-        let config = load_config_from_path(&tmp);
+        let config = paths::load_config_from(&tmp);
         assert!(config.trud.is_none());
     }
 
@@ -1372,7 +1302,7 @@ mod tests {
         let mut f = NamedTempFile::new().unwrap();
         writeln!(f, "[trud]").unwrap();
         writeln!(f, r#"api_key = "parsed-key""#).unwrap();
-        let config = load_config_from_path(f.path());
+        let config = paths::load_config_from(f.path());
         assert_eq!(config.trud.unwrap().api_key.unwrap(), "parsed-key");
     }
 
@@ -1381,7 +1311,7 @@ mod tests {
         let mut f = NamedTempFile::new().unwrap();
         writeln!(f, "[trud.editions.my_org]").unwrap();
         writeln!(f, "trud_item = 777").unwrap();
-        let config = load_config_from_path(f.path());
+        let config = paths::load_config_from(f.path());
         let trud = config.trud.unwrap();
         let editions = trud.editions.unwrap();
         assert_eq!(editions["my_org"].trud_item, 777);
@@ -1391,7 +1321,7 @@ mod tests {
     fn config_invalid_toml_returns_default() {
         let mut f = NamedTempFile::new().unwrap();
         writeln!(f, "this is not valid toml {{!!").unwrap();
-        let config = load_config_from_path(f.path());
+        let config = paths::load_config_from(f.path());
         // Should not panic; silently returns default
         assert!(config.trud.is_none());
     }

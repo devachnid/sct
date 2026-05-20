@@ -18,14 +18,15 @@ sct tui [--db <PATH>]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--db <PATH>` | `./snomed.db` then `$SCT_DB` | SQLite database produced by `sct sqlite`. |
+| `--db <PATH>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 
 ---
 
 ## Example
 
 ```bash
-# Open the TUI using the database in the current directory
+# Open the TUI using the auto-discovered database
+# (cwd → $SCT_DATA_HOME/data/ — see Path resolution)
 sct tui
 
 # Specify a database path explicitly
@@ -33,6 +34,11 @@ sct tui --db /data/snomed.db
 
 # Use an environment variable
 SCT_DB=/data/snomed.db sct tui
+
+# After downloading a release with the pipeline, sct tui picks it up
+# automatically from ~/.local/share/sct/data/
+sct trud download --edition uk_monolith --pipeline
+sct tui
 ```
 
 ---
@@ -124,7 +130,15 @@ cargo install --path sct --features full
 
 ## Prerequisites
 
-Requires a `snomed.db` database. Build one with:
+Requires a SNOMED CT SQLite database. The simplest way to produce one is:
+
+```bash
+sct trud download --edition uk_monolith --pipeline
+```
+
+…which deposits a `.db` under `~/.local/share/sct/data/` that every read-side command (including `sct tui`) auto-discovers. See [Path resolution](../path-resolution.md) for the full chain.
+
+Alternatively, build one explicitly:
 
 ```bash
 sct sqlite --input snomed.ndjson --output snomed.db

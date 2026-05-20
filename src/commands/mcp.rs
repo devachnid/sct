@@ -44,11 +44,13 @@ use crate::schema::SCHEMA_VERSION;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to the SNOMED CT SQLite database produced by `sct sqlite`.
+    /// See `docs/path-resolution.md` for the discovery order when omitted.
     #[arg(long)]
-    pub db: PathBuf,
+    pub db: Option<PathBuf>,
 
     /// Arrow IPC embeddings file produced by `sct embed`.
-    /// When supplied, the `snomed_semantic_search` tool is registered.
+    /// When supplied (or discovered under `$SCT_DATA_HOME/data`), the
+    /// `snomed_semantic_search` tool is registered. See `docs/path-resolution.md`.
     #[arg(long)]
     pub embeddings: Option<PathBuf>,
 
@@ -69,16 +71,26 @@ struct SemanticConfig {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    let conn = crate::commands::open_db_readonly(&args.db, Some(32768))?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = crate::commands::open_db_readonly(&db, Some(32768))?;
 
     // Validate the database schema_version before serving.
     validate_schema_version(&conn)?;
 
-    let semantic_cfg = args.embeddings.map(|embeddings| SemanticConfig {
-        embeddings,
-        model: args.model,
-        ollama_url: args.ollama_url,
-    });
+    // For embeddings: only consult the resolution chain when the user passed
+    // --embeddings explicitly. We do not silently auto-discover an embeddings
+    // file here — registering `snomed_semantic_search` requires Ollama, so
+    // implicit activation could surprise users who haven't set that up.
+    let semantic_cfg = if let Some(p) = args.embeddings {
+        let path = crate::paths::resolve_embeddings(Some(&p))?.path;
+        Some(SemanticConfig {
+            embeddings: path,
+            model: args.model,
+            ollama_url: args.ollama_url,
+        })
+    } else {
+        None
+    };
 
     // Read provenance once at startup so we can advertise it on every
     // initialize handshake and inject it into per-concept tool responses.

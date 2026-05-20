@@ -79,9 +79,10 @@ pub struct AddArgs {
     pub file: PathBuf,
     /// One or more SCTIDs to add.
     pub sctids: Vec<String>,
-    /// SNOMED CT SQLite database.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
+    /// discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
     /// Also add all active descendants.
     #[arg(long)]
     pub include_descendants: bool,
@@ -105,18 +106,20 @@ pub struct RemoveArgs {
 pub struct ValidateArgs {
     /// Path to the .codelist file.
     pub file: PathBuf,
-    /// SNOMED CT SQLite database.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
+    /// discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 pub struct StatsArgs {
     /// Path to the .codelist file.
     pub file: PathBuf,
-    /// SNOMED CT SQLite database.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
+    /// discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -153,9 +156,10 @@ pub struct SearchArgs {
     pub file: PathBuf,
     /// Search query.
     pub query: String,
-    /// SNOMED CT SQLite database.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
+    /// discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -600,7 +604,8 @@ fn cmd_add(args: AddArgs) -> Result<()> {
         bail!("provide at least one SCTID");
     }
 
-    let conn = open_db(&args.db)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
     let mut cl = read_codelist(&args.file)?;
 
     // Auto-populate snomed_release from the DB's provenance the first time
@@ -643,7 +648,7 @@ fn cmd_add(args: AddArgs) -> Result<()> {
             continue;
         }
         let term = lookup_preferred_term(&conn, id)
-            .with_context(|| format!("SCTID {} not found in {}", id, args.db.display()))?;
+            .with_context(|| format!("SCTID {} not found in {}", id, db.display()))?;
 
         cl.body.push(ConceptLine::Active {
             id: id.clone(),
@@ -705,7 +710,8 @@ fn cmd_remove(args: RemoveArgs) -> Result<()> {
 
 fn cmd_validate(args: ValidateArgs) -> Result<()> {
     let cl = read_codelist(&args.file)?;
-    let conn = open_db(&args.db)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
 
     let mut warnings: Vec<String> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
@@ -796,7 +802,8 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
 
 fn cmd_stats(args: StatsArgs) -> Result<()> {
     let cl = read_codelist(&args.file)?;
-    let conn = open_db(&args.db)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
 
     let fm = &cl.front_matter;
     println!("File:        {}", args.file.display());
@@ -1032,10 +1039,12 @@ fn cmd_export(args: ExportArgs) -> Result<()> {
     let maps: Option<CrosswalkMaps> = if terminologies.is_empty() {
         None
     } else {
-        let db = args.db.as_ref().context(
-            "--include-maps requires --db <path> to resolve crosswalks from concept_maps",
-        )?;
-        let conn = open_db(db)?;
+        let db = crate::paths::resolve_db(args.db.as_deref())
+            .context(
+                "--include-maps needs a SNOMED CT database to resolve crosswalks from concept_maps",
+            )?
+            .path;
+        let conn = open_db(&db)?;
         let sctids: Vec<&str> = active.iter().map(|(id, _)| *id).collect();
         Some(lookup_crosswalks(&conn, &sctids, &terminologies)?)
     };

@@ -32,7 +32,7 @@ static INDEX_HTML: &str = include_str!("../../assets/index.html");
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to the SNOMED CT SQLite database produced by `sct sqlite`.
-    /// Falls back to ./snomed.db then $SCT_DB.
+    /// See `docs/path-resolution.md` for the discovery order when omitted.
     #[arg(long)]
     pub db: Option<PathBuf>,
 
@@ -51,7 +51,7 @@ pub struct Args {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    let db_path = resolve_db_path(args.db)?;
+    let db_path = crate::paths::resolve_db(args.db.as_deref())?.path;
     let port = args.port;
     let no_open = args.no_open;
 
@@ -63,30 +63,6 @@ pub fn run(args: Args) -> Result<()> {
 
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(serve(db_path, port, no_open, args.dev_html))
-}
-
-// ---------------------------------------------------------------------------
-// DB path resolution
-// ---------------------------------------------------------------------------
-
-fn resolve_db_path(arg: Option<PathBuf>) -> Result<PathBuf> {
-    if let Some(p) = arg {
-        return Ok(p);
-    }
-    let default = PathBuf::from("snomed.db");
-    if default.exists() {
-        return Ok(default);
-    }
-    if let Ok(env_path) = std::env::var("SCT_DB") {
-        let p = PathBuf::from(env_path);
-        if p.exists() {
-            return Ok(p);
-        }
-    }
-    anyhow::bail!(
-        "No database found. Specify --db <path>, place snomed.db in the current directory, \
-         or set $SCT_DB.\nBuild a database first with: sct sqlite --input snomed.ndjson"
-    )
 }
 
 // ---------------------------------------------------------------------------

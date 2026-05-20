@@ -18,7 +18,7 @@ sct gui [--db <PATH>] [--port <PORT>] [--no-open]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--db <PATH>` | `./snomed.db` then `$SCT_DB` | SQLite database produced by `sct sqlite`. |
+| `--db <PATH>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 | `--port <PORT>` | `8420` | TCP port to listen on. |
 | `--no-open` | *(flag)* | Start the server but do not open a browser window. |
 
@@ -27,8 +27,8 @@ sct gui [--db <PATH>] [--port <PORT>] [--no-open]
 ## Example
 
 ```bash
-# Start with defaults — opens http://127.0.0.1:8420 in the browser
-# Expects a `snomed.db` in the current directory
+# Start with defaults — opens http://127.0.0.1:8420 in the browser.
+# Discovers a DB from cwd → $SCT_DATA_HOME/data — see Path resolution.
 sct gui
 
 # Specify a database and port
@@ -156,7 +156,15 @@ cargo install --path sct --features full
 
 ## Prerequisites
 
-Requires a `snomed.db` database. Build one with:
+Requires a SNOMED CT SQLite database. The simplest way to produce one is:
+
+```bash
+sct trud download --edition uk_monolith --pipeline
+```
+
+The pipeline writes a `.db` under `~/.local/share/sct/data/` that `sct gui` auto-discovers. See [Path resolution](../path-resolution.md).
+
+Alternatively, build one explicitly:
 
 ```bash
 sct sqlite --input snomed.ndjson --output snomed.db

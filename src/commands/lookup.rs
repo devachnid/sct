@@ -23,9 +23,10 @@ pub struct Args {
     /// SCTID (numeric) or CTV3 code to look up.
     pub code: String,
 
-    /// SQLite database produced by `sct sqlite`.
-    #[arg(long, default_value = "snomed.db")]
-    pub db: PathBuf,
+    /// SQLite database produced by `sct sqlite`. See `docs/path-resolution.md`
+    /// for the discovery order when this flag is omitted.
+    #[arg(long)]
+    pub db: Option<PathBuf>,
 
     /// Output raw JSON instead of human-readable format.
     #[arg(long)]
@@ -36,7 +37,8 @@ pub struct Args {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    let conn = crate::commands::open_db_readonly(&args.db, None)?;
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = crate::commands::open_db_readonly(&db, None)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
     let mode = if args.json {
         OutputMode::Json
