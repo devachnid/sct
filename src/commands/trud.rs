@@ -932,17 +932,8 @@ mod tests {
     // --- expand_tilde ----------------------------------------------------------
 
     #[test]
-    fn expand_tilde_expands_home() {
-        // Safe to set HOME here because this test doesn't read it via load_config.
-        unsafe { std::env::set_var("HOME", "/users/test") };
-        assert_eq!(
-            paths::expand_tilde("~/foo/bar"),
-            PathBuf::from("/users/test/foo/bar")
-        );
-    }
-
-    #[test]
     fn expand_tilde_no_tilde_is_unchanged() {
+        // Safe to keep standalone — does not touch the process environment.
         assert_eq!(
             paths::expand_tilde("/absolute/path"),
             PathBuf::from("/absolute/path")
@@ -952,6 +943,10 @@ mod tests {
             PathBuf::from("relative/path")
         );
     }
+
+    // The `expand_tilde_expands_home` case was folded into
+    // `env_directory_resolution_smoke` below — it mutates HOME and races
+    // with the data_home/data_dir tests under parallel `cargo test`.
 
     // --- resolve_api_key -------------------------------------------------------
 
@@ -1136,66 +1131,98 @@ mod tests {
     }
 
     // --- directory resolution ---------------------------------------------------
+    //
+    // Every test below mutates HOME / SCT_DATA_HOME / XDG_DATA_HOME and reads
+    // them back through `paths::data_home()` etc. `cargo test` runs `#[test]`
+    // functions in parallel and provides no per-test environment isolation,
+    // so running each case as its own `#[test]` races (one test's
+    // `remove_var` can be observed by another, or vice versa). The roadmap
+    // entry "De-flake trud tests' environment variables" calls this out;
+    // `paths::tests` uses the same consolidation pattern.
+    //
+    // The whole block runs sequentially within one `#[test]` and saves/
+    // restores the outer environment so it does not leak into sibling tests
+    // that read these vars unintentionally.
 
     #[test]
-    fn data_home_defaults_under_home() {
-        // Without SCT_DATA_HOME, should derive from $HOME.
-        unsafe { std::env::remove_var("SCT_DATA_HOME") };
+    fn env_directory_resolution_smoke() {
+        // Serialise against sibling env-touching tests in other modules
+        // (paths::tests::env_and_cwd_chain_smoke).
+        let _guard = crate::paths::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        let saved_home = std::env::var_os("HOME");
+        let saved_sct = std::env::var_os("SCT_DATA_HOME");
+        let saved_xdg = std::env::var_os("XDG_DATA_HOME");
+
+        // --- expand_tilde expands ~/ relative to HOME ---
         unsafe { std::env::set_var("HOME", "/users/test") };
-        let base = paths::data_home();
-        assert_eq!(base, PathBuf::from("/users/test/.local/share/sct"));
-    }
-
-    #[test]
-    fn data_home_respects_env_override() {
-        unsafe { std::env::set_var("SCT_DATA_HOME", "/custom/sct") };
-        let base = paths::data_home();
-        unsafe { std::env::remove_var("SCT_DATA_HOME") };
-        assert_eq!(base, PathBuf::from("/custom/sct"));
-    }
-
-    #[test]
-    fn data_home_env_override_expands_tilde() {
-        unsafe { std::env::set_var("SCT_DATA_HOME", "~/my-sct") };
-        unsafe { std::env::set_var("HOME", "/users/test") };
-        let base = paths::data_home();
-        unsafe { std::env::remove_var("SCT_DATA_HOME") };
-        assert_eq!(base, PathBuf::from("/users/test/my-sct"));
-    }
-
-    #[test]
-    fn releases_dir_defaults_to_base_releases_subdir() {
-        unsafe { std::env::remove_var("SCT_DATA_HOME") };
-        unsafe { std::env::set_var("HOME", "/users/test") };
-        let config = Config::default();
-        let dir = resolve_releases_dir(None, &config);
         assert_eq!(
-            dir,
+            paths::expand_tilde("~/foo/bar"),
+            PathBuf::from("/users/test/foo/bar")
+        );
+
+        // --- data_home defaults under HOME ---
+        unsafe {
+            std::env::remove_var("SCT_DATA_HOME");
+            std::env::remove_var("XDG_DATA_HOME");
+            std::env::set_var("HOME", "/users/test");
+        };
+        assert_eq!(
+            paths::data_home(),
+            PathBuf::from("/users/test/.local/share/sct")
+        );
+
+        // --- SCT_DATA_HOME overrides everything ---
+        unsafe { std::env::set_var("SCT_DATA_HOME", "/custom/sct") };
+        assert_eq!(paths::data_home(), PathBuf::from("/custom/sct"));
+
+        // --- SCT_DATA_HOME expands ~/ ---
+        unsafe {
+            std::env::set_var("SCT_DATA_HOME", "~/my-sct");
+            std::env::set_var("HOME", "/users/test");
+        };
+        assert_eq!(paths::data_home(), PathBuf::from("/users/test/my-sct"));
+
+        // --- releases_dir defaults under data_home/releases ---
+        unsafe {
+            std::env::remove_var("SCT_DATA_HOME");
+            std::env::set_var("HOME", "/users/test");
+        };
+        let cfg = Config::default();
+        assert_eq!(
+            resolve_releases_dir(None, &cfg),
             PathBuf::from("/users/test/.local/share/sct").join(RELEASES_SUBDIR)
         );
-    }
 
-    #[test]
-    fn data_dir_defaults_to_base_data_subdir() {
-        unsafe { std::env::remove_var("SCT_DATA_HOME") };
-        unsafe { std::env::set_var("HOME", "/users/test") };
-        let config = Config::default();
-        let dir = resolve_data_dir(None, &config);
+        // --- data_dir defaults under data_home/data ---
         assert_eq!(
-            dir,
+            resolve_data_dir(None, &cfg),
             PathBuf::from("/users/test/.local/share/sct").join(DATA_SUBDIR)
         );
-    }
 
-    #[test]
-    fn releases_and_data_dirs_are_distinct() {
-        unsafe { std::env::remove_var("SCT_DATA_HOME") };
-        unsafe { std::env::set_var("HOME", "/users/test") };
-        let config = Config::default();
+        // --- releases_dir and data_dir are distinct ---
         assert_ne!(
-            resolve_releases_dir(None, &config),
-            resolve_data_dir(None, &config)
+            resolve_releases_dir(None, &cfg),
+            resolve_data_dir(None, &cfg)
         );
+
+        // --- restore the outer environment ---
+        unsafe {
+            match saved_home {
+                Some(v) => std::env::set_var("HOME", v),
+                None => std::env::remove_var("HOME"),
+            }
+            match saved_sct {
+                Some(v) => std::env::set_var("SCT_DATA_HOME", v),
+                None => std::env::remove_var("SCT_DATA_HOME"),
+            }
+            match saved_xdg {
+                Some(v) => std::env::set_var("XDG_DATA_HOME", v),
+                None => std::env::remove_var("XDG_DATA_HOME"),
+            }
+        }
     }
 
     #[test]

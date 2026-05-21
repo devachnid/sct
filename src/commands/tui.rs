@@ -164,16 +164,13 @@ impl App {
     fn load_hierarchy_concepts(&mut self, hierarchy: String) {
         self.search_query.clear();
         self.last_queried.clear();
-        match fetch_hierarchy_concepts(&self.conn, &hierarchy, 200) {
-            Ok(results) => {
-                self.search_results = results;
-                if !self.search_results.is_empty() {
-                    self.results_state.select(Some(0));
-                } else {
-                    self.results_state.select(None);
-                }
+        if let Ok(results) = fetch_hierarchy_concepts(&self.conn, &hierarchy, 200) {
+            self.search_results = results;
+            if !self.search_results.is_empty() {
+                self.results_state.select(Some(0));
+            } else {
+                self.results_state.select(None);
             }
-            Err(_) => {}
         }
     }
 
@@ -467,15 +464,11 @@ fn handle_key(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
             Focus::Search => list_down(&mut app.results_state, app.search_results.len()),
             Focus::Detail => app.detail_scroll += 1,
         },
-        KeyCode::PageUp => {
-            if app.focus == Focus::Detail {
-                app.detail_scroll = app.detail_scroll.saturating_sub(10);
-            }
+        KeyCode::PageUp if app.focus == Focus::Detail => {
+            app.detail_scroll = app.detail_scroll.saturating_sub(10);
         }
-        KeyCode::PageDown => {
-            if app.focus == Focus::Detail {
-                app.detail_scroll += 10;
-            }
+        KeyCode::PageDown if app.focus == Focus::Detail => {
+            app.detail_scroll += 10;
         }
 
         KeyCode::Enter => match app.focus {

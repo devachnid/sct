@@ -21,6 +21,20 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
+// Test-only env-mutation lock
+// ---------------------------------------------------------------------------
+//
+// Tests that mutate process-wide env vars (HOME, SCT_DATA_HOME, ...) must
+// acquire this mutex first. `cargo test` runs `#[test]` functions in
+// parallel without per-test isolation, so two tests setting the same env
+// var would race; both this module's `env_and_cwd_chain_smoke` and
+// `trud::tests::env_directory_resolution_smoke` lock it at entry. Recovers
+// from poisoning so a panicking test does not break sibling tests.
+
+#[cfg(test)]
+pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+// ---------------------------------------------------------------------------
 // Base directories
 // ---------------------------------------------------------------------------
 
@@ -496,13 +510,12 @@ mod tests {
     }
 
     /// Env- and cwd-mutating tests, run sequentially inside a single `#[test]`
-    /// because `cargo test` runs `#[test]` functions in parallel and there is
-    /// no per-test environment isolation. The same fragility is called out in
-    /// the roadmap for `trud` tests; we live with it here until/unless we add
-    /// `serial_test` or equivalent. Keeping them in one function guarantees a
-    /// single linear order.
+    /// (and serialised against the equivalent test in `trud::tests` via
+    /// [`ENV_LOCK`]) because `cargo test` runs `#[test]` functions in
+    /// parallel without per-test environment isolation.
     #[test]
     fn env_and_cwd_chain_smoke() {
+        let _guard = super::ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // ----- expand_tilde --------------------------------------------------
         let old_home = std::env::var_os("HOME");
         unsafe {
