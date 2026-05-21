@@ -2,6 +2,10 @@ site_name: sct
 site_url: https://pacharanero.github.io/sct
 site_description: A fast, local-first SNOMED CT toolkit
 
+# repo
+repo_url: https://github.com/pacharanero/sct
+repo_name: sct
+
 docs_dir: docs
 
 theme:
@@ -9,6 +13,8 @@ theme:
   variant: modern
   features:
   - content.code.copy
+  - content.action.edit # Edit this page
+  - content.action.view  # View source of this page
 
 
   palette:
