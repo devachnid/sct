@@ -5,9 +5,9 @@ using the TRUD REST API. Handles authentication, SHA-256 integrity verification,
 
 ---
 
-## Prerequisites
+## Getting a TRUD API key
 
-### 1 — Create a TRUD account and subscribe
+### Create a TRUD account and subscribe
 
 1. Register at [isd.digital.nhs.uk/trud](https://isd.digital.nhs.uk/trud/users/guest/filters/0/account/form)
 2. Once logged in, subscribe to the editions you need:
@@ -15,7 +15,7 @@ using the TRUD REST API. Handles authentication, SHA-256 integrity verification,
    - **UK Clinical Edition** (item 101) — International + UK Clinical, without dm+d.
    - **UK Drug Extension** (item 105) — dm+d prescribing/medicines concepts only.
 
-### 2 — Get your API key
+### Get your API key
 
 Your API key is shown on your [TRUD account page](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/account/manage)
 once you are signed in. It is unique to your account and derived from your email address and
@@ -29,12 +29,12 @@ password — if either changes, a new key is generated and the old one is disabl
 
 `sct trud` accepts the key via four methods, checked in this order (first non-empty value wins):
 
-| Priority | Method | Notes |
-|---|---|---|
-| 1 | `--api-key <KEY>` | Plain string on the command line. Avoid: visible in `ps` output and shell history. |
-| 2 | `--api-key-file <PATH>` | Path to a file whose **first line** is the key. Trailing whitespace is stripped. |
-| 3 | `$TRUD_API_KEY` environment variable | **Recommended** for regular use, cron jobs, and CI/CD. |
-| 4 | `api_key` in `~/.config/sct/config.toml` | Convenient for interactive use on a personal machine. |
+| Priority | Method                                   | Notes                                                                              |
+| -------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1        | `--api-key <KEY>`                        | Plain string on the command line. Avoid: visible in `ps` output and shell history. |
+| 2        | `--api-key-file <PATH>`                  | Path to a file whose **first line** is the key. Trailing whitespace is stripped.   |
+| 3        | `$TRUD_API_KEY` environment variable     | **Recommended** for regular use, cron jobs, and CI/CD.                             |
+| 4        | `api_key` in `~/.config/sct/config.toml` | Convenient for interactive use on a personal machine.                              |
 
 ### Using an environment variable (recommended)
 
@@ -48,12 +48,26 @@ Or for a single command without polluting the environment:
 ```bash
 TRUD_API_KEY=your-key-here sct trud download --edition uk_monolith
 ```
+### Using the config file (recommended for interactive use)
 
-### Using a key file (recommended for interactive use)
+Create `~/.config/sct/config.toml` and set the `api_key = "you-key-here"`
 
+```toml
+[trud]
+api_key = "your-key-here"
+```
+
+See the [Config file](#config-file) section for the full list of options.
+
+### Using a key file
+
+Using a key file lets you keep your api key separate from the rest of your sct config.
+The trade-off is you have to pass `--api-key-file <path>` to every command. 
 The conventional location is `~/.config/sct/trud-api-key`. The file must contain only the
 key on the first line (trailing whitespace is stripped). Set permissions to `600` and
-**never commit this file to version control**:
+
+The conventional location is `~/.config/sct/trud-api-key`. The file must contain only the
+key on the first line (trailing whitespace is stripped). Set permissions to `600` and **never commit this file to version control**.
 
 ```bash
 mkdir -p ~/.config/sct
@@ -101,7 +115,9 @@ as "reachable". Only DNS failures, TCP timeouts, or TLS errors trigger this mess
 
 ## Subcommands
 
-### `sct trud list` — see what's available
+### `sct trud list`
+
+Lists the available releases
 
 ```
 sct trud list [--edition <NAME>] [--item <N>]
@@ -127,7 +143,9 @@ uk_sct2mo_41.4.0_20260114000001Z.zip          2026-01-14   1.8 GB    c3d7a2940e1
 
 ---
 
-### `sct trud check` — is there a newer release?
+### `sct trud check`
+
+Checks if there is a newer release.
 
 ```
 sct trud check [--edition <NAME>] [--item <N>]
@@ -162,11 +180,11 @@ Got:      9F8E7D6C…
 
 **Exit codes:**
 
-| Code | Meaning |
-|---|---|
-| `0` | Already up to date **and** SHA-256 verified |
-| `2` | New release available, **or** local file fails the checksum and needs re-downloading |
-| `1` | Error (network, bad key, etc.) |
+| Code | Meaning                                                                              |
+| ---- | ------------------------------------------------------------------------------------ |
+| `0`  | Already up to date **and** SHA-256 verified                                          |
+| `2`  | New release available, **or** local file fails the checksum and needs re-downloading |
+| `1`  | Error (network, bad key, etc.)                                                       |
 
 The `2` exit code (not `1`) is deliberate — it lets shell scripts distinguish "update
 available" from an error without using `set -e` workarounds:
@@ -180,7 +198,9 @@ fi
 
 ---
 
-### `sct trud download` — download a release
+### `sct trud download`
+
+Downloads a release
 
 ```
 sct trud download [--edition <NAME>] [--item <N>]
@@ -263,24 +283,24 @@ sct trud download --output-dir /data/snomed/
 
 ### Common flags (all subcommands)
 
-| Flag | Description |
-|---|---|
-| `--edition <NAME>` | Named edition: `uk_monolith` (default), `uk_clinical`, `uk_drug` |
-| `--item <N>` | Raw TRUD item number — overrides `--edition` |
-| `--api-key <KEY>` | API key as a plain string |
-| `--api-key-file <PATH>` | File whose first line is the API key |
+| Flag                    | Description                                                      |
+| ----------------------- | ---------------------------------------------------------------- |
+| `--edition <NAME>`      | Named edition: `uk_monolith` (default), `uk_clinical`, `uk_drug` |
+| `--item <N>`            | Raw TRUD item number — overrides `--edition`                     |
+| `--api-key <KEY>`       | API key as a plain string                                        |
+| `--api-key-file <PATH>` | File whose first line is the API key                             |
 
 ### `sct trud download` flags
 
-| Flag | Default | Description |
-|---|---|---|
-| `--latest` | on | Download the most recent release |
-| `--release <VERSION>` | — | Download a specific version (e.g. `41.5.0`) |
-| `--output-dir <PATH>` | `$SCT_DATA_HOME/releases` | Where to save the downloaded zip |
-| `--data-dir <PATH>` | `$SCT_DATA_HOME/data` | Where to write built artefacts (NDJSON, SQLite, …) |
-| `--skip-if-current` | off | Do nothing if the latest zip is already cached with a matching checksum |
-| `--pipeline` | off | Auto-run `sct ndjson` + `sct sqlite` after download |
-| `--pipeline-full` | off | As `--pipeline`, plus `sct tct` + `sct embed` |
+| Flag                  | Default                   | Description                                                             |
+| --------------------- | ------------------------- | ----------------------------------------------------------------------- |
+| `--latest`            | on                        | Download the most recent release                                        |
+| `--release <VERSION>` | —                         | Download a specific version (e.g. `41.5.0`)                             |
+| `--output-dir <PATH>` | `$SCT_DATA_HOME/releases` | Where to save the downloaded zip                                        |
+| `--data-dir <PATH>`   | `$SCT_DATA_HOME/data`     | Where to write built artefacts (NDJSON, SQLite, …)                      |
+| `--skip-if-current`   | off                       | Do nothing if the latest zip is already cached with a matching checksum |
+| `--pipeline`          | off                       | Auto-run `sct ndjson` + `sct sqlite` after download                     |
+| `--pipeline-full`     | off                       | As `--pipeline`, plus `sct tct` + `sct embed`                           |
 
 ---
 
