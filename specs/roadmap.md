@@ -105,6 +105,30 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
       intent* rather than enumerate concepts; ECL is terse and powerful, composition is
       transparent and reviewable.
 
+### Interactive "search as you type"
+
+- [ ] **Live incremental search mode** — an interactive terminal mode where results
+      update on every keystroke. A genuinely compelling CLI demo (terminology lookup
+      feels instant), and the basis for an embeddable search component later.
+  - **Pluggable backends.** The same UI over a selectable backend: `--backend fts5`
+        ([`sct lexical`](commands/lexical.md) / SQLite), `--backend fst`
+        ([`sct fst`](commands/fst.md) — its sub-millisecond prefix/fuzzy lookup is *ideal*
+        for per-keystroke latency), later `semantic`, or a blended ranker. Backends share
+        one trait (query string → ranked hits) so adding one is cheap.
+  - **Parameters.** `--limit` (live results shown), `--min-chars` (threshold before
+        results appear), plus natural extensions: debounce interval, fuzzy distance,
+        hierarchy/semantic-tag filter, and which display fields to show.
+  - **Embeddable, not just a CLI.** A later cut should expose the same engine as a
+        component another program can drive — e.g. a webapp talking to it via a backend
+        process. A **line-oriented stdio protocol** (query line in → JSON-lines results
+        out, cancellable on the next query) is the obvious shape, and could reuse the
+        MCP server's stdio framing. That keeps one search core behind both the
+        interactive TUI and a programmatic transport.
+  - **Implementation still open.** Terminal UI via the existing `--features tui`
+        (ratatui/crossterm) or a lighter readline-style redraw; whether the interactive
+        mode and the stdio component are one binary mode with two front-ends or separate.
+        Decide once a backend trait and the result shape are pinned down.
+
 ---
 
 ## Completed
