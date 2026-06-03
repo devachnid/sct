@@ -90,6 +90,20 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
 - [ ] `sct codelist search <file> <query>` — interactive FTS5 search → include/exclude
 - [ ] `sct codelist import --from <source>` — OCL, CSV, RF2, FHIR import
 - [ ] `sct codelist publish --to opencodelists` — publish to OpenCodelists
+- [ ] **Composable codelists** — let a `.codelist` include/reference other `.codelist`
+      files, so lists can be built from reusable building blocks (e.g. a "diabetes"
+      list that pulls in "type-1-diabetes" and "type-2-diabetes" sub-lists). This gives
+      a flat-file, version-controllable, *transparent* way to compose terminology sets —
+      doing for codelists what refsets and ECL do, but legibly in plain text rather than
+      opaquely. Open design questions: include syntax (a front-matter `includes:` list,
+      or an `@include <path-or-url>` body directive?); local-path vs URL/OCL references;
+      how to resolve and flatten transitively (and detect cycles); whether the resolved
+      members are materialised inline on `add`/`export` or kept as live references and
+      expanded on demand; how `diff`/`stats`/`validate` report composed vs direct members;
+      and interaction with ECL (an included list is just another concept source, so the
+      two should compose). Pairs naturally with the ECL work — both are ways to *specify
+      intent* rather than enumerate concepts; ECL is terse and powerful, composition is
+      transparent and reviewable.
 
 ---
 
