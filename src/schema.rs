@@ -11,13 +11,30 @@ use serde::{Deserialize, Serialize};
 
 /// Current NDJSON schema version. Increment when the record structure changes
 /// in a backward-incompatible way.
-pub const SCHEMA_VERSION: u32 = 3;
+///
+/// v4: adds `relationships` (typed attribute triples, SCTID-keyed) to support
+/// ECL attribute refinement. Additive — older records parse with an empty list.
+pub const SCHEMA_VERSION: u32 = 4;
 
 /// A lightweight reference to another concept (used in parents and attributes).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConceptRef {
     pub id: String,
     pub fsn: String,
+}
+
+/// A typed attribute relationship, with all parts kept as SCTIDs (plus the
+/// relationship group number). Unlike the display-oriented `attributes` map,
+/// this preserves the attribute *type* SCTID and group, which ECL refinement
+/// needs. See `specs/ecl.md` §4.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Relationship {
+    /// Attribute type SCTID, e.g. `363698007` (Finding site).
+    pub type_id: String,
+    /// Destination (value) concept SCTID.
+    pub destination_id: String,
+    /// RF2 relationship group number (0 = ungrouped).
+    pub group: u32,
 }
 
 /// The per-concept JSON record written to the NDJSON artefact.
@@ -49,5 +66,10 @@ pub struct ConceptRecord {
     /// preferred term, module, and other metadata.
     #[serde(default)]
     pub refsets: Vec<String>,
+    /// Typed attribute relationships (SCTID-keyed, with group). Populated from
+    /// the same RF2 data that feeds `attributes`, but preserving the type SCTID
+    /// and group for ECL. Empty on records from schema v3 and earlier.
+    #[serde(default)]
+    pub relationships: Vec<Relationship>,
     pub schema_version: u32,
 }

@@ -3,6 +3,7 @@
 //! Creates:
 //!   - `concepts` table (all fields)
 //!   - `concept_isa` table (child_id, parent_id) — indexed for fast children/ancestor queries
+//!   - `concept_relationships` table (source, type, destination, group) — typed attributes for ECL
 //!   - `concept_maps` table (code → concept reverse lookup for CTV3 / Read v2)
 //!   - `refset_members` table (refset_id → concept_id) — refset membership
 //!   - `concepts_fts` FTS5 virtual table over id, preferred_term, synonyms, fsn
@@ -94,6 +95,11 @@ pub fn run(args: Args) -> Result<()> {
         let mut insert_isa =
             tx.prepare("INSERT INTO concept_isa (child_id, parent_id) VALUES (?1, ?2)")?;
 
+        let mut insert_rel = tx.prepare(
+            "INSERT INTO concept_relationships (source_id, type_id, destination_id, group_num)
+             VALUES (?1, ?2, ?3, ?4)",
+        )?;
+
         let mut insert_map = tx.prepare(
             "INSERT OR IGNORE INTO concept_maps (code, terminology, concept_id) VALUES (?1, ?2, ?3)",
         )?;
@@ -146,6 +152,15 @@ pub fn run(args: Args) -> Result<()> {
                 insert_isa.execute(params![record.id, parent.id])?;
             }
 
+            for rel in &record.relationships {
+                insert_rel.execute(params![
+                    record.id,
+                    rel.type_id,
+                    rel.destination_id,
+                    rel.group as i64,
+                ])?;
+            }
+
             for code in &record.ctv3_codes {
                 insert_map.execute(params![code, "ctv3", record.id])?;
             }
@@ -165,6 +180,7 @@ pub fn run(args: Args) -> Result<()> {
 
         drop(insert_concept);
         drop(insert_isa);
+        drop(insert_rel);
         drop(insert_map);
         drop(insert_refset_member);
         tx.commit().context("committing transaction")?;
@@ -176,6 +192,8 @@ pub fn run(args: Args) -> Result<()> {
         "CREATE INDEX IF NOT EXISTS idx_concepts_hierarchy ON concepts(hierarchy);
          CREATE INDEX IF NOT EXISTS idx_concept_isa_parent ON concept_isa(parent_id);
          CREATE INDEX IF NOT EXISTS idx_concept_isa_child  ON concept_isa(child_id);
+         CREATE INDEX IF NOT EXISTS idx_rel_source ON concept_relationships(source_id);
+         CREATE INDEX IF NOT EXISTS idx_rel_type_dest ON concept_relationships(type_id, destination_id);
          CREATE INDEX IF NOT EXISTS idx_concept_maps_concept ON concept_maps(concept_id);
          CREATE INDEX IF NOT EXISTS idx_refset_members_by_concept
              ON refset_members(referenced_component_id);",
@@ -224,6 +242,16 @@ fn create_schema(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS concept_isa (
             child_id  TEXT NOT NULL,
             parent_id TEXT NOT NULL
+        );
+
+        -- Typed attribute relationships (non-IS-A), preserving the attribute
+        -- type SCTID and relationship group. Backs ECL attribute refinement
+        -- (`<<X : type = value`). See specs/ecl.md §4.
+        CREATE TABLE IF NOT EXISTS concept_relationships (
+            source_id      TEXT NOT NULL,
+            type_id        TEXT NOT NULL,
+            destination_id TEXT NOT NULL,
+            group_num      INTEGER NOT NULL
         );
 
         -- Reverse-lookup table: code → SNOMED CT concept.

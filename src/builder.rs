@@ -255,8 +255,27 @@ pub fn build_records(
             .unwrap_or_default();
 
         // --- Attributes (non-IS-A relationships) ---
+        // Two representations from the same triples: `attr_map` is the
+        // display-oriented, label-keyed view; `relationships` preserves the
+        // type SCTID and group for ECL refinement (see specs/ecl.md §4).
+        let mut relationships: Vec<crate::schema::Relationship> = Vec::new();
         let mut attr_map: IndexMap<String, Vec<ConceptRef>> = IndexMap::new();
         if let Some(attrs) = dataset.attributes.get(concept_id) {
+            for (type_id, dest_id, group) in attrs {
+                relationships.push(crate::schema::Relationship {
+                    type_id: type_id.clone(),
+                    destination_id: dest_id.clone(),
+                    group: group.parse().unwrap_or(0),
+                });
+            }
+            relationships.sort_by(|a, b| {
+                (a.type_id.as_str(), a.destination_id.as_str(), a.group).cmp(&(
+                    b.type_id.as_str(),
+                    b.destination_id.as_str(),
+                    b.group,
+                ))
+            });
+
             // Group by type_id, within each group sort by destination_id
             let mut by_type: HashMap<String, Vec<String>> = HashMap::new();
             for (type_id, dest_id, _group) in attrs {
@@ -322,6 +341,7 @@ pub fn build_records(
             ctv3_codes,
             read2_codes,
             refsets,
+            relationships,
             schema_version: SCHEMA_VERSION,
         });
     }

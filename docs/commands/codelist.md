@@ -117,9 +117,30 @@ sct codelist add codelists/asthma.codelist 195967001 \
 # Explicitly point at a specific database
 sct codelist add codelists/asthma.codelist 195967001 \
   --db /data/snomed.db
+
+# Add every concept matched by an ECL expression
+sct codelist add codelists/diabetes.codelist \
+  --ecl "<<73211009"
 ```
 
 Deduplicates silently. Bumps `version` and updates `updated` date.
+
+#### `--ecl <expression>`
+
+Add every concept matched by a SNOMED CT [Expression Constraint Language](https://confluence.ihtsdotools.org/display/DOCECL) expression, evaluated against the database. Mutually exclusive with positional SCTIDs. This is the most powerful way to populate a codelist — `<<73211009` is "Diabetes mellitus and all its subtypes".
+
+```bash
+sct codelist add dm.codelist --ecl "<<73211009"                       # descendants-or-self
+sct codelist add dm.codelist --ecl "<<73211009 MINUS <<46635009"      # exclude type 1
+sct codelist add cv.codelist --ecl "<<404684003 : 363698007 = <<39057004"  # attribute refinement
+sct codelist add x.codelist  --ecl "^447562003"                       # members of a refset
+```
+
+Supported operators: `<` `<<` `>` `>>` (descendants/ancestors, with/without self), `<!` `>!` (children/parents), `^` (refset member), `AND` `OR` `MINUS`, parentheses, `*` (wildcard), and attribute refinement (`focus : type = value`, comma-conjoined, with `{ }` groups and `!=`). Optional `|term|` annotations are accepted and ignored.
+
+Hierarchy and refset expressions work on any database built by `sct sqlite`. **Attribute refinement** (the `:` operator) requires a database built with a current `sct` (schema v4+), which adds the `concept_relationships` table — rebuild with `sct ndjson` then `sct sqlite` if you see a message to that effect.
+
+Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes, and group-cardinality semantics. See [`specs/ecl.md`](https://github.com/pacharanero/sct/blob/main/specs/ecl.md).
 
 ### `sct codelist remove <file> <sctid>`
 

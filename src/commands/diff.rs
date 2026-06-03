@@ -378,6 +378,7 @@ mod tests {
             ctv3_codes: vec![],
             read2_codes: vec![],
             refsets: vec![],
+            relationships: vec![],
             schema_version: SCHEMA_VERSION,
         }
     }

@@ -83,6 +83,10 @@ pub struct AddArgs {
     /// discovery order when this flag is omitted.
     #[arg(long)]
     pub db: Option<PathBuf>,
+    /// Add every concept matched by an ECL expression, e.g. `--ecl "<<73211009"`.
+    /// Mutually exclusive with positional SCTIDs. See `docs/commands/codelist.md`.
+    #[arg(long, conflicts_with = "sctids")]
+    pub ecl: Option<String>,
     /// Also add all active descendants.
     #[arg(long)]
     pub include_descendants: bool,
@@ -600,8 +604,8 @@ fn cmd_new(args: NewArgs) -> Result<()> {
 }
 
 fn cmd_add(args: AddArgs) -> Result<()> {
-    if args.sctids.is_empty() {
-        bail!("provide at least one SCTID");
+    if args.sctids.is_empty() && args.ecl.is_none() {
+        bail!("provide at least one SCTID, or an ECL expression with --ecl");
     }
 
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
@@ -632,7 +636,18 @@ fn cmd_add(args: AddArgs) -> Result<()> {
         })
         .collect();
 
-    let mut all_ids: Vec<String> = args.sctids.clone();
+    let mut all_ids: Vec<String> = if let Some(ecl) = &args.ecl {
+        let ids =
+            crate::ecl::expand(&conn, ecl).with_context(|| format!("expanding ECL {ecl:?}"))?;
+        if ids.is_empty() {
+            println!("ECL {ecl:?} matched no concepts.");
+            return Ok(());
+        }
+        println!("ECL {ecl:?} matched {} concept(s).", ids.len());
+        ids
+    } else {
+        args.sctids.clone()
+    };
 
     if args.include_descendants {
         for sctid in &args.sctids {

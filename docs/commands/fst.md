@@ -59,7 +59,7 @@ Built snomed.fst in 16.30s
 
 ```bash
 # Exact term (case-insensitive)
-sct fst search "myocardial infarction"
+  sct fst search "myocardial infarction"
 
 # Prefix / autocomplete
 sct fst search myocard --prefix --limit 6

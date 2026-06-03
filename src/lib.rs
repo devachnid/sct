@@ -8,6 +8,7 @@
 
 pub mod builder;
 pub mod commands;
+pub mod ecl;
 pub mod format;
 pub mod index;
 pub mod paths;
