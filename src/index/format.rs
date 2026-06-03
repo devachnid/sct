@@ -29,7 +29,9 @@ pub const MAGIC: &[u8; 8] = b"SCTFST\0\0";
 /// Container byte-layout version (independent of the NDJSON schema version and
 /// the `sct` crate version, both of which are recorded in the provenance
 /// section instead).
-pub const FORMAT_VERSION: u32 = 1;
+///
+/// v2: posting lists are delta + unsigned-varint encoded (was raw `[u32 len][u64]*`).
+pub const FORMAT_VERSION: u32 = 2;
 
 // Canonical section names.
 pub const SEC_DESCRIPTIONS: &str = "descriptions"; // fst: normalised term -> packed value
@@ -53,6 +55,36 @@ pub fn pack(tag_id: u8, offset: u64) -> u64 {
 /// Inverse of [`pack`]: `(tag_id, offset)`.
 pub fn unpack(value: u64) -> (u8, u64) {
     ((value >> TAG_SHIFT) as u8, value & OFFSET_MASK)
+}
+
+/// Append an unsigned LEB128 varint. Used for delta-encoded posting lists: small
+/// deltas (the common case for dense, sorted SCTID runs) cost one or two bytes
+/// instead of a flat eight.
+pub fn write_uvarint(buf: &mut Vec<u8>, mut v: u64) {
+    while v >= 0x80 {
+        buf.push((v as u8) | 0x80);
+        v >>= 7;
+    }
+    buf.push(v as u8);
+}
+
+/// Decode an unsigned LEB128 varint from `data` at `*pos`, advancing `*pos`.
+/// Returns `None` on truncation or on a value that would overflow `u64`.
+pub fn read_uvarint(data: &[u8], pos: &mut usize) -> Option<u64> {
+    let mut result: u64 = 0;
+    let mut shift: u32 = 0;
+    loop {
+        let byte = *data.get(*pos)?;
+        *pos += 1;
+        if shift >= 64 {
+            return None;
+        }
+        result |= ((byte & 0x7f) as u64) << shift;
+        if byte & 0x80 == 0 {
+            return Some(result);
+        }
+        shift += 7;
+    }
 }
 
 /// A named blob to be written into the container.
@@ -165,6 +197,26 @@ mod tests {
         for &(tag, off) in &[(0u8, 0u64), (1, 1), (255, OFFSET_MASK), (42, 1_234_567)] {
             assert_eq!(unpack(pack(tag, off)), (tag, off));
         }
+    }
+
+    #[test]
+    fn uvarint_roundtrips() {
+        let cases = [0u64, 1, 127, 128, 300, 16_383, 16_384, 1u64 << 40, u64::MAX];
+        let mut buf = Vec::new();
+        for &v in &cases {
+            buf.clear();
+            write_uvarint(&mut buf, v);
+            let mut pos = 0;
+            assert_eq!(read_uvarint(&buf, &mut pos), Some(v));
+            assert_eq!(pos, buf.len(), "consumed exactly the bytes written for {v}");
+        }
+    }
+
+    #[test]
+    fn read_uvarint_handles_truncation() {
+        // A continuation bit set with no following byte must not panic.
+        let mut pos = 0;
+        assert_eq!(read_uvarint(&[0x80], &mut pos), None);
     }
 
     #[test]

@@ -42,6 +42,12 @@ struct BuildArgs {
     /// Output index file.
     #[arg(long, short, default_value = "snomed.fst")]
     output: PathBuf,
+
+    /// Omit the display side-tables (preferred-term labels). Produces a smaller
+    /// index for use alongside SQLite, where labels are resolved from the DB.
+    /// `sct fst search` on such an index returns SCTIDs without labels.
+    #[arg(long)]
+    no_terms: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -92,8 +98,12 @@ fn build(args: BuildArgs) -> Result<()> {
     let mut out = std::fs::File::create(&args.output)
         .with_context(|| format!("creating {}", args.output.display()))?;
 
+    let opts = index::BuildOptions {
+        include_terms: !args.no_terms,
+    };
+
     let started = Instant::now();
-    let stats = index::build(reader, &mut out)?;
+    let stats = index::build_with_options(reader, &mut out, &opts)?;
     drop(out);
     let elapsed = started.elapsed();
 
@@ -110,7 +120,12 @@ fn build(args: BuildArgs) -> Result<()> {
         "  {} concepts, {} terms → {} distinct keys, {} word tokens, {} semantic tags",
         stats.concepts, stats.terms, stats.distinct_keys, stats.distinct_words, stats.semantic_tags
     );
-    eprintln!("  {} on disk ({} bytes)", human_bytes(size), size);
+    let labels = if stats.terms_included {
+        "with labels"
+    } else {
+        "no labels (--no-terms)"
+    };
+    eprintln!("  {} on disk ({} bytes), {labels}", human_bytes(size), size);
     Ok(())
 }
 
@@ -133,6 +148,10 @@ fn search(args: SearchArgs) -> Result<()> {
     if hits.is_empty() {
         println!("No results for {:?}", args.query);
         return Ok(());
+    }
+
+    if !idx.has_terms() {
+        eprintln!("note: index built with --no-terms; results have no labels");
     }
 
     for h in &hits {

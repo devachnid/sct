@@ -125,6 +125,42 @@ fn provenance_round_trips() {
 }
 
 #[test]
+fn no_terms_build_omits_labels_but_still_resolves_ids() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("noterms.fst");
+    {
+        let mut out = std::fs::File::create(&path).unwrap();
+        index::build_with_options(
+            Cursor::new(FIXTURE),
+            &mut out,
+            &index::BuildOptions {
+                include_terms: false,
+            },
+        )
+        .unwrap();
+    }
+    let idx = Index::open(&path).unwrap();
+    assert!(!idx.has_terms(), "index built with include_terms=false");
+
+    // Lookup still resolves the concept id; only the display label is absent.
+    let hits = idx.lookup_exact("myocardial infarction");
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].concept_id, 22298006);
+    assert!(
+        hits[0].term.is_empty(),
+        "no label without the terms section"
+    );
+    // Semantic tag still comes from the packed value, not the terms table.
+    assert_eq!(hits[0].semantic_tag.as_deref(), Some("disorder"));
+}
+
+#[test]
+fn default_build_includes_labels() {
+    let (idx, _dir) = build_fixture();
+    assert!(idx.has_terms());
+}
+
+#[test]
 fn semantic_tags_are_collected() {
     let (idx, _dir) = build_fixture();
     let tags: Vec<&str> = idx.semantic_tags().collect();

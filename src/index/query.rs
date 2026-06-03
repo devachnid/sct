@@ -115,6 +115,14 @@ impl Index {
         self.provenance.as_ref()
     }
 
+    /// Whether the index carries display side-tables (preferred-term labels).
+    /// `false` if it was built with `--no-terms`, in which case [`Hit::term`] is
+    /// always empty and callers must resolve labels themselves.
+    pub fn has_terms(&self) -> bool {
+        let idx = &self.mmap[self.terms_index.clone()];
+        idx.len() >= 4 && u32::from_le_bytes(idx[0..4].try_into().unwrap()) > 0
+    }
+
     /// All known semantic tags (excludes the empty "no tag" slot at index 0).
     pub fn semantic_tags(&self) -> impl Iterator<Item = &str> {
         self.tag_table.iter().skip(1).map(|s| s.as_str())
@@ -247,22 +255,24 @@ impl Index {
         }
     }
 
-    /// Read a posting list at `offset` within a postings section.
+    /// Read a delta-varint posting list at `offset` within a postings section.
+    /// Decoding is bounded by the section slice, so a corrupt offset/length can
+    /// at worst return a short or empty list — never read out of bounds.
     fn read_postings(&self, section: &Range<usize>, offset: u64) -> Vec<u64> {
-        let base = section.start + offset as usize;
-        let data = &self.mmap[..];
-        if base + 4 > section.end {
+        let data = &self.mmap[section.clone()];
+        let mut p = offset as usize;
+        let Some(len) = format::read_uvarint(data, &mut p) else {
             return Vec::new();
-        }
-        let len = u32::from_le_bytes(data[base..base + 4].try_into().unwrap()) as usize;
-        let mut out = Vec::with_capacity(len);
-        let mut p = base + 4;
+        };
+        // Cap the pre-allocation so a corrupt length cannot request a huge Vec.
+        let mut out = Vec::with_capacity((len as usize).min(1 << 20));
+        let mut acc = 0u64;
         for _ in 0..len {
-            if p + 8 > section.end {
+            let Some(delta) = format::read_uvarint(data, &mut p) else {
                 break;
-            }
-            out.push(u64::from_le_bytes(data[p..p + 8].try_into().unwrap()));
-            p += 8;
+            };
+            acc = acc.wrapping_add(delta);
+            out.push(acc);
         }
         out
     }

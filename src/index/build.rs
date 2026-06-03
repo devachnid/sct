@@ -24,6 +24,25 @@ pub struct BuildStats {
     pub distinct_words: usize,
     pub semantic_tags: usize,
     pub bytes_written: u64,
+    pub terms_included: bool,
+}
+
+/// Knobs for [`build_with_options`].
+#[derive(Debug, Clone)]
+pub struct BuildOptions {
+    /// Write the display side-tables (concept SCTID → preferred term). On by
+    /// default so a standalone index can render labels. Turn off to shave the
+    /// largest non-search sections when labels will be resolved elsewhere (e.g.
+    /// from the SQLite `concepts` table). See `specs/fst.md` §4.5.
+    pub include_terms: bool,
+}
+
+impl Default for BuildOptions {
+    fn default() -> Self {
+        BuildOptions {
+            include_terms: true,
+        }
+    }
 }
 
 /// Accumulates the in-memory grouping before the FSTs are serialised.
@@ -128,8 +147,18 @@ impl Accumulator {
     }
 }
 
-/// Read NDJSON from `reader`, build the index, and write the container to `out`.
+/// Read NDJSON from `reader`, build the index with default options, and write
+/// the container to `out`.
 pub fn build<R: BufRead, W: Write>(reader: R, out: &mut W) -> Result<BuildStats> {
+    build_with_options(reader, out, &BuildOptions::default())
+}
+
+/// As [`build`], with explicit [`BuildOptions`].
+pub fn build_with_options<R: BufRead, W: Write>(
+    reader: R,
+    out: &mut W,
+    opts: &BuildOptions,
+) -> Result<BuildStats> {
     let mut acc = Accumulator::new();
     let mut prov: Option<Provenance> = None;
 
@@ -147,7 +176,7 @@ pub fn build<R: BufRead, W: Write>(reader: R, out: &mut W) -> Result<BuildStats>
         acc.add_record(&rec);
     }
 
-    serialise(acc, prov, out)
+    serialise(acc, prov, out, opts)
 }
 
 /// Serialise the accumulated maps into the container.
@@ -155,6 +184,7 @@ fn serialise<W: Write>(
     acc: Accumulator,
     prov: Option<Provenance>,
     out: &mut W,
+    opts: &BuildOptions,
 ) -> Result<BuildStats> {
     // --- descriptions.fst + postings ---
     let mut postings: Vec<u8> = Vec::new();
@@ -185,16 +215,25 @@ fn serialise<W: Write>(
     let words = word_builder.into_inner().context("finalising words FST")?;
 
     // --- terms_index + terms_text (concept SCTID -> preferred term) ---
+    // Optional: when omitted, both sections are an empty (count = 0) table, and
+    // the reader resolves no labels — callers supply display text elsewhere.
     let mut terms_index: Vec<u8> = Vec::new();
     let mut terms_text: Vec<u8> = Vec::new();
-    terms_index.extend_from_slice(&(acc.preferred.len() as u32).to_le_bytes());
-    for (&sctid, term) in &acc.preferred {
-        let off = terms_text.len() as u32;
-        let bytes = term.as_bytes();
-        terms_text.extend_from_slice(bytes);
-        terms_index.extend_from_slice(&sctid.to_le_bytes());
-        terms_index.extend_from_slice(&off.to_le_bytes());
-        terms_index.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+    let term_count = if opts.include_terms {
+        acc.preferred.len()
+    } else {
+        0
+    };
+    terms_index.extend_from_slice(&(term_count as u32).to_le_bytes());
+    if opts.include_terms {
+        for (&sctid, term) in &acc.preferred {
+            let off = terms_text.len() as u32;
+            let bytes = term.as_bytes();
+            terms_text.extend_from_slice(bytes);
+            terms_index.extend_from_slice(&sctid.to_le_bytes());
+            terms_index.extend_from_slice(&off.to_le_bytes());
+            terms_index.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+        }
     }
 
     // --- tag_table (JSON; index 0 = "no tag") ---
@@ -254,15 +293,20 @@ fn serialise<W: Write>(
         distinct_words: acc.words.len(),
         semantic_tags: acc.tag_order.len(),
         bytes_written,
+        terms_included: opts.include_terms,
     })
 }
 
-/// Append a posting list `[u32 len][u64 sctid]*` (SCTIDs ascending; a `BTreeSet`
-/// iterates in sorted order, which the merge-intersection in `query` relies on).
+/// Append a posting list as `uvarint(len)` followed by delta-encoded SCTIDs,
+/// each delta a uvarint. A `BTreeSet` iterates ascending, so deltas are positive
+/// and small for dense runs — the whole point of the encoding. The ascending
+/// order is also what the merge-intersection in `query` relies on.
 fn write_posting(buf: &mut Vec<u8>, concepts: &BTreeSet<u64>) {
-    buf.extend_from_slice(&(concepts.len() as u32).to_le_bytes());
+    format::write_uvarint(buf, concepts.len() as u64);
+    let mut prev = 0u64;
     for &cid in concepts {
-        buf.extend_from_slice(&cid.to_le_bytes());
+        format::write_uvarint(buf, cid - prev);
+        prev = cid;
     }
 }
 

@@ -26,9 +26,12 @@ sct fst search <QUERY> [--index <FST>] [--prefix | --fuzzy <N> | --words] [--lim
 |---|---|---|
 | `--input <FILE>` | *(required)* | NDJSON file produced by `sct ndjson`. Use `-` for stdin. |
 | `--output <FILE>` | `snomed.fst` | Output index file. |
+| `--no-terms` | off | Omit the display side-tables (preferred-term labels). Produces a much smaller, search-only index for use alongside SQLite, where labels are resolved from the database. `sct fst search` on such an index returns SCTIDs without labels. |
 
 ```bash
 sct fst build --input snomed.ndjson --output snomed.fst
+# Smaller, search-only (no labels):
+sct fst build --input snomed.ndjson --output snomed.fst --no-terms
 ```
 
 Build prints a short summary to stderr:
@@ -103,7 +106,7 @@ Normalisation is deliberately **lossless** with respect to accents and punctuati
 | Start-up | single mmap | open SQLite DB |
 | Status | experimental | stable, the default |
 
-On a UK Monolith-scale edition (~831k concepts) the FST's lexical search structures are roughly the same size as the FTS5 inverted index (~104 MB vs ~103 MB), but query latency is one to two orders of magnitude lower and it adds fuzzy and prefix matching. The headline trade-off is **speed and typo-tolerance, not raw size**. Full numbers are in [`specs/fst.md` §10](https://github.com/pacharanero/sct/blob/main/specs/fst.md).
+On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms`, delta-varint posting compression) is **~72 MB — roughly 30% smaller** than the FTS5 inverted index (~103 MB); with display labels it is ~133 MB, still an order of magnitude below the full ~1.8 GB `snomed.db`. Query latency is one to two orders of magnitude lower than warm FTS5, and it adds fuzzy and prefix matching. The headline trade-offs are **speed and typo-tolerance**; FTS5 still wins on BM25 ranking. Full numbers are in [`specs/fst.md` §10](https://github.com/pacharanero/sct/blob/main/specs/fst.md).
 
 ---
 
@@ -111,5 +114,5 @@ On a UK Monolith-scale edition (~831k concepts) the FST's lexical search structu
 
 - **Fuzzy distance is measured over the whole key.** Edits accumulate across a phrase, so a two-typo query over a long FSN can exceed distance 2 and miss. Fuzzy is most effective on shorter terms / single words.
 - **No ranking yet.** Results are ordered by a crude exact > prefix > fuzzy score, not BM25. Use [`sct lexical`](lexical.md) when relevance ordering matters.
-- **Posting lists are uncompressed** in this first cut; a delta-varint encoding is the obvious next size optimisation.
+- **`--no-terms` indexes have no labels.** Search returns SCTIDs only; resolve display text from a companion SQLite database (or rebuild with labels).
 - The index is licensed SNOMED CT content — like every other artefact, `*.fst` is git-ignored and never distributed here.

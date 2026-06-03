@@ -16,8 +16,8 @@ The honest trade (size/latency now measured — see §10):
 
 | | SQLite FTS5 (today) | FST (built) |
 |---|---|---|
-| Lexical-index size | ~103 MB (FTS5 shadow tables) | ~104 MB search structures (~160 MB with display side-tables) |
-| Query latency | ~0.5–1.2 ms warm | ~1 µs–3.4 ms (1–2 orders of magnitude faster) |
+| Lexical-index size | ~103 MB (FTS5 shadow tables) | **72 MB** search-only (`--no-terms`); 133 MB with labels |
+| Query latency | ~0.5–1.2 ms warm | ~1 µs–3 ms (1–2 orders of magnitude faster) |
 | Ranked free-text | BM25, built in | manual TF/IDF only |
 | Prefix / autocomplete | awkward | native |
 | Fuzzy (typo-tolerant) | no | yes, via Levenshtein automaton |
@@ -125,9 +125,9 @@ Internally it is a simple container with a table of contents at the end (zip/par
 | u32    container format version                           |
 +-----------------------------------------------------------+
 | section: descriptions.fst   (term -> packed value)        |
-| section: postings           (length-prefixed SCTID lists) |
+| section: postings           (delta-varint SCTID lists)    |
 | section: words.fst          (token -> posting offset)     |
-| section: word_postings      (length-prefixed SCTID lists) |
+| section: word_postings      (delta-varint SCTID lists)    |
 | section: terms              (concept SCTID -> orig text)   |
 | section: tag_table          (tag_id byte -> tag string)   |
 | section: provenance         (edition/date/sct version)    |
@@ -139,7 +139,7 @@ Internally it is a simple container with a table of contents at the end (zip/par
 
 `Index::open` mmaps the whole file once, reads the footer and TOC, and hands each section out as a zero-copy byte slice. The two `.fst` sections are wrapped in `fst::Map::new(slice)`; the `*_postings`, `terms`, and `tag_table` sections are read by computed offset. No allocation on the hot path.
 
-The `terms` section is the only part not strictly required to produce the benchmark numbers; include it if cheap, otherwise it can land in the immediate follow-up.
+The `terms` section (display labels) is optional: `sct fst build --no-terms` writes empty `terms_index`/`terms_text` sections, producing a search-only index ~64 MB smaller, for use alongside SQLite where labels resolve from the `concepts` table. Posting lists (`postings`, `word_postings`) are delta + unsigned-varint encoded (container format v2) rather than raw `u64` arrays.
 
 ---
 
@@ -353,19 +353,23 @@ The `snomed.fst` sections:
 
 | Section | Size | Note |
 |---|---:|---|
-| `descriptions` (FST) | 20.8 MB | the term automaton — small |
-| `postings` | 15.1 MB | concept SCTID lists for descriptions |
-| `words` (FST) | 1.4 MB | token automaton — tiny |
-| `word_postings` | **66.6 MB** | raw `u64` SCTID lists; the dominant cost |
-| `terms_index` + `terms_text` | 64.3 MB | display side-tables (preferred terms) |
-| **Total** | **160.4 MB** | |
+| Section | v1 (raw) | **v2 (delta-varint)** | Note |
+|---|---:|---:|---|
+| `descriptions` (FST) | 20.8 MB | 21.0 MB | the term automaton — small |
+| `postings` | 15.1 MB | **9.2 MB** | concept SCTID lists for descriptions |
+| `words` (FST) | 1.4 MB | 1.4 MB | token automaton — tiny |
+| `word_postings` | 66.6 MB | **44.2 MB** | the dominant section; the big compression target |
+| `terms_index` + `terms_text` | 64.3 MB | 64.3 MB | display side-tables (preferred terms) |
+| **Total** | 160.4 MB | **133.5 MB** | |
 
-The **search-only** structures (the two FSTs + both posting sections) come to **~104 MB** — within a whisker of the **~103 MB** FTS5 inverted index (`concepts_fts_*` shadow tables via `dbstat`). So at this edition size the FST is **not** dramatically smaller than FTS5 for lexical search, contrary to the spec's "10×" hope. Two things drove that:
+Posting lists were initially raw `u64` arrays. Switching to **delta + unsigned-varint** encoding (container format v2) shrank `postings` by 39% and `word_postings` by 34%, taking the full artefact from 160 MB to **133.5 MB**. The saving is bounded by SNOMED's large SCTIDs: even a delta between adjacent concepts sharing a token often needs 3–5 varint bytes, so the win is real but not dramatic. Build time is unchanged (~16 s) and decode cost is noise-level (see latency below).
 
-- We deliberately kept full precision (no diacritic-folding, no punctuation stripping), which enlarges the key space.
-- Posting lists are stored as **raw `u64` arrays**. `word_postings` alone is 66.6 MB — common tokens map to very long, monotonically increasing SCTID lists, which are ideal for **delta + varint** encoding. This is the obvious next optimisation (spec §6) and should shrink the largest section substantially.
+Two levers control size, both now implemented:
 
-The genuine size win is conditional: dropping the display side-tables (resolve display via the existing SQLite/concepts data instead) takes the artefact to ~104 MB, and description-search-only (no word index) to ~36 MB. Against the *whole* 1.8 GB `snomed.db`, a 36–160 MB lexical index is still a big distribution win — but against FTS5's index *alone*, today it's a wash until posting compression lands.
+- **Posting compression** (always on, v2): full index 160 → 133.5 MB.
+- **`--no-terms`** drops the 64.3 MB display side-tables, for use alongside SQLite where labels resolve from the `concepts` table. Combined with compression, the **search-only index is 72.2 MB** — now roughly **30% smaller** than the ~103 MB FTS5 inverted index (`concepts_fts_*` via `dbstat`), reversing the v1 "wash". We deliberately keep full precision (no diacritic-folding, no punctuation stripping), which is the main thing still inflating the key space.
+
+So the size picture by configuration: **72 MB** search-only (beats FTS5), **133 MB** with labels, versus the whole **1.8 GB** `snomed.db`. The remaining bloat is `word_postings` (44 MB) and the uncompressed label strings (`terms_text`, 51 MB) — both compressible further if it matters.
 
 ### Latency — a decisive FST win
 
@@ -385,7 +389,7 @@ Prefix and word search behave well on real data. Fuzzy d=1 recovers single-chara
 
 ### Verdict
 
-Lean **supplement, not replace** (for now): the FST's standout wins are **query latency** and **fuzzy/prefix capability**, not raw size. The path to a compelling size story runs through **delta-varint posting-list compression** and **dropping the display side-tables** when an FST is used alongside SQLite. Recommended next steps before any MCP wiring: (1) compress posting lists; (2) make the display side-tables optional; (3) re-measure against International-only (~350k) where the absolute numbers will be roughly half.
+Lean **supplement, not replace** (for now). The FST's standout wins remain **query latency** (1–2 orders of magnitude) and **fuzzy/prefix capability**. After the v2 work the **size story is now also favourable**: a `--no-terms` search index is ~30% smaller than the FTS5 inverted index, and even with labels it is an order of magnitude below the full `snomed.db`. What still keeps this in "supplement" territory is the lack of **BM25 ranking** and the fact that label resolution needs either the +64 MB display tables or a companion SQLite. Remaining optimisations, in priority order: (1) richer ranking (TF/IDF or BM25) so it could stand alone for search; (2) compress the label strings; (3) per-word fuzzy matching; then (4) MCP wiring once a direction is chosen. Re-measuring against International-only (~350k concepts) would roughly halve every absolute number here.
 
 ---
 

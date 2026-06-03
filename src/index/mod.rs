@@ -15,5 +15,5 @@ pub mod format;
 pub mod normalise;
 pub mod query;
 
-pub use build::{build, BuildStats};
+pub use build::{build, build_with_options, BuildOptions, BuildStats};
 pub use query::{Hit, Index};
