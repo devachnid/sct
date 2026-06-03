@@ -9,6 +9,7 @@
 pub mod builder;
 pub mod commands;
 pub mod format;
+pub mod index;
 pub mod paths;
 pub mod provenance;
 pub mod rf2;

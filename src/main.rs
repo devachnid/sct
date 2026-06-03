@@ -28,6 +28,9 @@ enum Command {
     /// Export a SNOMED CT NDJSON artefact to per-concept Markdown files.
     Markdown(commands::markdown::Args),
 
+    /// Build and query an FST-backed lexical index (exact/prefix/fuzzy/word search).
+    Fst(commands::fst::Args),
+
     /// Start a local MCP server over stdio backed by a SNOMED CT SQLite database.
     Mcp(commands::mcp::Args),
 
@@ -101,6 +104,7 @@ fn main() -> Result<()> {
         Command::Sqlite(args) => commands::sqlite::run(args),
         Command::Parquet(args) => commands::parquet::run(args),
         Command::Markdown(args) => commands::markdown::run(args),
+        Command::Fst(args) => commands::fst::run(args),
         Command::Mcp(args) => commands::mcp::run(args),
         Command::Embed(args) => commands::embed::run(args),
         Command::Info(args) => commands::info::run(args),

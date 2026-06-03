@@ -1,6 +1,6 @@
 [package]
 name = "sct-rs"
-version = "0.3.11"
+version = "0.4.0"
 edition = "2021"
 description = "Local-first SNOMED CT toolchain: RF2 → NDJSON, SQLite, Parquet, Markdown, Arrow embeddings, and MCP server"
 license = "MIT"
@@ -60,6 +60,9 @@ walkdir = "2"
 zip = "8"
 tempfile = "3"
 indexmap = { version = "2", features = ["serde"] }
+fst = { version = "0.4", features = ["levenshtein"] }
+memmap2 = "0.9"
+unicode-normalization = "0.1"
 rusqlite = { version = "0.39", features = ["bundled"] }
 parquet = { version = "58", features = ["arrow"] }
 arrow = { version = "58", default-features = false, features = ["ipc"] }
@@ -83,3 +86,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"]
 open = { version = "5", optional = true }
 
 [dev-dependencies]
+criterion = "0.8"
+
+[[bench]]
+name = "fst_bench"
+harness = false

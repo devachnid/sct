@@ -2,6 +2,7 @@ pub mod codelist;
 pub mod completions;
 pub mod diff;
 pub mod embed;
+pub mod fst;
 pub mod info;
 pub mod lexical;
 pub mod lookup;

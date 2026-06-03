@@ -60,6 +60,7 @@ nav:
       - sct completions: commands/completions.md
       - sct diff: commands/diff.md
       - sct embed: commands/embed.md
+      - sct fst: commands/fst.md
       - sct gui: commands/gui.md
       - sct info: commands/info.md
       - sct lexical: commands/lexical.md

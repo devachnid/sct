@@ -9,6 +9,7 @@ target/
 *.db-shm
 *.db-wal
 *.arrow
+*.fst
 snomed-concepts/
 snomed-hierarchies/
 
