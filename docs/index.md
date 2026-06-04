@@ -20,7 +20,7 @@ sct lexical "heart attack"
 ```
 
 [:octicons-arrow-right-24: Full walkthrough](walkthrough/index.md) ·
-[:octicons-arrow-right-24: Why build this?](why-build-this.md) ·
+[:octicons-arrow-right-24: Why build this?](why/why-build-this.md) ·
 [:octicons-arrow-right-24: Benchmarks](benchmarks.md)
 
 ---

@@ -75,7 +75,7 @@ This is the same "data over services" instinct that drives the rest of `sct`: a 
 
 ---
 
-See the [`sct codelist`](commands/codelist.md) command reference and the [Refsets and Code Lists walkthrough](walkthrough/refsets-codelists.md) to start building one.
+See the [`sct codelist`](../commands/codelist.md) command reference and the [Refsets and Code Lists walkthrough](../walkthrough/refsets-codelists.md) to start building one.
 
 ---
 
