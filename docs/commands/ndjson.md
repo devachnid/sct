@@ -117,7 +117,12 @@ One JSON object per line, sorted by concept SCTID. Every line is a standalone JS
   },
   "ctv3_codes": ["X200E"],
   "read2_codes": [],
-  "schema_version": 2
+  "refsets": ["991381000000107"],
+  "relationships": [
+    {"type_id": "363698007", "destination_id": "302509004", "group": 0},
+    {"type_id": "116676008", "destination_id": "55641003", "group": 0}
+  ],
+  "schema_version": 4
 }
 ```
 
@@ -139,7 +144,9 @@ One JSON object per line, sorted by concept SCTID. Every line is a standalone JS
 | `attributes` | object | Named attribute groups with `{id, fsn}[]` values |
 | `ctv3_codes` | string[] | CTV3 crossmap codes (UK edition only; empty array otherwise) |
 | `read2_codes` | string[] | Read v2 codes (UK edition only; empty array otherwise) |
-| `schema_version` | integer | Artefact schema version (currently `2`) |
+| `refsets` | string[] | SCTIDs of reference sets this concept belongs to (populated with `--refsets simple`) |
+| `relationships` | `{type_id, destination_id, group}`[] | Typed attribute relationships - SCTID-keyed, with group number (schema v4). The SCTID-preserving counterpart of `attributes`; consumed by ECL attribute refinement |
+| `schema_version` | integer | Artefact schema version (currently `4`) |
 
 ### Artefact properties
 

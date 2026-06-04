@@ -8,20 +8,7 @@ Outstanding work and next steps. Completed work is removed; see git log for hist
 
 ### Distribution
 
-- [x] Add Windows x86_64 (`x86_64-pc-windows-msvc`) to the release CI matrix (v0.3.9)
-- [x] Add Linux aarch64 (`aarch64-unknown-linux-musl`) to the release CI matrix (v0.3.9,
-      native `ubuntu-24.04-arm` runner)
-- [x] SHA-256 checksums published alongside GitHub Releases (v0.3.9, `SHA256SUMS` file)
-- [x] `curl | sh` installer (`install.sh`) - auto-detects OS/arch, verifies checksum,
-      installs to `~/.local/bin`
-- [x] PowerShell installer (`install.ps1`) - Windows equivalent of `install.sh`
-- [x] cargo-binstall support - `cargo binstall sct-rs` pulls prebuilt tarballs
-- [x] Homebrew tap (`pacharanero/homebrew-sct`) - `brew tap pacharanero/sct && brew install sct`,
-      supports macOS arm64/x86_64 and Linux arm64/x86_64, auto-bumped by release workflow
-- [x] Scoop bucket (`pacharanero/scoop-sct`) - `scoop bucket add sct ... && scoop install sct`,
-      auto-bumped by release workflow
-
-**Future distribution work:**
+Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `install.sh` / `install.ps1`, cargo-binstall, a Homebrew tap, and a Scoop bucket - all auto-bumped by the release workflow. See the README install section. Outstanding:
 
 - [ ] macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users
       don't have to `chmod +x` and bypass Gatekeeper
@@ -34,8 +21,10 @@ Outstanding work and next steps. Completed work is removed; see git log for hist
 
 ### Quality
 
-- [ ] End-to-end integration test: RF2 → NDJSON → SQLite → MCP query (CI-runnable with the
-      sample data already in the repo)
+- [ ] Extend the end-to-end test (`tests/end_to_end.rs`, over the committed synthetic
+      `tests/fixtures/rf2/` snapshot) to also assert through the `sct mcp` server tools. The
+      RF2 → NDJSON → SQLite → query path (lexical / lookup / ECL / refset / TCT) is now covered;
+      the MCP tool handlers are not yet exercised end-to-end.
 - [ ] Smoke test for `sct embed`: embed a handful of concepts, query for "heart attack", assert
       myocardial infarction concepts appear in top results
 - [ ] **End-to-end CLI tests** with `assert_cmd` - run `sct` as a binary against tiny fixtures
@@ -62,26 +51,10 @@ Outstanding work and next steps. Completed work is removed; see git log for hist
 
 ## Features
 
-### `sct codelist` - clinical code list management (in progress)
+### `sct codelist` - clinical code list management
 
-Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
+Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks). See [`docs/commands/codelist.md`](commands/codelist.md). Outstanding:
 
-- [x] `sct codelist new <filename>` - scaffold a `.codelist` file from template
-- [x] `sct codelist add <file> <sctid>` - add concept(s) to a codelist
-- [x] `sct codelist add <file> --ecl <expression>` - add every concept matched by an
-      ECL expression (e.g. `--ecl "<<73211009"`). See the [ECL engine](#completed) below.
-- [x] `sct codelist remove <file> <sctid>` - move concept to excluded record
-- [x] `sct codelist validate <file>` - CI-ready validation (exit 0 = warn, 1 = error)
-- [x] `sct codelist stats <file>` - concept counts, hierarchy breakdown, staleness
-- [x] `sct codelist diff <file-a> <file-b>` - compare two `.codelist` files
-- [x] `sct codelist export <file> --format csv/opencodelists-csv/markdown`
-- [x] `sct codelist export <file> --include-maps <terminologies> --db <path>` -
-      append crosswalk columns (currently `ctv3`; future: `read2`, `icd10`, `opcs4`
-      as those maps are ingested). Multiple codes per SCTID joined with `|`. SNOMED
-      stays canonical; crosswalks fall out of the `concept_maps` join at export time
-      rather than being maintained inline. Not supported for `opencodelists-csv`
-      (fixed schema). Missing terminologies emit a stderr warning and leave the
-      column empty rather than failing.
 - [ ] `sct codelist export <file> --format fhir-json/rf2` - remaining export formats
 - [ ] **Multi-terminology codelists (format v2)** - future extension once Read v2 /
       ICD-10 / OPCS-4 maps are fully ingested. Would allow `terminology: [SNOMED CT,
@@ -129,45 +102,6 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
         (ratatui/crossterm) or a lighter readline-style redraw; whether the interactive
         mode and the stdio component are one binary mode with two front-ends or separate.
         Decide once a backend trait and the result shape are pinned down.
-
----
-
-## Completed
-
-- [x] **ECL engine** (v0.5.0) - a SNOMED CT Expression Constraint Language parser and
-      evaluator (`src/ecl/`), wired into `sct codelist add --ecl`. Supports hierarchy
-      (`<` `<<` `>` `>>` `<!` `>!`), refset membership (`^`), boolean (`AND`/`OR`/`MINUS`),
-      wildcard, and **attribute refinement** (`focus : type = value`, comma-conjoined,
-      `{ }` groups, `!=`). Hierarchy/refset queries run on any database; attribute
-      refinement uses the schema-v4 `concept_relationships` table. It is the intermediate
-      representation the query stack converges on - the compile target for SCT-QL and the
-      engine behind `sct serve` `$expand`. Design in [`specs/ecl.md`](ecl.md).
-- [x] **Schema v4** (v0.5.0) - `ConceptRecord.relationships` (typed attribute triples,
-      SCTID-keyed, with group), persisted into a `concept_relationships` table by
-      `sct sqlite`. Additive: older NDJSON parses with empty relationships.
-- [x] **FST lexical index** (v0.4.0–0.4.1) - `sct fst build` / `sct fst search`: a single,
-      mmap-able artefact giving sub-millisecond exact / prefix / **fuzzy** / word-intersection
-      search, with delta-varint posting compression and an optional `--no-terms` slim build.
-      Design and benchmarks in [`specs/fst.md`](fst.md); user docs in
-      [`docs/commands/fst.md`](commands/fst.md).
-- [x] **Unified path resolution** (v0.3.11) - every read-side command
-      (`sct lookup`, `lexical`, `refset`, `codelist`, `mcp`, `semantic`, `tui`,
-      `gui`) now discovers `--db` and `--embeddings` through a single chain:
-      env var → cwd → config `[paths]` → `$SCT_DATA_HOME/data/<canonical>` →
-      newest matching file in the data dir. Closes
-      [#19](https://github.com/pacharanero/sct/issues/19) - `sct trud download
-      --pipeline` output is now auto-discovered by every subsequent command.
-      New `sct paths` subcommand prints the resolved locations and which rule
-      won. Full spec in [`specs/path-resolution.md`](path-resolution.md);
-      user-facing docs in
-      [`docs/path-resolution.md`](../docs/path-resolution.md).
-
-- [x] **TRUD integration** - `sct trud` subcommand authenticates with the NHS TRUD API and
-      downloads UK releases automatically, with SHA-256 verification, pre-flight health check,
-      optional `--pipeline` / `--pipeline-full` chaining, and standardised `~/.local/share/sct/`
-      directory layout. Full spec in [`specs/commands/trud.md`](commands/trud.md) and user docs
-      in [`docs/commands/trud.md`](../../docs/commands/trud.md).
-      Key TRUD item numbers: item **1799** (UK Monolith), item **101** (UK Clinical), item **105** (UK Drug/dm+d).
 
 ---
 
