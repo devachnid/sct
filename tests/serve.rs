@@ -17,6 +17,12 @@ fn fixture_dir() -> PathBuf {
 }
 
 fn build_db() -> (tempfile::TempDir, PathBuf) {
+    build_db_with(false)
+}
+
+/// Build the fixture DB, optionally with the transitive-closure table so the
+/// `$expand` fast path exercises its TCT SQL form.
+fn build_db_with(tct: bool) -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().unwrap();
     let ndjson = dir.path().join("syn.ndjson");
     let db = dir.path().join("syn.db");
@@ -31,7 +37,7 @@ fn build_db() -> (tempfile::TempDir, PathBuf) {
     sqlite::run(sqlite::Args {
         input: ndjson,
         output: db.clone(),
-        transitive_closure: false,
+        transitive_closure: tct,
         include_self: false,
     })
     .unwrap();
@@ -207,6 +213,44 @@ fn expand_pagination() {
     let v = ops::expand(&conn(&db), Some("<<73211009"), None, 2, 0, false).unwrap();
     assert_eq!(v["expansion"]["total"], 3); // total reflects the full set
     assert_eq!(contains_codes(&v).len(), 2); // page is capped at count
+}
+
+#[test]
+fn expand_fast_path_with_tct_matches() {
+    // Same hierarchy expansion against a DB that has the transitive-closure
+    // table - exercises the TCT branch of the SQL fast path.
+    let (_d, db) = build_db_with(true);
+    let v = ops::expand(&conn(&db), Some("<<73211009"), None, 100, 0, false).unwrap();
+    assert_eq!(v["expansion"]["total"], 3);
+    let mut codes = contains_codes(&v);
+    codes.sort();
+    assert_eq!(codes, ["44054006", "46635009", "73211009"]);
+}
+
+#[test]
+fn expand_refset_member_fast_path() {
+    let (_d, db) = build_db();
+    let v = ops::expand(&conn(&db), Some("^991381000000107"), None, 100, 0, false).unwrap();
+    let mut codes = contains_codes(&v);
+    codes.sort();
+    assert_eq!(codes, ["44054006", "46635009"]);
+}
+
+#[test]
+fn expand_refinement_falls_back_to_engine() {
+    let (_d, db) = build_db();
+    // Attribute refinement is not a simple candidate, so it routes through the
+    // full ECL engine - still correct, just not the SQL fast path.
+    let v = ops::expand(
+        &conn(&db),
+        Some("<<404684003 : 363698007 = <<74281007"),
+        None,
+        100,
+        0,
+        false,
+    )
+    .unwrap();
+    assert_eq!(contains_codes(&v), ["22298006"]);
 }
 
 #[test]

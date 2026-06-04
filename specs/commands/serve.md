@@ -388,22 +388,43 @@ FROM concepts
 WHERE id = ?1
 ```
 
-### Subtypes (<<, recursive)
+### Subtypes (`<<` / `<`) and supertypes (`>>` / `>`)
+
+A `$expand` whose ValueSet is a single hierarchy or refset operator on one
+concept (`<<`, `<`, `>>`, `>`, `<!`, `>!`, `^`, or a bare concept), with no text
+filter, takes a fast path that never materialises the full id set in Rust: an
+indexed `COUNT` for `expansion.total` and an index-ordered `LIMIT`/`OFFSET` for
+the page. When the transitive-closure table (`concept_ancestors`, from `sct tct`
+/ `sct sqlite --transitive-closure`) is present, the descendant/ancestor set is
+served straight from the `(ancestor_id, descendant_id)` index with no sort:
 
 ```sql
+-- total (proper descendants; self added in code for `<<`)
+SELECT COUNT(*) FROM concept_ancestors
+WHERE ancestor_id = ?1 AND descendant_id != ?1;
+
+-- page, served in index order (no sort)
+SELECT descendant_id FROM concept_ancestors
+WHERE ancestor_id = ?1 AND descendant_id != ?1
+ORDER BY descendant_id LIMIT ?2 OFFSET ?3
+```
+
+For `<<` / `>>` the focus concept is prepended to the page (FHIR does not mandate
+an ordering), shifting the body offset by one. Without the closure table the same
+shape falls back to a recursive CTE over `concept_isa`, which is correct but much
+slower on large hierarchies - `sct serve` warns at startup when the table is
+absent. Compound ECL (booleans, attribute refinement), text filters, and the
+whole-CodeSystem expansion fall through to the general path, which evaluates the
+ECL engine and paginates in Rust.
+
+```sql
+-- recursive-CTE fallback (no closure table)
 WITH RECURSIVE subtypes(id) AS (
-    SELECT ?1
-    UNION ALL
-    SELECT ci.child_id
-    FROM concept_isa ci
-    JOIN subtypes s ON ci.parent_id = s.id
+    SELECT child_id FROM concept_isa WHERE parent_id = ?1
+    UNION
+    SELECT ci.child_id FROM concept_isa ci JOIN subtypes s ON ci.parent_id = s.id
 )
-SELECT c.id, c.preferred_term, c.fsn
-FROM subtypes st
-JOIN concepts c ON c.id = st.id
-WHERE c.active = 1
-ORDER BY c.preferred_term
-LIMIT ?2 OFFSET ?3
+SELECT id FROM subtypes ORDER BY id LIMIT ?2 OFFSET ?3
 ```
 
 ### Direct children (<!)

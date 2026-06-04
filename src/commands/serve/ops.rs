@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use super::fhir::{
     designation, parameters, property_concept, value_set_expansion, FhirError, SNOMED_SYSTEM,
 };
+use crate::ecl::ast::{Expr, Op};
 
 fn ex(e: rusqlite::Error) -> FhirError {
     FhirError::exception(e.to_string())
@@ -243,6 +244,28 @@ pub fn expand(
 ) -> Result<Value, FhirError> {
     let count = count.min(1000);
 
+    // Fast path: a single hierarchy/refset ECL with no text filter is answered
+    // by two cheap SQL queries - an indexed COUNT and an index-ordered page -
+    // so we never materialise the whole, potentially huge, id set in Rust.
+    // Compound ECL, text filters, and the all-concepts case fall through.
+    if filter.is_none() {
+        if let Some(e) = ecl {
+            if let Ok(parsed) = crate::ecl::parse(e) {
+                if let Some((op, id)) = simple_op(&parsed) {
+                    return expand_simple(
+                        conn,
+                        op,
+                        &id,
+                        has_tct(conn),
+                        count,
+                        offset,
+                        include_designations,
+                    );
+                }
+            }
+        }
+    }
+
     let matched: Vec<String> = match (ecl, filter) {
         // Entire implicit SNOMED ValueSet: paginate in SQL.
         (None, None) => {
@@ -337,24 +360,194 @@ fn build_contains(
         });
         match row {
             Ok((pt, fsn, syn)) => {
-                let mut entry = json!({ "system": SNOMED_SYSTEM, "code": id, "display": pt });
-                if include_designations {
-                    let synonyms: Vec<String> = serde_json::from_str(&syn).unwrap_or_default();
-                    let mut des = vec![designation(
-                        "900000000000003001",
-                        "Fully specified name",
-                        &fsn,
-                    )];
-                    for s in &synonyms {
-                        des.push(designation("900000000000013009", "Synonym", s));
-                    }
-                    entry["designation"] = Value::Array(des);
-                }
-                out.push(entry);
+                out.push(contains_entry(id, &pt, &fsn, &syn, include_designations))
             }
             Err(rusqlite::Error::QueryReturnedNoRows) => {}
             Err(e) => return Err(ex(e)),
         }
     }
     Ok(out)
+}
+
+/// Build a single `expansion.contains` entry, with designations when requested.
+fn contains_entry(
+    code: &str,
+    pt: &str,
+    fsn: &str,
+    synonyms_json: &str,
+    include_designations: bool,
+) -> Value {
+    let mut entry = json!({ "system": SNOMED_SYSTEM, "code": code, "display": pt });
+    if include_designations {
+        let synonyms: Vec<String> = serde_json::from_str(synonyms_json).unwrap_or_default();
+        let mut des = vec![designation(
+            "900000000000003001",
+            "Fully specified name",
+            fsn,
+        )];
+        for s in &synonyms {
+            des.push(designation("900000000000013009", "Synonym", s));
+        }
+        entry["designation"] = Value::Array(des);
+    }
+    entry
+}
+
+/// Whether the transitive-closure table is present (lets `<<`/`>>` be indexed).
+fn has_tct(conn: &Connection) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='concept_ancestors'",
+        [],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
+/// If `expr` is a single hierarchy/refset operator on one concept, or a bare
+/// concept, return `(op, concept_id)` - the shape the SQL fast path can handle.
+/// `None` (the op slot) means a bare concept. Returns `None` overall for
+/// anything compound (booleans, refinements, wildcards), so the caller falls
+/// back to the full ECL engine.
+fn simple_op(expr: &Expr) -> Option<(Option<Op>, String)> {
+    match expr {
+        Expr::Concept(id) => Some((None, id.clone())),
+        Expr::Op(op, inner) => match &**inner {
+            Expr::Concept(id) => Some((Some(*op), id.clone())),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// SQL to count (`?1` = concept id) and page (`?1` = id, `?2` = limit, `?3` =
+/// offset) the *proper* (non-self) set of a hierarchy/refset operator. The page
+/// query orders by the id column, which for the transitive-closure cases is the
+/// second column of the `(ancestor_id, descendant_id)` index - so SQLite serves
+/// the page straight from the index with no sort.
+fn body_sql(op: Op, tct: bool) -> (String, String) {
+    match (op, tct) {
+        (Op::DescendantOf | Op::DescendantOrSelfOf, true) => (
+            "SELECT COUNT(*) FROM concept_ancestors WHERE ancestor_id = ?1 AND descendant_id != ?1"
+                .into(),
+            "SELECT descendant_id FROM concept_ancestors
+             WHERE ancestor_id = ?1 AND descendant_id != ?1
+             ORDER BY descendant_id LIMIT ?2 OFFSET ?3"
+                .into(),
+        ),
+        (Op::DescendantOf | Op::DescendantOrSelfOf, false) => {
+            let cte = "WITH RECURSIVE d(id) AS (
+                SELECT child_id FROM concept_isa WHERE parent_id = ?1
+                UNION
+                SELECT ci.child_id FROM concept_isa ci JOIN d ON ci.parent_id = d.id)";
+            (
+                format!("{cte} SELECT COUNT(*) FROM d"),
+                format!("{cte} SELECT id FROM d ORDER BY id LIMIT ?2 OFFSET ?3"),
+            )
+        }
+        (Op::AncestorOf | Op::AncestorOrSelfOf, true) => (
+            "SELECT COUNT(*) FROM concept_ancestors WHERE descendant_id = ?1 AND ancestor_id != ?1"
+                .into(),
+            "SELECT ancestor_id FROM concept_ancestors
+             WHERE descendant_id = ?1 AND ancestor_id != ?1
+             ORDER BY ancestor_id LIMIT ?2 OFFSET ?3"
+                .into(),
+        ),
+        (Op::AncestorOf | Op::AncestorOrSelfOf, false) => {
+            let cte = "WITH RECURSIVE a(id) AS (
+                SELECT parent_id FROM concept_isa WHERE child_id = ?1
+                UNION
+                SELECT ci.parent_id FROM concept_isa ci JOIN a ON ci.child_id = a.id)";
+            (
+                format!("{cte} SELECT COUNT(*) FROM a"),
+                format!("{cte} SELECT id FROM a ORDER BY id LIMIT ?2 OFFSET ?3"),
+            )
+        }
+        (Op::ChildOf, _) => (
+            "SELECT COUNT(*) FROM concept_isa WHERE parent_id = ?1".into(),
+            "SELECT child_id FROM concept_isa WHERE parent_id = ?1
+             ORDER BY child_id LIMIT ?2 OFFSET ?3"
+                .into(),
+        ),
+        (Op::ParentOf, _) => (
+            "SELECT COUNT(*) FROM concept_isa WHERE child_id = ?1".into(),
+            "SELECT parent_id FROM concept_isa WHERE child_id = ?1
+             ORDER BY parent_id LIMIT ?2 OFFSET ?3"
+                .into(),
+        ),
+        (Op::MemberOf, _) => (
+            "SELECT COUNT(*) FROM refset_members WHERE refset_id = ?1".into(),
+            "SELECT referenced_component_id FROM refset_members WHERE refset_id = ?1
+             ORDER BY referenced_component_id LIMIT ?2 OFFSET ?3"
+                .into(),
+        ),
+    }
+}
+
+/// Expand a simple operator with an indexed `COUNT` for the total and an
+/// index-ordered `LIMIT`/`OFFSET` for the page, so only one page of ids ever
+/// reaches Rust. For the `-or-self` operators (`<<`, `>>`) and a bare concept,
+/// the focus concept is prepended to the result (FHIR does not mandate an
+/// ordering), shifting the body page by one slot.
+fn expand_simple(
+    conn: &Connection,
+    op: Option<Op>,
+    concept_id: &str,
+    tct: bool,
+    count: usize,
+    offset: usize,
+    include_designations: bool,
+) -> Result<Value, FhirError> {
+    let include_self = matches!(
+        op,
+        None | Some(Op::DescendantOrSelfOf) | Some(Op::AncestorOrSelfOf)
+    );
+    // Only count/return self when it is an actual active concept.
+    let self_active = include_self
+        && fetch_concept(conn, concept_id)?
+            .map(|c| c.active)
+            .unwrap_or(false);
+
+    let body_count: i64 = match op {
+        None => 0,
+        Some(o) => {
+            let (count_sql, _) = body_sql(o, tct);
+            conn.query_row(&count_sql, [concept_id], |r| r.get(0))
+                .map_err(ex)?
+        }
+    };
+    let total = body_count as usize + usize::from(self_active);
+
+    // Assemble the page: self (slot 0) then the body, with the body offset
+    // shifted to account for the self slot.
+    let mut page_ids: Vec<String> = Vec::new();
+    let mut remaining = count;
+    let mut body_offset = offset;
+    if self_active {
+        if offset == 0 {
+            if count > 0 {
+                page_ids.push(concept_id.to_string());
+                remaining = count - 1;
+            }
+        } else {
+            body_offset = offset - 1;
+        }
+    }
+    if remaining > 0 {
+        if let Some(o) = op {
+            let (_, page_sql) = body_sql(o, tct);
+            let mut stmt = conn.prepare(&page_sql).map_err(ex)?;
+            let rows = stmt
+                .query_map(
+                    rusqlite::params![concept_id, remaining as i64, body_offset as i64],
+                    |r| r.get::<_, String>(0),
+                )
+                .map_err(ex)?;
+            for r in rows {
+                page_ids.push(r.map_err(ex)?);
+            }
+        }
+    }
+
+    let contains = build_contains(conn, &page_ids, include_designations)?;
+    Ok(value_set_expansion(total, offset, count, contains))
 }
