@@ -177,6 +177,7 @@ For all further information see the full documentation by either exploring the [
 * [sct parquet](docs/parquet.md) - export NDJSON to a Parquet file for DuckDB / analytics
 * [sct markdown](docs/markdown.md) - export NDJSON to per-concept Markdown files (or per-hierarchy with `--mode hierarchy`)
 * [sct mcp](docs/mcp.md) - start a local MCP server over stdio backed by the SQLite database
+* [sct serve](docs/commands/serve.md) - FHIR R4 terminology server ($lookup/$validate-code/$subsumes/$expand with ECL) *(optional `--features serve`)*
 * [sct embed](docs/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
 * [sct lexical](docs/lexical.md) - keyword (FTS5) search over the SQLite database
 * [sct fst](docs/commands/fst.md) - mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search

@@ -3,6 +3,7 @@
 Build and query a **Finite State Transducer (FST)-backed lexical index** - a single, mmap-able `snomed.fst` file offering exact, prefix, fuzzy, and word-intersection search over SNOMED CT terms. 
 
 !!! warning "Experimental"
+
     `sct fst` is an experimental feature. It does not replace or change any existing command - [`sct lexical`](lexical.md) (SQLite FTS5) remains the default keyword-search path. `sct fst` exists to evaluate a finite-state-transducer index as a lighter-weight, typo-tolerant alternative. See [`specs/fst.md`](https://github.com/pacharanero/sct/blob/main/specs/fst.md) for the design and benchmark results.
 
 **When to use:** you want sub-millisecond prefix/autocomplete or **fuzzy (typo-tolerant)** matching that FTS5 can't do, or a lexical index you can mmap without opening the full database. For ranked BM25 keyword search, [`sct lexical`](lexical.md) is still the main tool.

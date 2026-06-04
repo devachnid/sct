@@ -37,5 +37,11 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      - name: cargo clippy (serve feature)
+        run: cargo clippy --features serve --all-targets -- -D warnings
+
       - name: cargo test
         run: cargo test
+
+      - name: cargo test (serve feature)
+        run: cargo test --features serve

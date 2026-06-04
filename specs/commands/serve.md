@@ -5,6 +5,14 @@ artefact produced by `sct sqlite`. The goal is a standards-compliant, drop-in re
 hosted FHIR terminology services (Ontoserver, Snowstorm, NHS Terminology Server) in development,
 testing, and organisational production use.
 
+> **Status: Phase 1 shipped** (feature-gated `serve`). `/metadata`, `CodeSystem/$lookup`,
+> `$validate-code`, `$subsumes`, and `ValueSet/$expand` are implemented in `src/commands/serve/`
+> with hand-rolled FHIR JSON. **The "biggest gap" below - ECL - is closed:** `$expand` now runs the
+> full [`sct` ECL engine](../ecl.md) (`crate::ecl`), so hierarchy, refset `^`, boolean, and
+> attribute refinement all work, not just simple subtype expansion. User docs:
+> [`docs/commands/serve.md`](../../docs/commands/serve.md). The sections below are the original
+> design; §1 and the phase plan are annotated where reality has moved on.
+
 ---
 
 ## Overview
@@ -59,14 +67,15 @@ Ontoserver's commercial value is largely its Expression Constraint Language (ECL
 | `A OR B` | set union | Supported (simple cases) |
 | `A AND B` | set intersection | Supported (simple cases) |
 | `A MINUS B` | set difference | Supported (simple cases) |
-| `^900000000000497000` | member of reference set | **Not supported** (see §Refsets) |
-| `* : 246075003 = 372687004` | attribute filter | **Not supported** |
-| `< 373873005 \|Pharmaceutical\| : 411116001 = <<17234001` | complex attribute | **Not supported** |
+| `^900000000000497000` | member of reference set | **Supported** (Simple refsets loaded) |
+| `* : 246075003 = 372687004` | attribute filter | **Supported** (schema-v4 `concept_relationships`) |
+| `< 373873005 \|Pharmaceutical\| : 411116001 = <<17234001` | complex attribute | **Supported** |
 
-**Implication**: If your organisation uses ECL beyond simple hierarchy traversal and text
-search, `sct serve` cannot replace Ontoserver without implementing an ECL parser. A full ECL
-parser is a substantial engineering effort (the ANTLR grammar for ECL v2.1 runs to ~400 rules).
-See §Future work.
+**Update (resolved):** the ECL engine was built (`src/ecl/`, `crate::ecl`) and `$expand` now uses
+it directly, so the rows above are supported. The remaining ECL gaps are the genuinely rare
+constructs the engine defers (cardinality `[1..*]`, reverse `R`, dotted attributes) - see
+[`specs/ecl.md`](../ecl.md) §5. `sct serve` is no longer blocked from replacing Ontoserver on ECL
+grounds for the common-to-advanced subset.
 
 ### 2. Reference set membership - partial support
 

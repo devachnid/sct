@@ -108,16 +108,19 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 ## Future / larger scope
 - [ ] **History files** - parse RF2 history substitution tables to map inactivated concept IDs
       forward to their replacements; expose via `snomed_resolve` MCP tool
-- [ ] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
+- [~] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
       for Ontoserver, Snowstorm, and the NHS FHIR Terminology Server. Full spec in
-      [`specs/commands/serve.md`](commands/serve.md).
+      [`specs/commands/serve.md`](commands/serve.md); user docs in
+      [`docs/commands/serve.md`](commands/serve.md).
 
-  **Phase 1 - Core operations** (`$lookup`, `$validate-code`, `$subsumes`, `$expand` with
-  text filter, CapabilityStatement, OperationOutcome errors, FHIR batch Bundle)
+  **Phase 1 - Core operations** ✅ **shipped** (feature-gated `serve`): `/metadata`,
+  `CodeSystem/$lookup` / `$validate-code` / `$subsumes`, `ValueSet/$expand` with text filter
+  **and full ECL** (via the ECL engine - well beyond the spec's original "simple ECL" scope),
+  `--fhir-base` prefix, `OperationOutcome` errors. Remaining: FHIR batch Bundle.
 
-  **Phase 2 - ECL hierarchy** (`ValueSet/$expand` with `<<`, `<!`, `>>`, `>!`, boolean
-  operators; pagination; `ValueSet/$validate-code`; `CodeSystem` resource read;
-  `--fhir-base` path prefix for Ontoserver-compatible URLs)
+  **Phase 2 - remaining hierarchy/ValueSet bits** (`ValueSet/$validate-code`; `CodeSystem`
+  resource read; pagination polish - `$expand` ECL/`<<`/`<!`/`>>`/`>!`/boolean already done
+  in Phase 1)
 
   **Phase 3 - Refsets + ConceptMap** (`^` ECL member-of operator now unblocked - Simple
   refsets load into the `refset_members` table via `sct ndjson --refsets simple` + `sct sqlite`;

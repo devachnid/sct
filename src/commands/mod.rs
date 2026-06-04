@@ -24,6 +24,9 @@ pub mod tui;
 #[cfg(feature = "gui")]
 pub mod gui;
 
+#[cfg(feature = "serve")]
+pub mod serve;
+
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 use std::path::Path;

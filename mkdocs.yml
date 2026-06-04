@@ -75,6 +75,7 @@ nav:
   - Code lists:
       - sct codelist: commands/codelist.md
   - Connect & serve:
+      - sct serve: commands/serve.md
       - sct mcp: commands/mcp.md
       - sct tui: commands/tui.md
       - sct gui: commands/gui.md
@@ -92,9 +93,11 @@ nav:
 
 
 markdown_extensions:
-  - pymdownx.keys
+  - admonition
   - attr_list
   - md_in_html
+  - pymdownx.details
+  - pymdownx.keys
   - pymdownx.superfences
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji

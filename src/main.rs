@@ -81,6 +81,10 @@ enum Command {
     /// Launch a browser-based UI for exploring SNOMED CT (requires --features gui).
     #[cfg(feature = "gui")]
     Gui(commands::gui::Args),
+
+    /// Start a FHIR R4 terminology server over the SQLite database (requires --features serve).
+    #[cfg(feature = "serve")]
+    Serve(commands::serve::Args),
 }
 
 /// Restore the default SIGPIPE disposition on Unix so that piping `sct` into
@@ -126,5 +130,7 @@ fn main() -> Result<()> {
         Command::Tui(args) => commands::tui::run(args),
         #[cfg(feature = "gui")]
         Command::Gui(args) => commands::gui::run(args),
+        #[cfg(feature = "serve")]
+        Command::Serve(args) => commands::serve::run(args),
     }
 }

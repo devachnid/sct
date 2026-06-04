@@ -1,6 +1,6 @@
 [package]
 name = "sct-rs"
-version = "0.6.2"
+version = "0.7.0"
 edition = "2021"
 description = "Local-first SNOMED CT toolchain: RF2 → NDJSON, SQLite, Parquet, Markdown, Arrow embeddings, and MCP server"
 license = "MIT"
@@ -47,7 +47,8 @@ pkg-fmt = "zip"
 default = []
 tui = ["dep:ratatui", "dep:crossterm"]
 gui = ["dep:axum", "dep:tokio", "dep:open"]
-full = ["tui", "gui"]
+serve = ["dep:axum", "dep:tokio"]
+full = ["tui", "gui", "serve"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
