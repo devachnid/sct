@@ -91,7 +91,6 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
       source artefacts.
 - [ ] `sct codelist search <file> <query>` - interactive FTS5 search → include/exclude
 - [ ] `sct codelist import --from <source>` - OCL, CSV, RF2, FHIR import
-- [ ] `sct codelist publish --to opencodelists` - publish to OpenCodelists
 - [ ] **Composable codelists** - let a `.codelist` include/reference other `.codelist`
       files, so lists can be built from reusable building blocks (e.g. a "diabetes"
       list that pulls in "type-1-diabetes" and "type-2-diabetes" sub-lists). This gives

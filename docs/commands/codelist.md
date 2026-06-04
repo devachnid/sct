@@ -1,6 +1,6 @@
 # sct codelist
 
-Build, validate, and publish clinical code lists as plain-text `.codelist` files.
+Build, validate, and manage clinical code lists as plain-text `.codelist` files.
 
 Also accessible as `sct refset` and `sct valueset`.
 
@@ -288,4 +288,3 @@ Git commits are the authoritative history. The `version` integer is a human labe
 
 - **Git repo** - clone and `sct codelist validate` locally
 - **GitHub search** - `filename:*.codelist terminology:"SNOMED CT" asthma` finds public codelists via GitHub's index (no central registry required)
-- **OpenCodelists** - `sct codelist publish --to opencodelists` (coming)

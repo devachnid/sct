@@ -1,4 +1,4 @@
-//! `sct codelist` - Build, validate, and publish clinical code lists.
+//! `sct codelist` - Build, validate, and manage clinical code lists.
 //!
 //! Also accessible as `sct refset` and `sct valueset`.
 //!
@@ -51,8 +51,6 @@ pub enum Verb {
     Search(SearchArgs),
     /// Import a codelist from OpenCodelists, CSV, or FHIR.
     Import(ImportArgs),
-    /// Publish a codelist to OpenCodelists.
-    Publish(PublishArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -178,15 +176,6 @@ pub struct ImportArgs {
     pub source: String,
 }
 
-#[derive(Parser, Debug)]
-pub struct PublishArgs {
-    /// Path to the .codelist file.
-    pub file: PathBuf,
-    /// Destination: "opencodelists" or a sct serve URL.
-    #[arg(long, default_value = "opencodelists")]
-    pub to: String,
-}
-
 pub fn run(args: Args) -> Result<()> {
     match args.command {
         Verb::New(a) => cmd_new(a),
@@ -202,7 +191,6 @@ pub fn run(args: Args) -> Result<()> {
              then `sct codelist add <file> <sctid>` to add concepts."
         ),
         Verb::Import(_) => bail!("`sct codelist import` is not yet implemented."),
-        Verb::Publish(_) => bail!("`sct codelist publish` is not yet implemented."),
     }
 }
 

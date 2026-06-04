@@ -23,12 +23,14 @@ SQLite `metadata` table rather than inferred from the filename), Q6 (locale/laye
 
 ---
 
-## Q7 - `sct serve` and `sct codelist publish --to <url>`
+## Q7 - `sct codelist publish` (resolved 2026-06-04)
 
-**Context:** `sct codelist publish --to <url>` is intended to target "any `sct serve` endpoint
-(future)", and [`sct serve`](commands/serve.md) is still future work (now unblocked by the ECL
-engine).
+> **Resolved: dropped.** `sct codelist publish` is removed. The OpenCodelists team have their own
+> priorities and are unlikely to value the integration, and there is no `sct serve` endpoint to
+> publish to yet. Effort goes to `sct serve` instead. The `Publish` verb / `PublishArgs` have been
+> removed from `src/commands/codelist.rs`, the roadmap bullet deleted, and the docs publish mentions
+> removed. Code lists still distribute trivially via git and GitHub search.
 
-**Question:** Until `sct serve` ships, `sct codelist publish` should target only OpenCodelists;
-the `--to <url>` form is deferred. Confirm and keep the
-[`docs/commands/codelist.md`](../docs/commands/codelist.md) publish section scoped accordingly.
+---
+
+*No open questions at present.*
