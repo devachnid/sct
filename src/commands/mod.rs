@@ -1,6 +1,7 @@
 pub mod codelist;
 pub mod completions;
 pub mod diff;
+pub mod ecl;
 pub mod embed;
 pub mod fst;
 pub mod info;

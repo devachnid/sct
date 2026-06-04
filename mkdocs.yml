@@ -59,6 +59,7 @@ nav:
       - sct codelist: commands/codelist.md
       - sct completions: commands/completions.md
       - sct diff: commands/diff.md
+      - sct ecl: commands/ecl.md
       - sct embed: commands/embed.md
       - sct fst: commands/fst.md
       - sct gui: commands/gui.md

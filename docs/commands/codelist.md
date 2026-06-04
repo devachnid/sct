@@ -121,9 +121,22 @@ sct codelist add codelists/asthma.codelist 195967001 \
 # Add every concept matched by an ECL expression
 sct codelist add codelists/diabetes.codelist \
   --ecl "<<73211009"
+
+# Read SCTIDs from stdin (the `-` form) — composes with any source
+sct ecl expand "<<73211009" | sct codelist add codelists/diabetes.codelist -
 ```
 
 Deduplicates silently. Bumps `version` and updates `updated` date.
+
+#### Reading SCTIDs from stdin (`-`)
+
+Pass `-` in place of SCTIDs to read newline-delimited SCTIDs from stdin (the leading token of each non-comment line). This makes `add` compose with any concept source — most naturally [`sct ecl expand`](ecl.md):
+
+```bash
+sct ecl expand "<<73211009 MINUS <<46635009" | sct codelist add t2dm.codelist -
+```
+
+`--ecl` and the `-` stdin form reach the same place; `--ecl` is the one-step convenience (and the only one that knows the *expression*, so it can record intent), while the pipe is the composable building block.
 
 #### `--ecl <expression>`
 

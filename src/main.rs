@@ -31,6 +31,9 @@ enum Command {
     /// Build and query an FST-backed lexical index (exact/prefix/fuzzy/word search).
     Fst(commands::fst::Args),
 
+    /// Evaluate an ECL expression and emit matching concept SCTIDs (pipe-friendly).
+    Ecl(commands::ecl::Args),
+
     /// Start a local MCP server over stdio backed by a SNOMED CT SQLite database.
     Mcp(commands::mcp::Args),
 
@@ -105,6 +108,7 @@ fn main() -> Result<()> {
         Command::Parquet(args) => commands::parquet::run(args),
         Command::Markdown(args) => commands::markdown::run(args),
         Command::Fst(args) => commands::fst::run(args),
+        Command::Ecl(args) => commands::ecl::run(args),
         Command::Mcp(args) => commands::mcp::run(args),
         Command::Embed(args) => commands::embed::run(args),
         Command::Info(args) => commands::info::run(args),

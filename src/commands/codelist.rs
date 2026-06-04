@@ -77,7 +77,8 @@ pub struct NewArgs {
 pub struct AddArgs {
     /// Path to the .codelist file.
     pub file: PathBuf,
-    /// One or more SCTIDs to add.
+    /// One or more SCTIDs to add. Use `-` to read newline-delimited SCTIDs from
+    /// stdin, e.g. `sct ecl expand "<<73211009" | sct codelist add list.codelist -`.
     pub sctids: Vec<String>,
     /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
     /// discovery order when this flag is omitted.
@@ -646,7 +647,13 @@ fn cmd_add(args: AddArgs) -> Result<()> {
         println!("ECL {ecl:?} matched {} concept(s).", ids.len());
         ids
     } else {
-        args.sctids.clone()
+        // Explicit SCTIDs, plus any read from stdin when `-` is given. This is
+        // what makes `sct ecl expand … | sct codelist add <file> -` work.
+        let mut ids: Vec<String> = args.sctids.iter().filter(|s| *s != "-").cloned().collect();
+        if args.sctids.iter().any(|s| s == "-") {
+            ids.extend(read_sctids_from_stdin()?);
+        }
+        ids
     };
 
     if args.include_descendants {
@@ -683,6 +690,32 @@ fn cmd_add(args: AddArgs) -> Result<()> {
     write_codelist(&cl, &args.file)?;
     println!("Added {added} concept(s) to {}", args.file.display());
     Ok(())
+}
+
+/// Read newline-delimited SCTIDs from stdin (for `sct codelist add <file> -`).
+fn read_sctids_from_stdin() -> Result<Vec<String>> {
+    use std::io::Read;
+    let mut s = String::new();
+    std::io::stdin()
+        .read_to_string(&mut s)
+        .context("reading SCTIDs from stdin")?;
+    Ok(parse_sctid_lines(&s))
+}
+
+/// Parse SCTIDs from free-form lines: take the first whitespace token of each
+/// non-empty, non-comment line. Tolerates `id` or `id  Some term` lines, and
+/// `#`-prefixed comments — so the output of `sct ecl expand` (bare ids) and
+/// loosely-formatted lists both work.
+fn parse_sctid_lines(s: &str) -> Vec<String> {
+    s.lines()
+        .filter_map(|line| {
+            let t = line.trim();
+            if t.is_empty() || t.starts_with('#') {
+                return None;
+            }
+            t.split_whitespace().next().map(str::to_string)
+        })
+        .collect()
 }
 
 fn cmd_remove(args: RemoveArgs) -> Result<()> {
@@ -1443,6 +1476,18 @@ misuse: Not for clinical decision support.
     fn parse_blank_line() {
         assert!(matches!(parse_body_line(""), ConceptLine::Blank));
         assert!(matches!(parse_body_line("   "), ConceptLine::Blank));
+    }
+
+    #[test]
+    fn parse_sctid_lines_from_stdin() {
+        // Bare ids (as emitted by `sct ecl expand`), plus blanks, comments,
+        // and "id  term" lines all reduce to the leading SCTID.
+        let input = "73211009\n\n# a comment\n  46635009  Type 1 diabetes mellitus\n44054006\n";
+        assert_eq!(
+            parse_sctid_lines(input),
+            vec!["73211009", "46635009", "44054006"]
+        );
+        assert!(parse_sctid_lines("\n  \n# only comments\n").is_empty());
     }
 
     // -----------------------------------------------------------------------
