@@ -57,28 +57,32 @@ nav:
   - Why Build This?:
       - Why sct?: why/why-build-this.md
       - Why code lists?: why/why-codelists.md
-  - Commands:
-      - sct codelist: commands/codelist.md
-      - sct completions: commands/completions.md
-      - sct diff: commands/diff.md
-      - sct ecl: commands/ecl.md
+  - Get & build:
+      - sct trud: commands/trud.md
+      - sct ndjson: commands/ndjson.md
+      - sct sqlite: commands/sqlite.md
+      - sct parquet: commands/parquet.md
+      - sct markdown: commands/markdown.md
       - sct embed: commands/embed.md
       - sct fst: commands/fst.md
-      - sct gui: commands/gui.md
-      - sct info: commands/info.md
-      - sct lexical: commands/lexical.md
-      - sct lookup: commands/lookup.md
-      - sct markdown: commands/markdown.md
-      - sct mcp: commands/mcp.md
-      - sct ndjson: commands/ndjson.md
-      - sct parquet: commands/parquet.md
-      - sct paths: commands/paths.md
-      - sct refset: commands/refset.md
-      - sct semantic: commands/semantic.md
-      - sct sqlite: commands/sqlite.md
       - sct tct: commands/tct.md
-      - sct trud: commands/trud.md
+  - Search & explore:
+      - sct lookup: commands/lookup.md
+      - sct lexical: commands/lexical.md
+      - sct semantic: commands/semantic.md
+      - sct ecl: commands/ecl.md
+      - sct refset: commands/refset.md
+  - Code lists:
+      - sct codelist: commands/codelist.md
+  - Connect & serve:
+      - sct mcp: commands/mcp.md
       - sct tui: commands/tui.md
+      - sct gui: commands/gui.md
+  - Utilities:
+      - sct info: commands/info.md
+      - sct diff: commands/diff.md
+      - sct paths: commands/paths.md
+      - sct completions: commands/completions.md
   - Reference:
     - Path Resolution: path-resolution.md
     - UK Edition Structure: uk-edition-structure.md
