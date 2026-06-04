@@ -64,6 +64,7 @@ fn build_db() -> (PathBuf, tempfile::TempDir) {
     //         └ 74281007 Myocardium structure
     //   447562003 (a refset concept)
     const FINDING_SITE: &str = "363698007";
+    const ASSOC_MORPH: &str = "116676008";
     let records = vec![
         rec("138875005", "SNOMED CT Concept", &[], &[], &[]),
         rec("447562003", "Example refset", &["138875005"], &[], &[]),
@@ -84,12 +85,14 @@ fn build_db() -> (PathBuf, tempfile::TempDir) {
             &[],
         ),
         rec("74281007", "Myocardium structure", &["404684003"], &[], &[]),
+        rec("55641003", "Infarct", &["404684003"], &[], &[]),
         rec(
             "22298006",
             "Myocardial infarction",
             &["404684003"],
             &[],
-            &[(FINDING_SITE, "74281007")],
+            // finding site = Myocardium, associated morphology = Infarct
+            &[(FINDING_SITE, "74281007"), (ASSOC_MORPH, "55641003")],
         ),
     ];
 
@@ -184,6 +187,62 @@ fn attribute_refinement() {
     assert_eq!(expand(&db, "<<404684003 : 363698007 = *"), vec!["22298006"]);
     // A finding site that is NOT Myocardium → no concept qualifies here.
     assert!(expand(&db, "<<404684003 : 363698007 != <<74281007").is_empty());
+}
+
+#[test]
+fn refinement_wildcard_attribute_type() {
+    let (db, _d) = build_db();
+    // `* = <<74281007`: any attribute whose value is Myocardium-or-descendant.
+    assert_eq!(
+        expand(&db, "<<404684003 : * = <<74281007"),
+        vec!["22298006"]
+    );
+    // `R`-less wildcard both sides: any concept with any relationship at all.
+    assert_eq!(expand(&db, "<<404684003 : * = *"), vec!["22298006"]);
+}
+
+#[test]
+fn refinement_conjunction_of_two_attribute_types() {
+    let (db, _d) = build_db();
+    // Both constraints must hold (comma = AND): MI has both.
+    assert_eq!(
+        expand(
+            &db,
+            "<<404684003 : 363698007 = 74281007, 116676008 = 55641003"
+        ),
+        vec!["22298006"]
+    );
+    // Second constraint points at the wrong value → no match.
+    assert!(expand(
+        &db,
+        "<<404684003 : 363698007 = 74281007, 116676008 = 74281007"
+    )
+    .is_empty());
+}
+
+#[test]
+fn refinement_attribute_group_is_a_conjunction_in_v1() {
+    let (db, _d) = build_db();
+    assert_eq!(
+        expand(
+            &db,
+            "<<404684003 : { 363698007 = 74281007, 116676008 = 55641003 }"
+        ),
+        vec!["22298006"]
+    );
+}
+
+#[test]
+fn refinement_disjunction() {
+    let (db, _d) = build_db();
+    // OR between attribute constraints: either site OR a bogus morphology.
+    assert_eq!(
+        expand(
+            &db,
+            "<<404684003 : 363698007 = 74281007 OR 116676008 = 99999999"
+        ),
+        vec!["22298006"]
+    );
 }
 
 #[test]

@@ -1,66 +1,33 @@
 # Open Queries
 
-Inconsistencies and open questions noted during the specs reorganisation (2026-03-28).
-Address each item and delete it (or move it to the relevant spec) once resolved.
+Lightweight tracker for open design questions. Address each and remove it (or fold it into the
+relevant spec) once resolved.
 
----
-
-## Q2 — `sct codelist diff` vs `sct diff`
-
-**Context:** Two different `diff` verbs exist in the spec:
-- `sct diff` ([`specs/commands/diff.md`](commands/diff.md)) — compares two NDJSON artefacts
-  at the *release* level (what changed between SNOMED releases)
-- `sct codelist diff` ([`specs/commands/codelist.md`](commands/codelist.md)) — compares two
-  `.codelist` files (what changed between two versions of a codelist)
-
-**Assessment:** These are distinct operations with different inputs and different purposes.
-Both should exist. No action required unless naming is confusing to users — in which case
-consider `sct codelist compare` as an alternative verb.
-
----
-
-## Q4 — `sct codelist` CLI aliases (`sct refset`, `sct valueset`)
-
-**Context:** [`specs/commands/codelist.md`](commands/codelist.md) specifies that `sct refset`
-and `sct valueset` are accepted as aliases for `sct codelist` everywhere.
-
-**Question:** When implementing, how will Clap handle top-level subcommand aliases? Clap
-`#[command(alias = "refset")]` works for subcommand aliases. Confirm the aliasing approach
-before implementation and update the spec with any constraints (e.g. aliases not appearing in
-`--help` output, or tab-completion behaviour).
-
----
-
-## Q5 — `sct info` release date inference from filename
-
-**Context:** [`specs/commands/info.md`](commands/info.md) says `sct info` infers the release
-date from the NDJSON filename.
-
-**Question:** Is there a formal filename convention enforced by `sct ndjson --output`? If the
-user renames the file or uses `-o -` (stdout piped to a custom filename), the date inference
-will fail. Consider whether release date should be stored in the NDJSON itself (e.g. as a
-header comment or first-line metadata record) rather than inferred from the filename.
+*Last reviewed 2026-06-04. Resolved/obsolete items removed: Q2 (`sct codelist diff` vs `sct diff` —
+both intentionally exist), Q4 (`sct refset` is now its own command, not a `codelist` alias; only
+`valueset` is an alias), Q5 (release date is now stored in the NDJSON provenance header and the
+SQLite `metadata` table rather than inferred from the filename).*
 
 ---
 
 ## Q6 — `sct ndjson` locale flag and multi-edition layering
 
 **Context:** The `--locale` flag defaults to `en-GB`. When layering multiple `--rf2` sources
-(e.g. International + UK Clinical), it is not specified how conflicts in preferred terms
-between the base and extension language reference sets are resolved.
+(e.g. International + UK Clinical), it is not specified how conflicts in preferred terms between
+the base and extension language reference sets are resolved.
 
-**Question:** Clarify and document the priority rule — does the last `--rf2` source win? Does
-the locale filter apply across all supplied RF2 directories? Update
-[`specs/commands/ndjson.md`](commands/ndjson.md) once confirmed.
+**Question:** Clarify and document the priority rule — does the last `--rf2` source win? Does the
+locale filter apply across all supplied RF2 directories? Update
+[`docs/commands/ndjson.md`](../docs/commands/ndjson.md) once confirmed.
 
 ---
 
 ## Q7 — `sct serve` and `sct codelist publish --to <url>`
 
-**Context:** [`specs/commands/codelist.md`](commands/codelist.md) mentions that
-`sct codelist publish --to <url>` will target "any `sct serve` endpoint (future)".
-[`specs/roadmap.md`](roadmap.md) lists `sct serve` as a future item.
+**Context:** `sct codelist publish --to <url>` is intended to target "any `sct serve` endpoint
+(future)", and [`sct serve`](commands/serve.md) is still future work (now unblocked by the ECL
+engine).
 
-**Question:** Is `sct serve` in scope for the same release as `sct codelist`? If not, the
-`--to <url>` option in `sct codelist publish` should either be deferred or spec'd to target
-only OpenCodelists initially, with `sct serve` support added later.
+**Question:** Until `sct serve` ships, `sct codelist publish` should target only OpenCodelists;
+the `--to <url>` form is deferred. Confirm and keep the
+[`docs/commands/codelist.md`](../docs/commands/codelist.md) publish section scoped accordingly.

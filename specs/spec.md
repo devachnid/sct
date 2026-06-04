@@ -46,6 +46,12 @@ from a script, from an LLM tool, without running a server.
 Each layer consumes the layer below it. The NDJSON artefact at Layer 1 is the stable interface
 between the build stage and all consumer tools.
 
+Two later additions sit alongside this model rather than inside it: an optional **FST lexical
+index** (`sct fst`, built from the NDJSON) offers a mmap-able, typo-tolerant alternative to the
+Layer 2 FTS5 search; and an **ECL engine** (`src/ecl/`) evaluates SNOMED Expression Constraint
+Language queries against the Layer 2 SQLite database (powering `sct codelist add --ecl`, and
+later `sct serve`). See [`fst.md`](fst.md) and [`ecl.md`](ecl.md).
+
 ---
 
 
@@ -61,7 +67,7 @@ between the build stage and all consumer tools.
 - `sct mcp` is read-only and stateless; opens SQLite on startup, serves until stdin EOF
 - `sct embed` requires an external Ollama process; all other subcommands are fully offline
 - All subcommands accept `--help`, produce useful errors, and exit cleanly
-- The NDJSON artefact format is a public interface versioned with `schema_version`; currently version `1`
+- The NDJSON artefact format is a public interface versioned with `schema_version`; currently version `4` (v4 added typed `relationships` for ECL)
 
 ---
 

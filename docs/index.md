@@ -41,12 +41,23 @@ sct lexical "heart attack"
 
     ---
 
-    **Full-text search** via FTS5 for keywords and phrases. **Semantic vector
-    search** via local Ollama embeddings for meaning-based queries. Both work
-    entirely offline.
+    **Full-text search** via FTS5 for keywords and phrases. **Typo-tolerant**
+    fuzzy and prefix search via a mmap'd **FST index**. **Semantic vector
+    search** via local Ollama embeddings. All offline.
 
     [:octicons-arrow-right-24: sct lexical](commands/lexical.md)
+    · [:octicons-arrow-right-24: sct fst](commands/fst.md)
     · [:octicons-arrow-right-24: sct semantic](commands/semantic.md)
+
+-   :material-format-list-checks:{ .lg .middle } __Code lists & ECL__
+
+    ---
+
+    Build version-controllable clinical **code lists**, and populate them with
+    **SNOMED CT Expression Constraint Language** — `sct codelist add --ecl
+    "<<73211009"` expands a query into concrete concepts.
+
+    [:octicons-arrow-right-24: sct codelist](commands/codelist.md)
 
 -   :material-robot:{ .lg .middle } __Connect to AI__
 

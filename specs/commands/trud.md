@@ -1,5 +1,7 @@
 # `sct trud` — Automated SNOMED CT Release Downloads via NHS TRUD API
 
+> **Design spec.** The user-facing reference is [`docs/commands/trud.md`](../../docs/commands/trud.md); keep the two in sync when behaviour changes.
+
 Authenticate with the [NHS TRUD](https://isd.digital.nhs.uk/trud) REST API to list, check,
 and download SNOMED CT RF2 release files, with optional pipeline chaining to build the full
 `sct` artefact stack immediately after download.

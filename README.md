@@ -179,9 +179,13 @@ For all further information see the full documentation by either exploring the [
 * [sct mcp](docs/mcp.md) — start a local MCP server over stdio backed by the SQLite database
 * [sct embed](docs/embed.md) — generate Ollama vector embeddings and write an Arrow IPC file
 * [sct lexical](docs/lexical.md) — keyword (FTS5) search over the SQLite database
+* [sct fst](docs/commands/fst.md) — mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
 * [sct semantic](docs/semantic.md) — semantic similarity search over the Arrow IPC embeddings file (requires Ollama)
+* `sct lookup <code>` — look up a concept by SCTID, or reverse-resolve a CTV3 code
+* `sct codelist` — build, validate, and publish clinical code lists; `add --ecl "<<73211009"` populates from an ECL query
 * `sct info <file>` — inspect any `.ndjson`, `.db`, or `.arrow` artefact and print a summary
 * `sct diff --old <file> --new <file>` — compare two NDJSON releases and report what changed
+* `sct paths` — show where sct looks for databases, embeddings, and config files
 * [sct completions](docs/completions.md) — print shell completion scripts (bash, zsh, fish, powershell, elvish)
 * [sct tui](docs/tui.md) — keyboard-driven terminal UI for interactive SNOMED CT exploration *(optional feature)*
 * [sct gui](docs/gui.md) — browser-based UI served over localhost for point-and-click exploration *(optional feature)*

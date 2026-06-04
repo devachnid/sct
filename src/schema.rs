@@ -73,3 +73,58 @@ pub struct ConceptRecord {
     pub relationships: Vec<Relationship>,
     pub schema_version: u32,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample() -> ConceptRecord {
+        ConceptRecord {
+            id: "22298006".into(),
+            fsn: "Myocardial infarction (disorder)".into(),
+            preferred_term: "Myocardial infarction".into(),
+            synonyms: vec!["Heart attack".into()],
+            hierarchy: "Clinical finding".into(),
+            hierarchy_path: vec![],
+            parents: vec![],
+            children_count: 0,
+            active: true,
+            module: "x".into(),
+            effective_time: "20260101".into(),
+            attributes: IndexMap::new(),
+            ctv3_codes: vec![],
+            read2_codes: vec![],
+            refsets: vec![],
+            relationships: vec![Relationship {
+                type_id: "363698007".into(),
+                destination_id: "74281007".into(),
+                group: 1,
+            }],
+            schema_version: SCHEMA_VERSION,
+        }
+    }
+
+    #[test]
+    fn v4_record_with_relationships_round_trips() {
+        let rec = sample();
+        let json = serde_json::to_string(&rec).unwrap();
+        let back: ConceptRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.relationships.len(), 1);
+        assert_eq!(back.relationships[0].type_id, "363698007");
+        assert_eq!(back.relationships[0].destination_id, "74281007");
+        assert_eq!(back.relationships[0].group, 1);
+        assert_eq!(back.schema_version, SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn v3_json_without_relationships_still_parses() {
+        // A pre-v4 record has no `relationships` key; serde default fills it empty.
+        let v3 = r#"{"id":"73211009","fsn":"Diabetes mellitus (disorder)",
+            "preferred_term":"Diabetes mellitus","synonyms":[],"hierarchy":"Clinical finding",
+            "hierarchy_path":[],"parents":[],"children_count":0,"active":true,"module":"x",
+            "effective_time":"","attributes":{},"schema_version":3}"#;
+        let rec: ConceptRecord = serde_json::from_str(v3).unwrap();
+        assert!(rec.relationships.is_empty());
+        assert_eq!(rec.schema_version, 3);
+    }
+}

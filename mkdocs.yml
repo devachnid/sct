@@ -64,10 +64,12 @@ nav:
       - sct gui: commands/gui.md
       - sct info: commands/info.md
       - sct lexical: commands/lexical.md
+      - sct lookup: commands/lookup.md
       - sct markdown: commands/markdown.md
       - sct mcp: commands/mcp.md
       - sct ndjson: commands/ndjson.md
       - sct parquet: commands/parquet.md
+      - sct paths: commands/paths.md
       - sct refset: commands/refset.md
       - sct semantic: commands/semantic.md
       - sct sqlite: commands/sqlite.md
@@ -77,6 +79,7 @@ nav:
   - Reference:
     - Path Resolution: path-resolution.md
     - UK Edition Structure: uk-edition-structure.md
+    - GPS and IPS Releases: gps-ips.md
     - Benchmarks: benchmarks.md
     - Vector Search Landscape: vector-search-landscape.md
 

@@ -1,6 +1,6 @@
 # ECL — Expression Constraint Language for `sct`
 
-**Status:** Design proposal — slice 1 (parser + evaluator) being built
+**Status:** ✅ Shipped (v0.5.0). Slice 1 — parser + evaluator (hierarchy, refset, boolean, wildcard, **and attribute refinement**) — is built and wired into `sct codelist add --ecl`. This document is the design record. Deferred items (cardinality, reverse/dotted attributes, group cardinality, whole-AST SQL compilation, `sct serve` `$expand`) remain future work — see §5 and §9.
 **Scope:** Parse and evaluate SNOMED CT Expression Constraint Language (ECL) against a local `sct` SQLite database, returning the set of matching concept SCTIDs. First consumer: `sct codelist add --ecl "<<73211009"`.
 **Audience:** A coding agent (and Marcus) implementing this in the `sct` repo.
 

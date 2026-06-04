@@ -1,6 +1,6 @@
 # FST-backed lexical index for `sct`
 
-**Status:** Design proposal — benchmark-first slice agreed
+**Status:** ✅ Shipped (v0.4.0–0.4.1). This document is the design record; it now describes a built feature. User docs: [`docs/commands/fst.md`](../docs/commands/fst.md). The benchmark results in §10 are real measurements.
 **Scope:** Evaluate a finite-state-transducer lexical index, built from `sct`'s canonical NDJSON, as a slimmer and more capable alternative to the existing SQLite FTS5 search path. Uses BurntSushi's [`fst`](https://docs.rs/fst/) crate.
 **Audience:** A coding agent (and Marcus) implementing this in the `sct` repo.
 

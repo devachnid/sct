@@ -68,6 +68,8 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
 
 - [x] `sct codelist new <filename>` — scaffold a `.codelist` file from template
 - [x] `sct codelist add <file> <sctid>` — add concept(s) to a codelist
+- [x] `sct codelist add <file> --ecl <expression>` — add every concept matched by an
+      ECL expression (e.g. `--ecl "<<73211009"`). See the [ECL engine](#completed) below.
 - [x] `sct codelist remove <file> <sctid>` — move concept to excluded record
 - [x] `sct codelist validate <file>` — CI-ready validation (exit 0 = warn, 1 = error)
 - [x] `sct codelist stats <file>` — concept counts, hierarchy breakdown, staleness
@@ -133,6 +135,22 @@ Full spec in [`specs/commands/codelist.md`](commands/codelist.md).
 
 ## Completed
 
+- [x] **ECL engine** (v0.5.0) — a SNOMED CT Expression Constraint Language parser and
+      evaluator (`src/ecl/`), wired into `sct codelist add --ecl`. Supports hierarchy
+      (`<` `<<` `>` `>>` `<!` `>!`), refset membership (`^`), boolean (`AND`/`OR`/`MINUS`),
+      wildcard, and **attribute refinement** (`focus : type = value`, comma-conjoined,
+      `{ }` groups, `!=`). Hierarchy/refset queries run on any database; attribute
+      refinement uses the schema-v4 `concept_relationships` table. It is the intermediate
+      representation the query stack converges on — the compile target for SCT-QL and the
+      engine behind `sct serve` `$expand`. Design in [`specs/ecl.md`](ecl.md).
+- [x] **Schema v4** (v0.5.0) — `ConceptRecord.relationships` (typed attribute triples,
+      SCTID-keyed, with group), persisted into a `concept_relationships` table by
+      `sct sqlite`. Additive: older NDJSON parses with empty relationships.
+- [x] **FST lexical index** (v0.4.0–0.4.1) — `sct fst build` / `sct fst search`: a single,
+      mmap-able artefact giving sub-millisecond exact / prefix / **fuzzy** / word-intersection
+      search, with delta-varint posting compression and an optional `--no-terms` slim build.
+      Design and benchmarks in [`specs/fst.md`](fst.md); user docs in
+      [`docs/commands/fst.md`](commands/fst.md).
 - [x] **Unified path resolution** (v0.3.11) — every read-side command
       (`sct lookup`, `lexical`, `refset`, `codelist`, `mcp`, `semantic`, `tui`,
       `gui`) now discovers `--db` and `--embeddings` through a single chain:

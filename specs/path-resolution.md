@@ -1,5 +1,8 @@
 # Path Resolution — DBs, Embeddings, and Config
 
+> **Design spec** (rationale + full rules). The user-facing reference is
+> [`docs/path-resolution.md`](../docs/path-resolution.md); keep the two in sync when behaviour changes.
+
 A cross-cutting convention for **where `sct` looks** for databases, embeddings files, and configuration. All read-side commands (`sct lookup`, `sct lexical`, `sct refset`, `sct codelist`, `sct info`, `sct mcp`, `sct semantic`, `sct tui`, `sct gui`) discover their inputs through the rules below; `sct trud` retains its existing write-path resolution.
 
 This spec exists because — prior to v0.3.11 — every command rolled its own discovery and the conventions disagreed. In particular, `sct trud download --pipeline` wrote a `.db` to `~/.local/share/sct/data/` that subsequent commands could not find (issue [#19](https://github.com/pacharanero/sct/issues/19)).

@@ -118,3 +118,32 @@ fn schema_version_is_current() {
         assert_eq!(r.schema_version, SCHEMA_VERSION);
     }
 }
+
+#[test]
+fn relationships_preserve_type_destination_and_group() {
+    let mut ds = minimal_dataset();
+    // Fever (386661006): finding-site (363698007) = some structure, in group 1;
+    // plus a second attribute in group 1 to exercise grouping/sorting.
+    ds.attributes.insert(
+        "386661006".into(),
+        vec![
+            ("363698007".into(), "386661006".into(), "1".into()),
+            ("116676008".into(), "23583003".into(), "1".into()),
+        ],
+    );
+
+    let records = build_records(&ds, "en", false).unwrap();
+    let fever = records.iter().find(|r| r.id == "386661006").unwrap();
+
+    // The display-oriented `attributes` map is keyed by label...
+    assert!(fever.attributes.contains_key("finding_site"));
+    // ...while `relationships` preserves the raw type SCTID and group for ECL.
+    assert_eq!(fever.relationships.len(), 2);
+    let fs = fever
+        .relationships
+        .iter()
+        .find(|r| r.type_id == "363698007")
+        .expect("finding_site relationship present by SCTID");
+    assert_eq!(fs.destination_id, "386661006");
+    assert_eq!(fs.group, 1);
+}

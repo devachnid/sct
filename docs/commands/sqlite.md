@@ -20,6 +20,10 @@ sct sqlite --input <NDJSON> [--output <DB>]
 |---|---|---|
 | `--input <FILE>` | *(required)* | NDJSON file produced by `sct ndjson`. Use `-` for stdin. |
 | `--output <FILE>` | `snomed.db` | Output SQLite database path. |
+| `--transitive-closure` | off | Build the transitive closure table (`concept_ancestors`) after loading — same as running [`sct tct`](tct.md) immediately after. Adds build time and size; needed for subsumption-heavy workloads. |
+| `--include-self` | off | Include reflexive rows (`ancestor_id = descendant_id`, depth 0) in the TCT. Only meaningful with `--transitive-closure`. |
+
+The database always includes a `concept_relationships` table (typed attribute triples) used by ECL attribute refinement — see [`sct codelist add --ecl`](codelist.md).
 
 ---
 
