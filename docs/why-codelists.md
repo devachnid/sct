@@ -8,7 +8,7 @@ They are also, very often, the **least-engineered artefact in the whole pipeline
 
 ## Code lists are where the errors hide
 
-Documented errors in widely-deployed clinical tools have turned on *which codes were selected*, not on the calculation that consumed them. The QRISK2 implementation in TPP SystmOne and CHA₂DS₂-VASc implementations across more than one supplier are cited examples: the arithmetic was correct, but the mapping from the real world ("this patient has this condition") to a set of codes was not. A wrong code list does not throw an error. It silently changes who counts — and you find out, if at all, much later.
+Documented errors in widely-deployed clinical tools have turned on *which codes were selected*, not on the calculation that consumed them. The clearest UK example is the QRISK2 cardiovascular-risk calculator in TPP's SystmOne: in 2016 the MHRA had the tool temporarily disabled after *code-mapping errors* were identified [[1]](#references) — clinical codes had been omitted and Read 2 codes mis-mapped to CTV3, leaving up to ~270,000 patients with potentially incorrect cardiovascular-risk scores, and with them potentially wrong statin decisions [[2]](#references). The same class of code-selection error has surfaced with other widely-used scores and across more than one GP IT system (stroke-risk scoring such as CHA₂DS₂-VASc among them). In each case the algorithm arithmetic was correct, but the mapping from the real world ("*this* patient has *this* condition") to a set of codes was not. A wrong code list does not throw an error. It silently changes who counts — and you find out, if at all, much later.
 
 This is the uncomfortable truth about code lists: a subtle inclusion or omission is invisible at runtime and can change a denominator, a cohort, or an alert population. The safeguards we take for granted in software — version control, code review, diffs, reproducible builds, a clear record of *why* a change was made — are exactly the safeguards that code lists usually lack.
 
@@ -76,3 +76,10 @@ This is the same "data over services" instinct that drives the rest of `sct`: a 
 ---
 
 See the [`sct codelist`](commands/codelist.md) command reference and the [Refsets and Code Lists walkthrough](walkthrough/refsets-codelists.md) to start building one.
+
+---
+
+## References
+
+1. MHRA. *MHRA information on TPP and QRISK®2*. GOV.UK, 2016. <https://www.gov.uk/government/news/mhra-information-on-tpp-and-qrisk2>
+2. Digital Health. *QRisk2 in TPP "fixed" but up to 270,000 patients affected*. 2016. <https://www.digitalhealth.net/2016/06/qrisk2-in-tpp-fixed-but-up-to-270000-patients-affected/>
