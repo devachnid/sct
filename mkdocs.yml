@@ -54,7 +54,9 @@ nav:
       - Transitive Closure Table: walkthrough/transitive-closure.md
       - Interactive UIs: walkthrough/interactive-uis.md
       - Everything Else: walkthrough/everything-else.md
-  - Why Build This?: why-build-this.md
+  - Why Build This?:
+      - Why sct?: why-build-this.md
+      - Why code lists?: why-codelists.md
   - Commands:
       - sct codelist: commands/codelist.md
       - sct completions: commands/completions.md
