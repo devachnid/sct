@@ -55,10 +55,12 @@ struct AppState {
 
 pub fn run(args: Args) -> Result<()> {
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
-    // Open once up front so a bad/missing DB fails before we bind the port.
+    // Open once up front so a bad/missing DB fails before we bind the port, and
+    // nudge the user about the transitive-closure table while we're here.
     {
-        let _conn = crate::commands::open_db_readonly(&db, None)
+        let conn = crate::commands::open_db_readonly(&db, None)
             .with_context(|| format!("opening database {}", db.display()))?;
+        crate::ecl::warn_if_no_tct(&conn);
     }
 
     let addr = format!("{}:{}", args.host, args.port);

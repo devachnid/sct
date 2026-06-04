@@ -626,6 +626,7 @@ fn cmd_add(args: AddArgs) -> Result<()> {
         .collect();
 
     let mut all_ids: Vec<String> = if let Some(ecl) = &args.ecl {
+        crate::ecl::warn_if_no_tct(&conn);
         let ids =
             crate::ecl::expand(&conn, ecl).with_context(|| format!("expanding ECL {ecl:?}"))?;
         if ids.is_empty() {

@@ -60,16 +60,18 @@ fn eval_op(conn: &Connection, op: Op, base: &IdSet) -> Result<IdSet> {
     let mut out = IdSet::new();
     match op {
         Op::DescendantOf | Op::DescendantOrSelfOf => {
+            let tct = has_tct(conn);
             for id in base {
-                collect_transitive(conn, id, true, &mut out)?;
+                collect_transitive(conn, id, true, tct, &mut out)?;
             }
             if op == Op::DescendantOrSelfOf {
                 out.extend(base.iter().cloned());
             }
         }
         Op::AncestorOf | Op::AncestorOrSelfOf => {
+            let tct = has_tct(conn);
             for id in base {
-                collect_transitive(conn, id, false, &mut out)?;
+                collect_transitive(conn, id, false, tct, &mut out)?;
             }
             if op == Op::AncestorOrSelfOf {
                 out.extend(base.iter().cloned());
@@ -94,21 +96,54 @@ fn eval_op(conn: &Connection, op: Op, base: &IdSet) -> Result<IdSet> {
     Ok(out)
 }
 
-/// Descendants (`down = true`) or ancestors (`down = false`) of `id` via a
-/// recursive CTE over `concept_isa`. `UNION` dedups, so the DAG terminates.
-fn collect_transitive(conn: &Connection, id: &str, down: bool, out: &mut IdSet) -> Result<()> {
-    let sql = if down {
-        "WITH RECURSIVE d(id) AS (
-            SELECT child_id FROM concept_isa WHERE parent_id = ?1
-            UNION
-            SELECT ci.child_id FROM concept_isa ci JOIN d ON ci.parent_id = d.id
-         ) SELECT id FROM d"
-    } else {
-        "WITH RECURSIVE a(id) AS (
-            SELECT parent_id FROM concept_isa WHERE child_id = ?1
-            UNION
-            SELECT ci.parent_id FROM concept_isa ci JOIN a ON ci.child_id = a.id
-         ) SELECT id FROM a"
+/// Whether the precomputed transitive-closure table (`concept_ancestors`,
+/// built by `sct sqlite --transitive-closure` / `sct tct`) is present. When it
+/// is, `<<`/`>>` are indexed lookups instead of recursive CTEs - a large
+/// speed-up on big hierarchies. See [`warn_if_no_tct`](crate::ecl::warn_if_no_tct).
+fn has_tct(conn: &Connection) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='concept_ancestors'",
+        [],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
+/// Proper descendants (`down = true`) or ancestors (`down = false`) of `id`.
+/// Uses the indexed transitive-closure table when `tct` is set, otherwise a
+/// recursive CTE over `concept_isa`. Both exclude `id` itself (the `<<`/`>>`
+/// caller adds it back), so the `concept_ancestors` query filters self out in
+/// case the table was built with `--include-self`.
+fn collect_transitive(
+    conn: &Connection,
+    id: &str,
+    down: bool,
+    tct: bool,
+    out: &mut IdSet,
+) -> Result<()> {
+    let sql = match (tct, down) {
+        (true, true) => {
+            "SELECT descendant_id FROM concept_ancestors
+             WHERE ancestor_id = ?1 AND descendant_id != ?1"
+        }
+        (true, false) => {
+            "SELECT ancestor_id FROM concept_ancestors
+             WHERE descendant_id = ?1 AND ancestor_id != ?1"
+        }
+        (false, true) => {
+            "WITH RECURSIVE d(id) AS (
+                SELECT child_id FROM concept_isa WHERE parent_id = ?1
+                UNION
+                SELECT ci.child_id FROM concept_isa ci JOIN d ON ci.parent_id = d.id
+             ) SELECT id FROM d"
+        }
+        (false, false) => {
+            "WITH RECURSIVE a(id) AS (
+                SELECT parent_id FROM concept_isa WHERE child_id = ?1
+                UNION
+                SELECT ci.parent_id FROM concept_isa ci JOIN a ON ci.child_id = a.id
+             ) SELECT id FROM a"
+        }
     };
     let mut stmt = conn.prepare_cached(sql)?;
     let rows = stmt.query_map([id], |r| r.get::<_, String>(0))?;

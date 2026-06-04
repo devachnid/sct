@@ -57,6 +57,7 @@ fn expand(args: ExpandArgs) -> Result<()> {
 
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
     let conn = crate::commands::open_db_readonly(&db, None)?;
+    crate::ecl::warn_if_no_tct(&conn);
     let ids = crate::ecl::expand(&conn, &expr)?;
 
     eprintln!("{} concept(s) matched {expr:?}", ids.len());

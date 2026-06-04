@@ -44,3 +44,24 @@ pub fn expand_path(db: &Path, ecl: &str) -> Result<Vec<String>> {
         .with_context(|| format!("opening {}", db.display()))?;
     expand(&conn, ecl)
 }
+
+/// Print a one-line stderr hint when the database lacks the transitive-closure
+/// table (`concept_ancestors`). Without it, large `<<` / `>>` ECL evaluation
+/// falls back to recursive CTEs and is much slower. Call from command entry
+/// points that run ECL (`sct ecl`, `sct serve`, `sct codelist add --ecl`).
+pub fn warn_if_no_tct(conn: &Connection) {
+    let has_tct = conn
+        .query_row(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='concept_ancestors'",
+            [],
+            |_| Ok(()),
+        )
+        .is_ok();
+    if !has_tct {
+        eprintln!(
+            "note: this database has no transitive-closure table, so large `<<` / `>>` ECL \
+             queries fall back to slower recursive CTEs.\n  Build it once for a big speed-up: \
+             `sct sqlite --transitive-closure` (or `sct tct --db <db>`)."
+        );
+    }
+}
