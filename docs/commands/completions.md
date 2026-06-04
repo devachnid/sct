@@ -42,7 +42,7 @@ mkdir -p ~/.zfunc
 sct completions zsh > ~/.zfunc/_sct
 ```
 
-Ensure `~/.zfunc` is on `$fpath` — add this to `~/.zshrc` **before** `compinit`:
+Ensure `~/.zfunc` is on `$fpath` - add this to `~/.zshrc` **before** `compinit`:
 
 ```zsh
 fpath=(~/.zfunc $fpath)

@@ -20,9 +20,9 @@ sct --version
 
 ## Get SNOMED RF2 Data
 
-SNOMED CT is distributed as RF2 (Release Format 2) — a set of TSV files.
+SNOMED CT is distributed as RF2 (Release Format 2) - a set of TSV files.
 
-### Option A — Automated download with `sct trud` (recommended for UK users)
+### Option A - Automated download with `sct trud` (recommended for UK users)
 
 `sct trud` authenticates with [NHS TRUD](https://isd.digital.nhs.uk/trud), downloads the
 correct release zip, verifies its SHA-256 checksum, and can optionally run the full build
@@ -33,7 +33,7 @@ pipeline in one command.
 #### 1. Get your TRUD API key
 
 1. Register or sign in at [isd.digital.nhs.uk/trud](https://isd.digital.nhs.uk/trud/users/guest/filters/0/account/form)
-2. Subscribe to the **UK Monolith** (item 1799) — includes International + UK Clinical + UK Drug (dm+d) + UK Pathology, pre-merged
+2. Subscribe to the **UK Monolith** (item 1799) - includes International + UK Clinical + UK Drug (dm+d) + UK Pathology, pre-merged
 3. Your API key is shown on your [TRUD account page](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/account/manage)
 
 The key is a plain string. It is tied to your account credentials: if you change your TRUD
@@ -41,7 +41,7 @@ email or password, the key is regenerated and the old one stops working immediat
 
 #### 2. Store the key safely
 
-The conventional location is `~/.config/sct/trud-api-key` — a plain text file with the key
+The conventional location is `~/.config/sct/trud-api-key` - a plain text file with the key
 on the first line and no other content:
 
 ```bash
@@ -53,7 +53,7 @@ chmod 600 ~/.config/sct/trud-api-key
 > **Do not commit this file to version control.** If you accidentally expose the key,
 > regenerate it immediately from your TRUD account page.
 
-Alternatively, export it as an environment variable — useful for CI/CD and automation:
+Alternatively, export it as an environment variable - useful for CI/CD and automation:
 
 ```bash
 export TRUD_API_KEY=your-key-here
@@ -93,11 +93,11 @@ automation examples (launchd, systemd, cron, GitHub Actions), and troubleshootin
 
 ---
 
-### Option B — Manual download
+### Option B - Manual download
 
 If you prefer to download the zip yourself:
 
-- **UK edition:** [NHS TRUD](https://isd.digital.nhs.uk/trud) — subscribe to item **1799** (UK Monolith, recommended)
+- **UK edition:** [NHS TRUD](https://isd.digital.nhs.uk/trud) - subscribe to item **1799** (UK Monolith, recommended)
   - Includes: International + UK Clinical + UK Drug (dm+d) + UK Pathology, pre-merged
   - Note: item 101 is the Clinical Edition (no dm+d); item 105 is the Drug Extension on its own
 - **International edition:** [SNOMED MLDS](https://mlds.ihtsdotools.org/)
@@ -126,7 +126,7 @@ sct ndjson --rf2 .downloads/uk_sct2mo_41.6.0_20260311000001Z.zip \
 
 If you pass it a `.zip` it will automatically extract and parse the RF2 files within. If you pass it a directory containing extracted RF2 files, it will parse them directly.
 
-The output is a single `.ndjson` file — one JSON object per line, each representing a SNOMED concept with all its details (ID, preferred term, synonyms, hierarchy, relationships, attributes, etc.)
+The output is a single `.ndjson` file - one JSON object per line, each representing a SNOMED concept with all its details (ID, preferred term, synonyms, hierarchy, relationships, attributes, etc.)
 
 Testing on my laptop, this takes about 30 seconds for the UK Monolith release with 831k active concepts. The resulting NDJSON file is about 1.1 GB. Incredibly, because NDJSON is easier to handle in memory than JSON, **you can load the whole 1.1 GB file into VSCode** (takes less than 5 seconds) and play around with it there, great for getting to understand what data is available and how it's structured.
 
@@ -256,7 +256,7 @@ On my machine this takes about 45 seconds for the UK Monolith release with 831k 
 
 **Now you can query SNOMED CT with standard `sqlite3`:** The following examples should all work out of the box on the resulting database, running in the terminal.
 
-LLMs are excellent at generating SQL queries, so you can also use any LLM to generate custom SQL queries for you on demand. `sct` includes an MCP server that exposes the database as 'tools' to LLMs in a standard way for interactive querying — see [Semantic search and LLMs](semantic-llm.md).
+LLMs are excellent at generating SQL queries, so you can also use any LLM to generate custom SQL queries for you on demand. `sct` includes an MCP server that exposes the database as 'tools' to LLMs in a standard way for interactive querying - see [Semantic search and LLMs](semantic-llm.md).
 
 Free-text search (FTS5)
 
@@ -317,7 +317,7 @@ SNOMED → CTV3 mappings is useful for:
 - **Migrating data** from legacy systems that recorded CTV3 codes
 - **Interoperability** with older clinical records
 - **Reporting** to systems that still consume CTV3
-- **Learning and exploration** — see how concepts were mapped from CTV3 to SNOMED CT
+- **Learning and exploration** - see how concepts were mapped from CTV3 to SNOMED CT
 
 Over 524,000 concepts have CTV3 mappings in the UK Monolith release. Read v2 codes are not distributed
 as a separate refset in current UK releases.
@@ -326,8 +326,8 @@ as a separate refset in current UK releases.
 
 The SQLite database includes:
 
-- `concepts.ctv3_codes` — JSON array of CTV3 codes for each concept
-- `concept_maps` table — reverse index for fast CTV3 code → SNOMED lookup
+- `concepts.ctv3_codes` - JSON array of CTV3 codes for each concept
+- `concept_maps` table - reverse index for fast CTV3 code → SNOMED lookup
 
 **Example queries:**
 
@@ -357,7 +357,7 @@ sqlite3 snomed.db "
 
 With SQLite built, you can now:
 
-- [Browse reference sets and build code lists](refsets-codelists.md) — explore what refsets are in the release and curate clinical code lists
-- [Export to Parquet](parquet-duckdb.md) — analytics with DuckDB, pandas, Polars, or Spark
-- [Semantic search and LLMs](semantic-llm.md) — Markdown export, vector embeddings, MCP server
-- [Everything else](everything-else.md) — transitive closure table, interactive UIs, release diff, and more
+- [Browse reference sets and build code lists](refsets-codelists.md) - explore what refsets are in the release and curate clinical code lists
+- [Export to Parquet](parquet-duckdb.md) - analytics with DuckDB, pandas, Polars, or Spark
+- [Semantic search and LLMs](semantic-llm.md) - Markdown export, vector embeddings, MCP server
+- [Everything else](everything-else.md) - transitive closure table, interactive UIs, release diff, and more

@@ -1,9 +1,9 @@
-//! `sct info` — Inspect a `sct`-produced artefact and print a summary.
+//! `sct info` - Inspect a `sct`-produced artefact and print a summary.
 //!
 //! Supports:
-//!   .ndjson  — concept count, schema_version, hierarchy breakdown, source date
-//!   .db      — concept count, schema_version, FTS row count, file size
-//!   .arrow   — embedding count, embedding dimension, file size
+//!   .ndjson  - concept count, schema_version, hierarchy breakdown, source date
+//!   .db      - concept count, schema_version, FTS row count, file size
+//!   .arrow   - embedding count, embedding dimension, file size
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -96,7 +96,7 @@ fn info_ndjson(path: &Path) -> Result<()> {
             println!("Built by:       sct {}", p.sct_version);
         }
     } else if let Some(date) = extract_date_from_filename(path) {
-        // Older v3 NDJSONs without a header — fall back to filename heuristic.
+        // Older v3 NDJSONs without a header - fall back to filename heuristic.
         println!("Release date:   {} (inferred from filename)", date);
     }
     println!("Concepts:       {}", fmt_count(count));

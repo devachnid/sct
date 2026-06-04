@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/fhir.sh — FHIR R4 terminology server query wrappers.
+# lib/fhir.sh - FHIR R4 terminology server query wrappers.
 #
 # All functions require BENCH_SERVER (base URL, no trailing slash),
 # BENCH_TIMEOUT, BENCH_RUNS, BENCH_WARMUP, and time_cmd from lib/timing.sh.
@@ -12,7 +12,7 @@
 FHIR_ANCESTOR_HOPS=0
 FHIR_BULK_MODE="sequential"
 
-# _urlencode STR — percent-encodes a string for safe embedding in a URL query value.
+# _urlencode STR - percent-encodes a string for safe embedding in a URL query value.
 _urlencode() {
   local s="$1" out='' i c
   for (( i=0; i<${#s}; i++ )); do
@@ -121,7 +121,7 @@ fhir_time_ancestors_iterative() {
     [[ -z "$probe_parent" || "$probe_parent" == "null" ]] && break
     current="$probe_parent"
     (( FHIR_ANCESTOR_HOPS++ ))
-    # Safety cap — SNOMED hierarchy never exceeds ~20 levels
+    # Safety cap - SNOMED hierarchy never exceeds ~20 levels
     (( FHIR_ANCESTOR_HOPS > 25 )) && break
   done
 

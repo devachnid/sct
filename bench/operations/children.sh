@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# operations/children.sh — direct children of a concept
+# operations/children.sh - direct children of a concept
 #
-# Representative fixture: 73211009 (Diabetes mellitus — ~20 direct children)
+# Representative fixture: 73211009 (Diabetes mellitus - ~20 direct children)
 # Local:  JOIN on concept_isa table
 # Remote: ValueSet/$expand with ECL expression <!PARENT (direct children)
 

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// in a backward-incompatible way.
 ///
 /// v4: adds `relationships` (typed attribute triples, SCTID-keyed) to support
-/// ECL attribute refinement. Additive — older records parse with an empty list.
+/// ECL attribute refinement. Additive - older records parse with an empty list.
 pub const SCHEMA_VERSION: u32 = 4;
 
 /// A lightweight reference to another concept (used in parents and attributes).
@@ -62,7 +62,7 @@ pub struct ConceptRecord {
     pub read2_codes: Vec<String>,
     /// SCTIDs of reference sets this concept belongs to. Populated when the
     /// NDJSON was built with `--refsets simple` (or higher). Each ID itself
-    /// resolves to a concept in this dataset — look it up to get the refset's
+    /// resolves to a concept in this dataset - look it up to get the refset's
     /// preferred term, module, and other metadata.
     #[serde(default)]
     pub refsets: Vec<String>,

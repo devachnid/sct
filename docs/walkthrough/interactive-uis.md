@@ -39,8 +39,8 @@ sct gui --no-open        # start server but don't open browser
 
 Single-page app with three tabs:
 
-- **Detail** — full concept view: preferred term, FSN, synonyms, attributes, parents, children count
-- **Graph** — D3 force-directed graph showing the focal concept (centre), its parents (above), and up to 50 children (below). Draggable nodes, zoom/pan, click any node to navigate.
-- **Hierarchy** — browse the 19 top-level SNOMED hierarchies
+- **Detail** - full concept view: preferred term, FSN, synonyms, attributes, parents, children count
+- **Graph** - D3 force-directed graph showing the focal concept (centre), its parents (above), and up to 50 children (below). Draggable nodes, zoom/pan, click any node to navigate.
+- **Hierarchy** - browse the 19 top-level SNOMED hierarchies
 
-Bound to localhost only — never accessible from the network.
+Bound to localhost only - never accessible from the network.

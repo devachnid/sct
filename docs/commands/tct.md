@@ -2,7 +2,7 @@
 
 Build a **transitive closure table** (TCT) over the SNOMED CT IS-A hierarchy in an existing SQLite database.
 
-**When to use:** you need fast subsumption queries — "give me all descendants of X" — and want to avoid recursive CTEs at query time. The TCT trades database size for query speed: a recursive CTE takes ~4 ms per root concept; the TCT collapses that to an indexed lookup under 1 ms regardless of hierarchy depth or fanout.
+**When to use:** you need fast subsumption queries - "give me all descendants of X" - and want to avoid recursive CTEs at query time. The TCT trades database size for query speed: a recursive CTE takes ~4 ms per root concept; the TCT collapses that to an indexed lookup under 1 ms regardless of hierarchy depth or fanout.
 
 The TCT is entirely optional. Because it is derived from the `concept_isa` table already present in every `sct sqlite` output, it can be added to any existing database at any time without re-reading the original NDJSON artefact.
 
@@ -147,7 +147,7 @@ These are estimates; measure with `sct info` and record in `docs/benchmarks.md`.
 
 ### All descendants of a concept
 
-Without TCT — recursive CTE (~4 ms on UK Monolith):
+Without TCT - recursive CTE (~4 ms on UK Monolith):
 
 ```bash
 sqlite3 snomed.db <<EOF
@@ -162,7 +162,7 @@ SELECT COUNT(*) FROM descendants;
 EOF
 ```
 
-With TCT — indexed lookup (<1 ms on UK Monolith):
+With TCT - indexed lookup (<1 ms on UK Monolith):
 
 ```bash
 sqlite3 snomed.db <<EOF
@@ -218,7 +218,7 @@ EOF
 
 This returns the full ancestor chain of Myocardial infarction ordered from immediate parent (depth 1) up to the root. Reversing `ORDER BY` gives root-first.
 
-### Subsumption test — is A a descendant of B?
+### Subsumption test - is A a descendant of B?
 
 ```bash
 sqlite3 snomed.db <<EOF
@@ -227,11 +227,11 @@ SELECT CASE WHEN EXISTS (
   SELECT 1 FROM concept_ancestors
   WHERE ancestor_id  = '22298006'
     AND descendant_id = '57054005'
-) THEN 'yes — is a descendant' ELSE 'no' END;
+) THEN 'yes - is a descendant' ELSE 'no' END;
 EOF
 ```
 
-O(1) via the unique composite index — the core operation of any subsumption check.
+O(1) via the unique composite index - the core operation of any subsumption check.
 
 ### Concepts within N hops
 
@@ -300,8 +300,8 @@ EOF
 
 - Use `sct info snomed.db` to quickly check TCT status before running subsumption-heavy queries.
 - The TCT covers all concepts (active and inactive) matching the coverage of `concept_isa`. Filter `WHERE c.active = 1` in your queries if you only want active descendants.
-- The `depth` column enables "shallow" subsumption — restricting to direct children (`depth = 1`) is equivalent to querying `concept_isa` directly.
-- The SCT-QL compiler detects TCT presence at compile time and uses it automatically — see below.
+- The `depth` column enables "shallow" subsumption - restricting to direct children (`depth = 1`) is equivalent to querying `concept_isa` directly.
+- The SCT-QL compiler detects TCT presence at compile time and uses it automatically - see below.
 
 ---
 
@@ -354,7 +354,7 @@ for each concept C in concepts:
                 enqueue (P, depth+1)
 ```
 
-Because the traversal is BFS, the first time any ancestor is encountered for a given descendant is always via the shortest path — no `MIN(depth)` deduplication is needed. SNOMED CT is a DAG (no cycles), so the visited set purely prevents redundant work in polyhierarchies where a concept has multiple parents.
+Because the traversal is BFS, the first time any ancestor is encountered for a given descendant is always via the shortest path - no `MIN(depth)` deduplication is needed. SNOMED CT is a DAG (no cycles), so the visited set purely prevents redundant work in polyhierarchies where a concept has multiple parents.
 
 All inserts are batched inside a single SQLite transaction. Committing per-concept would be orders of magnitude slower.
 
@@ -407,4 +407,4 @@ Record: TCT row count, `snomed.db` file size with and without TCT, build time, a
 
 ---
 
-*See also: [`sct sqlite`](sqlite.md) — build the database, [`sct info`](info.md) — inspect artefact metadata.*
+*See also: [`sct sqlite`](sqlite.md) - build the database, [`sct info`](info.md) - inspect artefact metadata.*

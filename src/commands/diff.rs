@@ -1,4 +1,4 @@
-//! `sct diff` — Compare two SNOMED CT NDJSON artefacts and report what changed.
+//! `sct diff` - Compare two SNOMED CT NDJSON artefacts and report what changed.
 //!
 //! Reports:
 //!   - Concepts added (present in NEW, absent from OLD)
@@ -7,8 +7,8 @@
 //!   - Hierarchy changes (concept moved to a different top-level hierarchy)
 //!
 //! Output modes:
-//!   --format summary (default) — human-readable report printed to stdout
-//!   --format ndjson             — one diff record per changed concept, written to stdout or --output
+//!   --format summary (default) - human-readable report printed to stdout
+//!   --format ndjson             - one diff record per changed concept, written to stdout or --output
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -99,7 +99,7 @@ pub fn run(args: Args) -> Result<()> {
     // Walk OLD to find inactivations, term changes, hierarchy changes
     for (id, old_rec) in &old_map {
         if !old_rec.active {
-            continue; // already inactive in old — not interesting
+            continue; // already inactive in old - not interesting
         }
         match new_map.get(id) {
             None => {

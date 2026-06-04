@@ -1,4 +1,4 @@
-# `sct trud` — Automated SNOMED CT Release Downloads via NHS TRUD API
+# `sct trud` - Automated SNOMED CT Release Downloads via NHS TRUD API
 
 > **Design spec.** The user-facing reference is [`docs/commands/trud.md`](../../docs/commands/trud.md); keep the two in sync when behaviour changes.
 
@@ -35,7 +35,7 @@ always verifies this after download and deletes the file if the checksum does no
 | **101** | UK Clinical Edition | Full, Snapshot & Delta | International + UK Clinical extension |
 | **105** | UK Drug Extension (dm+d) | Full, Snapshot & Delta | Prescribing/medicines concepts only |
 
-For most users the **Monolith (item 1799)** is the right default — it is a single zip containing
+For most users the **Monolith (item 1799)** is the right default - it is a single zip containing
 everything, with conflicts and duplicates already resolved by NHS England.
 
 ---
@@ -53,11 +53,11 @@ page. The key is invalidated if the email or password changes.
 `sct trud` resolves the API key using the following precedence (highest to lowest). The first
 source that provides a non-empty value is used; the remaining sources are not consulted.
 
-1. `--api-key <KEY>` CLI flag (plain string — avoid where possible; the key is visible in
+1. `--api-key <KEY>` CLI flag (plain string - avoid where possible; the key is visible in
    process listings and shell history)
-2. `--api-key-file <PATH>` CLI flag — path to a file whose first line is the API key; the file
+2. `--api-key-file <PATH>` CLI flag - path to a file whose first line is the API key; the file
    may contain only the key and optional trailing whitespace
-3. `$TRUD_API_KEY` environment variable — **preferred for CI/CD and cron jobs**
+3. `$TRUD_API_KEY` environment variable - **preferred for CI/CD and cron jobs**
 4. `api_key` field in the config file (`~/.config/sct/config.toml`)
 
 If no key is found from any source, `sct trud` exits with a clear error message directing the
@@ -67,7 +67,7 @@ user to the TRUD account page.
 
 ## Configuration file
 
-`~/.config/sct/config.toml` — created by the user; `sct trud` reads but never writes it.
+`~/.config/sct/config.toml` - created by the user; `sct trud` reads but never writes it.
 
 ```toml
 [trud]
@@ -117,9 +117,9 @@ sct trud list [--edition <NAME>] [--item <N>]
 | Flag | Default | Description |
 |---|---|---|
 | `--edition <NAME>` | `uk_monolith` | Named edition profile (see config). |
-| `--item <N>` | — | Raw TRUD item number; overrides `--edition`. |
-| `--api-key <KEY>` | — | API key as a plain string. |
-| `--api-key-file <PATH>` | — | Path to a file containing the API key. |
+| `--item <N>` | - | Raw TRUD item number; overrides `--edition`. |
+| `--api-key <KEY>` | - | API key as a plain string. |
+| `--api-key-file <PATH>` | - | Path to a file containing the API key. |
 
 **Output** (table to stdout):
 
@@ -192,12 +192,12 @@ sct trud download [--edition <NAME>] [--item <N>]
 | Flag | Default | Description |
 |---|---|---|
 | `--edition <NAME>` | `uk_monolith` | Named edition profile. |
-| `--item <N>` | — | Raw TRUD item number; overrides `--edition`. |
+| `--item <N>` | - | Raw TRUD item number; overrides `--edition`. |
 | `--latest` | on | Download the most recent release. |
-| `--release <VERSION>` | — | Download a specific named version (e.g. `41.5.0`). Mutually exclusive with `--latest`. |
+| `--release <VERSION>` | - | Download a specific named version (e.g. `41.5.0`). Mutually exclusive with `--latest`. |
 | `--output-dir <PATH>` | `download_dir` from config | Directory to save the zip. |
-| `--api-key <KEY>` | — | API key as a plain string. |
-| `--api-key-file <PATH>` | — | Path to a file containing the API key. |
+| `--api-key <KEY>` | - | API key as a plain string. |
+| `--api-key-file <PATH>` | - | Path to a file containing the API key. |
 | `--skip-if-current` | off | Do nothing (exit 0) if the latest release is already present and its SHA-256 matches. |
 | `--pipeline` | off | After a successful download, run `sct ndjson` then `sct sqlite` automatically. |
 | `--pipeline-full` | off | As `--pipeline`, plus `sct tct` and `sct embed` (Ollama must be running for embed). |
@@ -233,7 +233,7 @@ sct embed  --input <name>.ndjson  --output <output-dir>/<name>.arrow
 The embed step is skipped with a warning if Ollama is not reachable, rather than failing the
 whole pipeline.
 
-**Example — full automated update:**
+**Example - full automated update:**
 
 ```bash
 sct trud download --edition uk_monolith --skip-if-current --pipeline-full
@@ -247,7 +247,7 @@ TRUD recommends running automation between **08:00–18:00** or **midnight–06:
 avoid planned maintenance windows. UK SNOMED releases are published roughly monthly on a
 Wednesday.
 
-### macOS — launchd
+### macOS - launchd
 
 Create `~/Library/LaunchAgents/uk.nhs.sct.trud-sync.plist`:
 
@@ -290,7 +290,7 @@ Create `~/Library/LaunchAgents/uk.nhs.sct.trud-sync.plist`:
 
 Load with: `launchctl load ~/Library/LaunchAgents/uk.nhs.sct.trud-sync.plist`
 
-### Linux — systemd user timer
+### Linux - systemd user timer
 
 `~/.config/systemd/user/sct-trud.service`:
 
@@ -323,7 +323,7 @@ Enable with: `systemctl --user enable --now sct-trud.timer`
 ### Crontab
 
 ```cron
-# Weekly Wednesday 09:00 — check and rebuild if a new SNOMED release is available
+# Weekly Wednesday 09:00 - check and rebuild if a new SNOMED release is available
 0 9 * * 3  TRUD_API_KEY=<key> sct trud download --edition uk_monolith --skip-if-current --pipeline >> ~/.local/share/sct/trud-sync.log 2>&1
 ```
 
@@ -371,8 +371,8 @@ jobs:
 |---|---|---|
 | `ureq` | Yes (`v3`, features = `["json"]`) | All HTTP calls |
 | `indicatif` | Yes | Download progress bar |
-| `sha2` | **No — add to `Cargo.toml`** | SHA-256 checksum verification |
-| `toml` | **No — add to `Cargo.toml`** | Config file parsing |
+| `sha2` | **No - add to `Cargo.toml`** | SHA-256 checksum verification |
+| `toml` | **No - add to `Cargo.toml`** | Config file parsing |
 
 For the download stream, use `response.into_reader()` from `ureq 3.x` to pipe the response
 body to disk in chunks rather than loading the entire multi-GB zip into memory.
@@ -391,15 +391,15 @@ body to disk in chunks rather than loading the entire multi-GB zip into memory.
 |---|---|
 | No API key found | Exit 1 with message directing user to TRUD account page and the four supply methods |
 | HTTP 400 from TRUD | Exit 1: "Invalid API key. Check your TRUD account page." |
-| HTTP 404 from TRUD | Exit 1: "No releases found — check your item number and TRUD subscription." |
-| SHA-256 mismatch | Delete partial file, exit 1: "Checksum mismatch — download may be corrupt." |
+| HTTP 404 from TRUD | Exit 1: "No releases found - check your item number and TRUD subscription." |
+| SHA-256 mismatch | Delete partial file, exit 1: "Checksum mismatch - download may be corrupt." |
 | Disk full during download | Delete partial file, exit 1 with I/O error details |
 | Ollama unreachable during `--pipeline-full` | Skip embed step with warning; do not fail overall |
 
 ### Relation to the library refactor
 
 `--pipeline` invokes `ndjson::run()` and `sqlite::run()` directly as Rust function calls, not
-as subprocess forks. This requires those functions to be callable as library functions —
+as subprocess forks. This requires those functions to be callable as library functions -
 consistent with the refactor described in [`specs/library-rs.md`](../library-rs.md). If the
 library refactor has not yet landed, `--pipeline` can spawn `sct ndjson` / `sct sqlite` as
 child processes as a temporary measure, with a `// TODO: replace with direct call after

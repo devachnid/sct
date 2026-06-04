@@ -2,7 +2,7 @@
 
 Inspect SNOMED CT simple reference sets loaded into a `sct sqlite` database.
 
-Reference sets are themselves concepts in SNOMED CT — each refset ID resolves to a row in the `concepts` table with its own preferred term, FSN, and module. `sct refset` queries the `refset_members` table (populated by `sct ndjson --refsets simple` + `sct sqlite`) and joins back to `concepts` to show human-readable output.
+Reference sets are themselves concepts in SNOMED CT - each refset ID resolves to a row in the `concepts` table with its own preferred term, FSN, and module. `sct refset` queries the `refset_members` table (populated by `sct ndjson --refsets simple` + `sct sqlite`) and joins back to `concepts` to show human-readable output.
 
 ---
 
@@ -20,7 +20,7 @@ Subcommands:
 | `info <ID>` | Show metadata and member count for a single refset. |
 | `members <ID>` | List the concepts belonging to a refset. |
 
-All subcommands accept `--db <PATH>` (auto-discovered when omitted — see [Path resolution](../path-resolution.md)) and `--json` for machine-readable output. `members` also accepts `--ids` to emit just the member SCTIDs (newline-delimited) for piping:
+All subcommands accept `--db <PATH>` (auto-discovered when omitted - see [Path resolution](../path-resolution.md)) and `--json` for machine-readable output. `members` also accepts `--ids` to emit just the member SCTIDs (newline-delimited) for piping:
 
 ```bash
 # A whole refset becomes a code list in one line
@@ -106,7 +106,7 @@ Template variables available in both fields:
 | `{module}` | Module SCTID (empty for list-style commands) |
 | `{effective_time}` | Effective time in `YYYYMMDD` |
 
-The `concept_fsn_suffix` template is appended only when the concept's stripped FSN differs from its PT — that's why the default output suppresses it for concepts whose PT and FSN match. Pass an empty string (`--format-fsn-suffix ''`) to suppress it unconditionally. Unknown `{tokens}` are preserved as literal text so typos are visible.
+The `concept_fsn_suffix` template is appended only when the concept's stripped FSN differs from its PT - that's why the default output suppresses it for concepts whose PT and FSN match. Pass an empty string (`--format-fsn-suffix ''`) to suppress it unconditionally. Unknown `{tokens}` are preserved as literal text so typos are visible.
 
 Examples:
 
@@ -130,9 +130,9 @@ The same `--format` and `--format-fsn-suffix` flags are accepted by `sct lexical
 
 `sct refset` only sees what `sct sqlite` loaded. If a refset has no members:
 
-- Check that `sct ndjson` was run with `--refsets simple` (the default) — if the pipeline used `--refsets none`, no memberships were written.
+- Check that `sct ndjson` was run with `--refsets simple` (the default) - if the pipeline used `--refsets none`, no memberships were written.
 - Check that the RF2 release actually contains a `der2_Refset_Simple*Snapshot*.txt` file. The International release does not include UK national refsets; you need the UK Monolith or UK Clinical release for those.
-- A refset whose members are all inactive concepts will have zero rows in `refset_members` — inactive concepts are filtered at RF2 load time.
+- A refset whose members are all inactive concepts will have zero rows in `refset_members` - inactive concepts are filtered at RF2 load time.
 
 ## Direct SQL queries
 
@@ -154,7 +154,7 @@ sqlite3 snomed.db "
 ```
 
 In the UK Monolith release, the winner is Generic Trimbow (a triple-therapy inhaler) with
-15 refset memberships — spanning COVID extraction, QOF, prescribing safety, ePrescribing
+15 refset memberships - spanning COVID extraction, QOF, prescribing safety, ePrescribing
 rules, and formulary classification.
 
 Which refsets does a specific concept belong to?
@@ -172,11 +172,11 @@ sqlite3 snomed.db "
 
 ## Looking up which refsets a concept belongs to
 
-Use `sct lookup` — its output now includes a **Member of refsets** section listing every refset the concept appears in. Equivalently, the `snomed_concept` MCP tool returns a `member_of` array.
+Use `sct lookup` - its output now includes a **Member of refsets** section listing every refset the concept appears in. Equivalently, the `snomed_concept` MCP tool returns a `member_of` array.
 
 ## Related MCP tools
 
 When `sct mcp` is running, two tools query refsets:
 
-- `snomed_refsets` — equivalent to `sct refset list`
-- `snomed_refset_members` — equivalent to `sct refset members <id>`
+- `snomed_refsets` - equivalent to `sct refset list`
+- `snomed_refset_members` - equivalent to `sct refset members <id>`

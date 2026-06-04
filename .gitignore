@@ -1,7 +1,7 @@
 # Rust build outputs
 target/
 
-# SNOMED CT data — licensed content, never commit
+# SNOMED CT data - licensed content, never commit
 *.ndjson
 *.parquet
 *.lance
@@ -13,7 +13,7 @@ target/
 snomed-concepts/
 snomed-hierarchies/
 
-# Benchmark results (generated data — commit selectively, not automatically)
+# Benchmark results (generated data - commit selectively, not automatically)
 benchmarks/*.md
 
 # OS / editor

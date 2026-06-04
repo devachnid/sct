@@ -1,11 +1,11 @@
-# Path Resolution — DBs, Embeddings, and Config
+# Path Resolution - DBs, Embeddings, and Config
 
 > **Design spec** (rationale + full rules). The user-facing reference is
 > [`docs/path-resolution.md`](../docs/path-resolution.md); keep the two in sync when behaviour changes.
 
 A cross-cutting convention for **where `sct` looks** for databases, embeddings files, and configuration. All read-side commands (`sct lookup`, `sct lexical`, `sct refset`, `sct codelist`, `sct info`, `sct mcp`, `sct semantic`, `sct tui`, `sct gui`) discover their inputs through the rules below; `sct trud` retains its existing write-path resolution.
 
-This spec exists because — prior to v0.3.11 — every command rolled its own discovery and the conventions disagreed. In particular, `sct trud download --pipeline` wrote a `.db` to `~/.local/share/sct/data/` that subsequent commands could not find (issue [#19](https://github.com/pacharanero/sct/issues/19)).
+This spec exists because - prior to v0.3.11 - every command rolled its own discovery and the conventions disagreed. In particular, `sct trud download --pipeline` wrote a `.db` to `~/.local/share/sct/data/` that subsequent commands could not find (issue [#19](https://github.com/pacharanero/sct/issues/19)).
 
 ---
 
@@ -44,17 +44,17 @@ The `releases/` and `data/` subdirectory names are fixed (already in `trud.rs` c
 
 When a command takes `--db` and the flag is *not* supplied, it walks the following chain. The first existing file wins.
 
-1. **`$SCT_DB` env var** — explicit per-shell override. If set, the path must exist; if it points at a missing file, fail loudly rather than silently falling through.
-2. **`./snomed.db`** — preserves local-dev ergonomics. A project-local DB always beats a global one.
+1. **`$SCT_DB` env var** - explicit per-shell override. If set, the path must exist; if it points at a missing file, fail loudly rather than silently falling through.
+2. **`./snomed.db`** - preserves local-dev ergonomics. A project-local DB always beats a global one.
 3. **`[paths] db = "…"`** from the config file (see [Config](#config-file)).
-4. **`$SCT_DATA_HOME/data/snomed.db`** — canonical name if a user (or future `sct trud --link-latest`) has placed/symlinked one there.
-5. **Newest `*.db` in `$SCT_DATA_HOME/data/`** — auto-discovers `sct trud download --pipeline` output, which writes files like `uk_sct2mo_42.1.0_20260506000001z.db`. Newest by `mtime`.
+4. **`$SCT_DATA_HOME/data/snomed.db`** - canonical name if a user (or future `sct trud --link-latest`) has placed/symlinked one there.
+5. **Newest `*.db` in `$SCT_DATA_HOME/data/`** - auto-discovers `sct trud download --pipeline` output, which writes files like `uk_sct2mo_42.1.0_20260506000001z.db`. Newest by `mtime`.
 
 Explicit `--db <path>` always wins over the chain. The path may use `~` for `$HOME`.
 
 ### Why `$SCT_DB` beats `./snomed.db`
 
-Earlier `tui.rs` / `gui.rs` did the opposite (CWD first, env var second). This spec inverts it: an env var is a user's *active* override and should not be silently overridden by whatever happens to be in CWD. `./snomed.db` remains step 2 — high priority, but lower than an explicit env.
+Earlier `tui.rs` / `gui.rs` did the opposite (CWD first, env var second). This spec inverts it: an env var is a user's *active* override and should not be silently overridden by whatever happens to be in CWD. `./snomed.db` remains step 2 - high priority, but lower than an explicit env.
 
 ### When nothing is found
 
@@ -119,13 +119,13 @@ concept_fsn_suffix = " - FSN: {fsn}"
 
 ### Config file resolution
 
-The config file path itself follows a chain — but a simpler one than db/embeddings. Only the first one found is used (config sections are *not* layered across files; that would be more complexity than the current usage warrants).
+The config file path itself follows a chain - but a simpler one than db/embeddings. Only the first one found is used (config sections are *not* layered across files; that would be more complexity than the current usage warrants).
 
 1. `$SCT_CONFIG` env var
 2. `./sct.toml` (project-local override; new in this spec)
 3. `$SCT_CONFIG_HOME/config.toml`
 
-If none exist, all sections default to empty — every command must already handle a missing config file (e.g. `format::ConceptFormat::load()` falls back to `Default`).
+If none exist, all sections default to empty - every command must already handle a missing config file (e.g. `format::ConceptFormat::load()` falls back to `Default`).
 
 A `--config <path>` CLI flag is **not** added in this version. The env var covers one-shot overrides cleanly enough; we can add the flag later if a real need surfaces.
 
@@ -144,7 +144,7 @@ This spec covers **read** discovery only. Commands that write files keep their e
 | `sct trud download` | `$SCT_DATA_HOME/releases/<zip>` | `--output-dir` / `download_dir` in `[trud]` |
 | `sct trud download --pipeline` build artefacts | `$SCT_DATA_HOME/data/<…>.db` | `--data-dir` / `data_dir` in `[trud]` |
 
-Two write conventions remain — CWD for one-shot `sct sqlite` runs, data home for `sct trud` automation. Changing this is out of scope; the read-side spec makes the inconsistency invisible to downstream commands either way.
+Two write conventions remain - CWD for one-shot `sct sqlite` runs, data home for `sct trud` automation. Changing this is out of scope; the read-side spec makes the inconsistency invisible to downstream commands either way.
 
 ---
 
@@ -165,7 +165,7 @@ trud releases:   ~/.local/share/sct/releases                                   (
 trud data:       ~/.local/share/sct/data                                       (5 files)
 ```
 
-Each row shows the resolved path and a parenthetical hint about *which* resolution rule matched (e.g. `--db flag`, `$SCT_DB`, `cwd`, `config [paths]`, `auto, newest in data dir`, `not found`). The hint is the diagnostic value — it tells the user exactly why a particular path won, which is what makes the "no DB found" debugging loop one command long.
+Each row shows the resolved path and a parenthetical hint about *which* resolution rule matched (e.g. `--db flag`, `$SCT_DB`, `cwd`, `config [paths]`, `auto, newest in data dir`, `not found`). The hint is the diagnostic value - it tells the user exactly why a particular path won, which is what makes the "no DB found" debugging loop one command long.
 
 `sct paths` does not take a query or filter. If we later need a machine-readable form, add `--json`.
 
@@ -225,7 +225,7 @@ For users:
 
 - No behaviour change if `--db` is supplied explicitly.
 - No behaviour change if a `snomed.db` exists in CWD.
-- New behaviour: commands now discover `sct trud --pipeline` output automatically. The only way this could surprise someone is if they had a stale `.db` under `~/.local/share/sct/data/` and ran a read-side command from a directory with no local DB — they would now get results from the stale DB instead of an error. Mitigation: `sct paths` shows which DB was picked and why.
+- New behaviour: commands now discover `sct trud --pipeline` output automatically. The only way this could surprise someone is if they had a stale `.db` under `~/.local/share/sct/data/` and ran a read-side command from a directory with no local DB - they would now get results from the stale DB instead of an error. Mitigation: `sct paths` shows which DB was picked and why.
 
 For commands:
 

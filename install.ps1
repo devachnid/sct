@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Installs sct — the local-first SNOMED CT toolchain — on Windows.
+  Installs sct - the local-first SNOMED CT toolchain - on Windows.
 
 .DESCRIPTION
   Downloads the latest prebuilt sct.exe from GitHub Releases, verifies its
@@ -137,5 +137,5 @@ if (-not ($userPath -split ';' | Where-Object { $_ -and (Resolve-Path -ErrorActi
 try {
     & (Join-Path $InstallDir 'sct.exe') --version
 } catch {
-    # ignore — user may need to open a new shell first
+    # ignore - user may need to open a new shell first
 }

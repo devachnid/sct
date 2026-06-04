@@ -1,6 +1,6 @@
 # SCTID | label
 # Fixed set of well-known, stable concepts spanning multiple hierarchies.
-# These are used as timing fixtures — one representative per operation.
+# These are used as timing fixtures - one representative per operation.
 22298006|Myocardial infarction (disorder)
 73211009|Diabetes mellitus (disorder)
 195967001|Asthma (disorder)

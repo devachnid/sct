@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# operations/subsumption.sh — is concept A subsumed by concept B?
+# operations/subsumption.sh - is concept A subsumed by concept B?
 #
-# Local:  Recursive CTE ancestor check — presence of B in A's ancestor set
+# Local:  Recursive CTE ancestor check - presence of B in A's ancestor set
 # Remote: CodeSystem/$subsumes?system=...&codeA=...&codeB=...
 #
 # Tests 2 true and 2 false pairs; reports median across all 4 calls.

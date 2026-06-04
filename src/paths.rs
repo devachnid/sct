@@ -74,7 +74,7 @@ pub fn config_home() -> PathBuf {
 
 /// Resolve the path to the config file. Order: `$SCT_CONFIG` → `./sct.toml` →
 /// `$SCT_CONFIG_HOME/config.toml`. The returned path is the first that exists,
-/// or — if none exist — the global default under `$SCT_CONFIG_HOME`.
+/// or - if none exist - the global default under `$SCT_CONFIG_HOME`.
 pub fn config_path() -> PathBuf {
     if let Some(p) = env_path_nonempty("SCT_CONFIG") {
         return p;
@@ -104,7 +104,7 @@ fn env_path_nonempty(key: &str) -> Option<PathBuf> {
 }
 
 /// Expand a leading `~/` in `path` to `$HOME`. Other paths pass through
-/// untouched. We deliberately do not support `~user/foo` — every caller is
+/// untouched. We deliberately do not support `~user/foo` - every caller is
 /// either an env var or a config value, never an interactive shell token.
 pub fn expand_tilde(path: &str) -> PathBuf {
     if let Some(rest) = path.strip_prefix("~/") {
@@ -128,7 +128,7 @@ pub struct Config {
     pub format: Option<FormatConfig>,
 }
 
-/// `[paths]` section — default DB and embeddings overrides used when the
+/// `[paths]` section - default DB and embeddings overrides used when the
 /// corresponding CLI flag is omitted.
 #[derive(Deserialize, Default, Debug, Clone)]
 #[serde(default)]
@@ -137,7 +137,7 @@ pub struct PathsConfig {
     pub embeddings: Option<String>,
 }
 
-/// `[trud]` section — see `specs/commands/trud.md`.
+/// `[trud]` section - see `specs/commands/trud.md`.
 #[derive(Deserialize, Default, Debug, Clone)]
 #[serde(default)]
 pub struct TrudConfig {
@@ -153,7 +153,7 @@ pub struct EditionProfile {
     pub trud_item: u32,
 }
 
-/// `[format]` section — see `src/format.rs`.
+/// `[format]` section - see `src/format.rs`.
 #[derive(Deserialize, Default, Debug, Clone)]
 #[serde(default)]
 pub struct FormatConfig {
@@ -168,7 +168,7 @@ pub fn load_config() -> Config {
     load_config_from(&config_path())
 }
 
-/// Inner loader — accepts an explicit path so tests can supply a temp file.
+/// Inner loader - accepts an explicit path so tests can supply a temp file.
 pub fn load_config_from(path: &Path) -> Config {
     if !path.exists() {
         return Config::default();
@@ -192,7 +192,7 @@ pub fn load_config_from(path: &Path) -> Config {
 // Resolved file discovery
 // ---------------------------------------------------------------------------
 
-/// The source of a resolved path — used by `sct paths` and embedded in the
+/// The source of a resolved path - used by `sct paths` and embedded in the
 /// "not found" error message so users can see exactly which rule won.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
@@ -297,7 +297,7 @@ pub fn resolve_embeddings(arg: Option<&Path>) -> Result<Resolved> {
 /// Inner resolver. Pure with respect to the supplied `cfg`; still touches the
 /// filesystem for existence and mtime checks.
 pub fn resolve(kind: Kind, arg: Option<&Path>, cfg: &Config) -> Result<Resolved> {
-    // 1. Explicit flag — wins outright. We do not check existence here; the
+    // 1. Explicit flag - wins outright. We do not check existence here; the
     //    caller's open() will produce a clearer error than "file not found".
     if let Some(p) = arg {
         return Ok(Resolved {
@@ -309,7 +309,7 @@ pub fn resolve(kind: Kind, arg: Option<&Path>, cfg: &Config) -> Result<Resolved>
     let env_name = kind.env_var();
     let mut tried: Vec<(String, &'static str)> = Vec::with_capacity(5);
 
-    // 2. Env var — must exist if set; do not silently fall through on a typo.
+    // 2. Env var - must exist if set; do not silently fall through on a typo.
     match std::env::var(env_name) {
         Ok(v) if !v.trim().is_empty() => {
             let p = expand_tilde(v.trim());
@@ -329,7 +329,7 @@ pub fn resolve(kind: Kind, arg: Option<&Path>, cfg: &Config) -> Result<Resolved>
         _ => tried.push((format!("${env_name}"), "not set")),
     }
 
-    // 3. CWD — preserves local-dev ergonomics.
+    // 3. CWD - preserves local-dev ergonomics.
     let cwd = PathBuf::from(format!("./{}", kind.cwd_name()));
     if cwd.exists() {
         return Ok(Resolved {
@@ -468,7 +468,7 @@ mod tests {
         }
     }
 
-    // Pure tests (no env / cwd mutation) — safe to run in parallel.
+    // Pure tests (no env / cwd mutation) - safe to run in parallel.
 
     #[test]
     fn resolve_flag_wins() {

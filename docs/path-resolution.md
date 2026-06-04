@@ -1,8 +1,8 @@
 # Path resolution
 
-`sct` looks for databases, embeddings files, and configuration in a small set of well-known places. Every read-side command — `sct lookup`, `sct lexical`, `sct refset`, `sct codelist`, `sct mcp`, `sct semantic`, `sct tui`, `sct gui` — uses the same chain, so once a release has been built (e.g. by `sct trud download --pipeline`) every other command finds it automatically.
+`sct` looks for databases, embeddings files, and configuration in a small set of well-known places. Every read-side command - `sct lookup`, `sct lexical`, `sct refset`, `sct codelist`, `sct mcp`, `sct semantic`, `sct tui`, `sct gui` - uses the same chain, so once a release has been built (e.g. by `sct trud download --pipeline`) every other command finds it automatically.
 
-If you ever wonder *which* file the next command will pick, run `sct paths` — it prints every resolved location and the rule that won.
+If you ever wonder *which* file the next command will pick, run `sct paths` - it prints every resolved location and the rule that won.
 
 > Full specification: [`specs/path-resolution.md`](https://github.com/pacharanero/sct/blob/main/specs/path-resolution.md).
 
@@ -35,7 +35,7 @@ When `--db` is not supplied, `sct` walks this chain and uses the first match:
 4. **`$SCT_DATA_HOME/data/snomed.db`**
 5. **Newest `*.db`** in `$SCT_DATA_HOME/data/`
 
-If `$SCT_DB` is set but points at a missing file, `sct` errors out rather than silently falling through — that almost always means a typo.
+If `$SCT_DB` is set but points at a missing file, `sct` errors out rather than silently falling through - that almost always means a typo.
 
 Step 5 is the one that makes `sct trud download --pipeline` followed by `sct tui` (or `sct lookup`, or any other read-side command) Just Work.
 
@@ -64,7 +64,7 @@ If none exist, all sections default to empty.
 db = "~/snomed/uk-monolith-2026-05.db"
 embeddings = "~/snomed/embeddings.arrow"
 
-# Existing sections — documented in their respective command pages.
+# Existing sections - documented in their respective command pages.
 [trud]
 api_key = "..."
 download_dir = "~/.local/share/sct/releases"
@@ -97,7 +97,7 @@ Build one with:
   sct sqlite --input snomed.ndjson
 ```
 
-The message lists every step that was tried — so it's always obvious whether to set an env var, drop a file in cwd, or run `sct trud`.
+The message lists every step that was tried - so it's always obvious whether to set an env var, drop a file in cwd, or run `sct trud`.
 
 ---
 

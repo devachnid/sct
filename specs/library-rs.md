@@ -7,7 +7,7 @@ Design document for evolving `sct-rs` from a CLI-only binary into a dual-purpose
 ## 1. Goals
 
 - Allow other Rust projects to `use sct_rs::SnomedDb` and query SNOMED CT directly.
-- Expose a typed, idiomatic Rust API — no JSON-in/JSON-out, no `serde_json::Value` arguments.
+- Expose a typed, idiomatic Rust API - no JSON-in/JSON-out, no `serde_json::Value` arguments.
 - Keep the existing CLI behaviour exactly as-is (the CLI becomes a thin layer over the library).
 - Enable `tests/` integration tests now that a library crate exists.
 - Lay the ground for `cargo doc` to produce useful API documentation.
@@ -18,21 +18,21 @@ Design document for evolving `sct-rs` from a CLI-only binary into a dual-purpose
 
 ```
 src/
-  lib.rs            — public re-exports; the library's front door
-  db.rs             — SnomedDb struct and all query methods
-  types.rs          — public data types (ConceptSummary, ConceptDetail, …)
+  lib.rs            - public re-exports; the library's front door
+  db.rs             - SnomedDb struct and all query methods
+  types.rs          - public data types (ConceptSummary, ConceptDetail, …)
   codelist/
-    mod.rs          — CodelistFile, FrontMatter, ConceptLine (already mostly public)
-    parse.rs        — parsing logic (extracted from commands/codelist.rs)
-    export.rs       — CSV / Markdown / OpenCodelists export
-  commands/         — CLI layer; private to the binary, not re-exported from lib.rs
-    mcp.rs          — MCP JSON-RPC server (calls SnomedDb internally)
-    codelist.rs     — codelist subcommands (calls CodelistFile internally)
+    mod.rs          - CodelistFile, FrontMatter, ConceptLine (already mostly public)
+    parse.rs        - parsing logic (extracted from commands/codelist.rs)
+    export.rs       - CSV / Markdown / OpenCodelists export
+  commands/         - CLI layer; private to the binary, not re-exported from lib.rs
+    mcp.rs          - MCP JSON-RPC server (calls SnomedDb internally)
+    codelist.rs     - codelist subcommands (calls CodelistFile internally)
     …
-  main.rs           — CLI entry point; uses sct_rs:: instead of mod declarations
+  main.rs           - CLI entry point; uses sct_rs:: instead of mod declarations
 tests/
-  db.rs             — integration tests for SnomedDb
-  codelist.rs       — integration tests for CodelistFile parsing and export
+  db.rs             - integration tests for SnomedDb
+  codelist.rs       - integration tests for CodelistFile parsing and export
 ```
 
 The `commands/` subtree is **not re-exported** from `lib.rs`. It remains internal to the binary target. Library consumers only see what is explicitly `pub` in `lib.rs`.
@@ -137,7 +137,7 @@ impl SnomedDb {
 }
 ```
 
-The SQL behind each method already exists and is tested — it lives in `commands/mcp.rs` today. The migration moves that SQL into `db.rs` without changing it.
+The SQL behind each method already exists and is tested - it lives in `commands/mcp.rs` today. The migration moves that SQL into `db.rs` without changing it.
 
 ### 4.2 CodelistFile
 
@@ -167,7 +167,7 @@ impl CodelistFile {
 }
 ```
 
-`parse_body_line` and `split_term_comment` remain private — they are implementation details tested via the public `parse` method in `tests/codelist.rs`.
+`parse_body_line` and `split_term_comment` remain private - they are implementation details tested via the public `parse` method in `tests/codelist.rs`.
 
 ---
 
@@ -185,7 +185,7 @@ pub use types::{AncestorEntry, ConceptDetail, ConceptSummary, SnomedMapping, Ter
 pub use codelist::{CodelistFile, ConceptLine, FrontMatter};
 ```
 
-`builder`, `rf2`, `schema`, and `commands` are **not** re-exported — they are implementation details. External crates only need `SnomedDb` and the codelist types.
+`builder`, `rf2`, `schema`, and `commands` are **not** re-exported - they are implementation details. External crates only need `SnomedDb` and the codelist types.
 
 ---
 
@@ -204,7 +204,7 @@ fn tool_children(db: &SnomedDb, args: &Value) -> Result<String> {
 }
 ```
 
-The SQL logic moves to `SnomedDb::children()`; the MCP tool just formats the result. This is a mechanical refactor — the SQL does not change.
+The SQL logic moves to `SnomedDb::children()`; the MCP tool just formats the result. This is a mechanical refactor - the SQL does not change.
 
 ---
 
@@ -212,19 +212,19 @@ The SQL logic moves to `SnomedDb::children()`; the MCP tool just formats the res
 
 The migration is designed to be done incrementally with a working CLI at every step.
 
-**Step 1** — Add `src/types.rs` with the public structs (no functional change).
+**Step 1** - Add `src/types.rs` with the public structs (no functional change).
 
-**Step 2** — Add `src/db.rs` with `SnomedDb::open()` and a first method (`search`). Wire up `src/lib.rs`. Update `main.rs` to use `sct_rs::` imports instead of `mod` declarations.
+**Step 2** - Add `src/db.rs` with `SnomedDb::open()` and a first method (`search`). Wire up `src/lib.rs`. Update `main.rs` to use `sct_rs::` imports instead of `mod` declarations.
 
-**Step 3** — Implement remaining `SnomedDb` methods one by one, each backed by the existing SQL.
+**Step 3** - Implement remaining `SnomedDb` methods one by one, each backed by the existing SQL.
 
-**Step 4** — Refactor `commands/mcp.rs` to use `SnomedDb` (CLI output unchanged).
+**Step 4** - Refactor `commands/mcp.rs` to use `SnomedDb` (CLI output unchanged).
 
-**Step 5** — Move `codelist` parsing/export to `src/codelist/`, expose `CodelistFile::parse()` publicly. Refactor `commands/codelist.rs` to use it.
+**Step 5** - Move `codelist` parsing/export to `src/codelist/`, expose `CodelistFile::parse()` publicly. Refactor `commands/codelist.rs` to use it.
 
-**Step 6** — Move tests to `tests/db.rs` and `tests/codelist.rs`. Remove the existing `#[cfg(test)]` blocks added in the previous session. Keep `#[cfg(test)]` inline only for any genuinely private helpers that can't be reached through the public API.
+**Step 6** - Move tests to `tests/db.rs` and `tests/codelist.rs`. Remove the existing `#[cfg(test)]` blocks added in the previous session. Keep `#[cfg(test)]` inline only for any genuinely private helpers that can't be reached through the public API.
 
-**Step 7** — Write Rustdoc examples in `lib.rs` and the key types/methods. Run `cargo doc --open` to review.
+**Step 7** - Write Rustdoc examples in `lib.rs` and the key types/methods. Run `cargo doc --open` to review.
 
 Each step is a separate commit. The git log should read as a clear narrative of the evolution.
 
@@ -240,7 +240,7 @@ The crate is currently `0.3.7`. Suggested milestones:
 | `0.5.0` | `CodelistFile` fully public; all CLI commands refactored to use the library |
 | `1.0.0` | Public API is stable; breaking changes would require a major version bump |
 
-A `[lib]` section in `Cargo.toml` is not required — Cargo auto-detects `src/lib.rs`. The binary section already exists:
+A `[lib]` section in `Cargo.toml` is not required - Cargo auto-detects `src/lib.rs`. The binary section already exists:
 
 ```toml
 [[bin]]
@@ -254,6 +254,6 @@ No Cargo.toml changes are needed until we want to publish the library separately
 
 ## 9. Open questions
 
-- **`attributes` field**: currently stored as a raw JSON string in the DB. Should `ConceptDetail::attributes` be `serde_json::Value`, a typed enum, or remain `String` for now? The attribute model is complex (role groups, value types) — `serde_json::Value` is the least-wrong default until a full attribute API is designed.
+- **`attributes` field**: currently stored as a raw JSON string in the DB. Should `ConceptDetail::attributes` be `serde_json::Value`, a typed enum, or remain `String` for now? The attribute model is complex (role groups, value types) - `serde_json::Value` is the least-wrong default until a full attribute API is designed.
 - **Async?** The SQLite queries are fast and synchronous. No async is needed. If an async consumer wants to use the library they can spawn it on a blocking thread via `tokio::task::spawn_blocking`.
 - **`#[non_exhaustive]`**: marking `ConceptDetail`, `ConceptSummary`, and `AncestorEntry` as `#[non_exhaustive]` from the start would let us add fields without a major version bump.

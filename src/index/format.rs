@@ -2,7 +2,7 @@
 //!
 //! The artefact bundles several logical sections (two FSTs plus their posting
 //! lists and display side-tables) into one mmap-able file with a table of
-//! contents at the end — zip/parquet style:
+//! contents at the end - zip/parquet style:
 //!
 //! ```text
 //! magic "SCTFST\0\0" (8) | u32 format_version

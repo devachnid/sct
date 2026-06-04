@@ -91,5 +91,5 @@ sct diff --old snomed-uk-20250901.ndjson --new snomed-uk-20260311.ndjson \
 
 ## See also
 
-- [`sct codelist diff`](codelist.md) — compare two `.codelist` files (different operation)
-- [`sct info`](info.md) — inspect a single NDJSON artefact
+- [`sct codelist diff`](codelist.md) - compare two `.codelist` files (different operation)
+- [`sct info`](info.md) - inspect a single NDJSON artefact

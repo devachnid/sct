@@ -2,7 +2,7 @@
 
 Browser-based UI for exploring SNOMED CT. Starts a local web server bound to `127.0.0.1` and opens your browser automatically.
 
-Same data as [`sct tui`](tui.md) — search, concept detail, hierarchy browsing, IS-A navigation — in a point-and-click interface with a graph visualisation tab.
+Same data as [`sct tui`](tui.md) - search, concept detail, hierarchy browsing, IS-A navigation - in a point-and-click interface with a graph visualisation tab.
 
 > **Optional feature.** `sct gui` is not included in the default binary. Build with `--features gui` (see [Installation](#installation)).
 
@@ -27,8 +27,8 @@ sct gui [--db <PATH>] [--port <PORT>] [--no-open]
 ## Example
 
 ```bash
-# Start with defaults — opens http://127.0.0.1:8420 in the browser.
-# Discovers a DB from cwd → $SCT_DATA_HOME/data — see Path resolution.
+# Start with defaults - opens http://127.0.0.1:8420 in the browser.
+# Discovers a DB from cwd → $SCT_DATA_HOME/data - see Path resolution.
 sct gui
 
 # Specify a database and port
@@ -127,7 +127,7 @@ The search bar accepts plain terms as well as FTS5 expressions:
 
 | Input | Behaviour |
 |:---|:---|
-| `diabetes` | Prefix match — finds `diabetes`, `diabetic`, etc. |
+| `diabetes` | Prefix match - finds `diabetes`, `diabetic`, etc. |
 | `heart attack` | Exact phrase match |
 | `"heart attack"` | Explicit phrase match |
 | `diabetes* OR hypertension` | Boolean OR |
@@ -136,7 +136,7 @@ The search bar accepts plain terms as well as FTS5 expressions:
 
 ## Security
 
-The server binds exclusively to `127.0.0.1` — it is not accessible from other machines on the network. It is read-only (no write routes). Do not expose the port externally.
+The server binds exclusively to `127.0.0.1` - it is not accessible from other machines on the network. It is read-only (no write routes). Do not expose the port externally.
 
 ---
 
@@ -174,6 +174,6 @@ sct sqlite --input snomed.ndjson --output snomed.db
 
 ## See also
 
-- [`sct tui`](tui.md) — keyboard-driven terminal UI, same data, no browser required
-- [`sct lexical`](lexical.md) — CLI keyword search
-- [`sct mcp`](mcp.md) — expose the database to an AI assistant
+- [`sct tui`](tui.md) - keyboard-driven terminal UI, same data, no browser required
+- [`sct lexical`](lexical.md) - CLI keyword search
+- [`sct mcp`](mcp.md) - expose the database to an AI assistant

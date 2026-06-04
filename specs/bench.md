@@ -2,7 +2,7 @@
 
 A set of Bash scripts that provide a reproducible, automated, fair comparison between `sct`
 (local SQLite) and any FHIR R4 terminology server. Lives in `bench/` at the repository root.
-Requires only `bash`, `curl`, `sqlite3`, `jq`, and `bc`/`awk` — no Rust build required.
+Requires only `bash`, `curl`, `sqlite3`, `jq`, and `bc`/`awk` - no Rust build required.
 [`hyperfine`](https://github.com/sharkdp/hyperfine) is an optional dependency for
 statistically-rigorous timing.
 
@@ -136,22 +136,22 @@ Fixture: `73211009` (Diabetes mellitus) and `195967001` (Asthma).
 | Local | Recursive CTE traversal of `concept_isa` |
 | FHIR | Iterative `CodeSystem/$lookup` with `property=parent`, or `property=ancestor` if supported |
 
-Fixture: `44054006` (Type 2 diabetes — depth ~8), `230690007` (CVA — depth ~7).
+Fixture: `44054006` (Type 2 diabetes - depth ~8), `230690007` (CVA - depth ~7).
 
 ### 5. Subsumption (`subsumption.sh`)
 
 | Side | Implementation |
 |---|---|
-| Local | Recursive CTE — check if B appears in ancestor chain of A |
+| Local | Recursive CTE - check if B appears in ancestor chain of A |
 | FHIR | `GET {base}/CodeSystem/$subsumes?system=http://snomed.info/sct&codeA={A}&codeB={B}` |
 
-Fixture: 5 pairs — 3 true subsumptions, 2 false.
+Fixture: 5 pairs - 3 true subsumptions, 2 false.
 
 ### 6. Bulk lookup (`bulk.sh`)
 
 | Side | Implementation |
 |---|---|
-| Local | `SELECT id, preferred_term, fsn FROM concepts WHERE id IN (...)` — single query |
+| Local | `SELECT id, preferred_term, fsn FROM concepts WHERE id IN (...)` - single query |
 | FHIR | FHIR batch `POST {base}` with 50 `GET CodeSystem/$lookup` entries, falling back to 50 sequential requests |
 
 ---
@@ -190,7 +190,7 @@ time_operation() {
 ## Report format
 
 ```
-sct benchmark — 2026-03-28
+sct benchmark - 2026-03-28
   Local DB : /home/marcus/snomed.db  (v20260101, 831,132 concepts)
   Remote   : https://terminology.myserver.org/fhir
   Runs     : 10 (+ 2 warmup)
@@ -211,7 +211,7 @@ sct benchmark — 2026-03-28
 Times shown are wall-clock median. Local times include sqlite3 process startup.
 ```
 
-With `--format json`, each row is emitted as a JSON object — suitable for CI artifact storage.
+With `--format json`, each row is emitted as a JSON object - suitable for CI artifact storage.
 
 ---
 
@@ -220,7 +220,7 @@ With `--format json`, each row is emitted as a JSON object — suitable for CI a
 - **SQLite vs HTTP**: The primary cost difference is network round-trips. The report always
   states measured ping latency to distinguish "server is slow" from "network is slow".
 - **sct includes process startup**: Each local command is `sqlite3 snomed.db "..."`, which
-  includes process fork + open overhead (~5–15 ms). This is intentional — it reflects real
+  includes process fork + open overhead (~5–15 ms). This is intentional - it reflects real
   CLI usage.
 - **Warm cache**: Warm-up runs are issued before timing to put both sides in a hot-cache state.
   We benchmark steady-state use, not cold-start.

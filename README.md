@@ -1,6 +1,6 @@
 # sct
 
-A local-first SNOMED CT toolchain that's 10-100x faster than IHTSDO Snowstorm. One binary — from raw RF2 release to NDJSON, then SQL, Parquet, Markdown, TUI, GUI, graphs and MCP/LLM tool use. All on your machine, no network calls, REST APIs, or external servers required.
+A local-first SNOMED CT toolchain that's 10-100x faster than IHTSDO Snowstorm. One binary - from raw RF2 release to NDJSON, then SQL, Parquet, Markdown, TUI, GUI, graphs and MCP/LLM tool use. All on your machine, no network calls, REST APIs, or external servers required.
 
 This is very much a work in progress, but it's ready to use and I would very much like feedback on how it performs for you.
 
@@ -39,7 +39,7 @@ The NDJSON artefact at the centre is a stable, versionable, greppable file. All 
 
 `sct` joins the relatively incomprehensible RF2 files into a single NDJSON artefact. For the UK Monolith Edition this NDJSON file is over 1Gb but it was still possible to load into VSCode to get a feel for the data structure, which is something that is impossible with the original RF2 files. This also means you can use standard tools like `jq` or `ripgrep` to query the data without needing a custom server or API.
 
-SNOMED CT is distributed as RF2 — a set of tab-separated files that require joining across multiple tables to get anything useful. The entire healthcare industry relies on remote terminology servers for this, with the overhead of network calls and REST APIs. `sct` performs the join once creating an NDJSON artefact, and produces standard files you can query locally with `sqlite3`, `duckdb`, `jq`, `ripgrep`, or an LLM. No server, no API key, no network.
+SNOMED CT is distributed as RF2 - a set of tab-separated files that require joining across multiple tables to get anything useful. The entire healthcare industry relies on remote terminology servers for this, with the overhead of network calls and REST APIs. `sct` performs the join once creating an NDJSON artefact, and produces standard files you can query locally with `sqlite3`, `duckdb`, `jq`, `ripgrep`, or an LLM. No server, no API key, no network.
 
 ## Speed comparison
 
@@ -122,7 +122,7 @@ cargo install --path . --features full   # both
 
 | Feature | What it adds | Extra dependencies |
 |---|---|---|
-| (default) | All non-interactive subcommands | — |
+| (default) | All non-interactive subcommands | - |
 | `tui` | Keyboard-driven terminal UI (`sct tui`) | `ratatui`, `crossterm` |
 | `gui` | Browser-based graph UI (`sct gui`) | `axum`, `tokio`, `open` |
 | `full` | Both of the above | all of the above |
@@ -138,19 +138,19 @@ Grab the appropriate archive from the [Releases page](https://github.com/pachara
 ```bash
 # 1. Download a distribution of SNOMED CT
 #    UK:            https://isd.digital.nhs.uk/ → Monolith Edition, RF2: Snapshot
-#                   (free under NHS England national licence — access is immediate)
+#                   (free under NHS England national licence - access is immediate)
 #                   NB: You need to Subscribe to a release before you can see the Download option 🤯
 #    International: https://mlds.ihtsdotools.org/ (allow up to a week for approval)
 
 # 2. Convert RF2 → NDJSON (~10s for 831k concepts)
-#    Pass the .zip directly — no manual extraction needed
+#    Pass the .zip directly - no manual extraction needed
 sct ndjson --rf2 SnomedCT_MonolithRF2_PRODUCTION_20260311T120000Z.zip
 # ✓  831,487 concepts written → snomedct-monolithrf2-production-20260311t120000z.ndjson
 
 # 3. Load into SQLite with FTS5
 sct sqlite --input snomedct-monolithrf2-production-20260311t120000z.ndjson
 
-# 4. Query with standard tools — no custom binary needed
+# 4. Query with standard tools - no custom binary needed
 sqlite3 snomed.db \
   "SELECT id, preferred_term FROM concepts_fts WHERE concepts_fts MATCH 'heart attack' LIMIT 5"
 
@@ -172,23 +172,23 @@ For all further information see the full documentation by either exploring the [
 
 ## Subcommands
 
-* [sct ndjson](docs/ndjson.md) — convert an RF2 Snapshot directory to a canonical NDJSON artefact
-* [sct sqlite](docs/sqlite.md) — load NDJSON into a SQLite database with FTS5
-* [sct parquet](docs/parquet.md) — export NDJSON to a Parquet file for DuckDB / analytics
-* [sct markdown](docs/markdown.md) — export NDJSON to per-concept Markdown files (or per-hierarchy with `--mode hierarchy`)
-* [sct mcp](docs/mcp.md) — start a local MCP server over stdio backed by the SQLite database
-* [sct embed](docs/embed.md) — generate Ollama vector embeddings and write an Arrow IPC file
-* [sct lexical](docs/lexical.md) — keyword (FTS5) search over the SQLite database
-* [sct fst](docs/commands/fst.md) — mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
-* [sct semantic](docs/semantic.md) — semantic similarity search over the Arrow IPC embeddings file (requires Ollama)
-* `sct lookup <code>` — look up a concept by SCTID, or reverse-resolve a CTV3 code
-* `sct codelist` — build, validate, and publish clinical code lists; `add --ecl "<<73211009"` populates from an ECL query
-* `sct info <file>` — inspect any `.ndjson`, `.db`, or `.arrow` artefact and print a summary
-* `sct diff --old <file> --new <file>` — compare two NDJSON releases and report what changed
-* `sct paths` — show where sct looks for databases, embeddings, and config files
-* [sct completions](docs/completions.md) — print shell completion scripts (bash, zsh, fish, powershell, elvish)
-* [sct tui](docs/tui.md) — keyboard-driven terminal UI for interactive SNOMED CT exploration *(optional feature)*
-* [sct gui](docs/gui.md) — browser-based UI served over localhost for point-and-click exploration *(optional feature)*
+* [sct ndjson](docs/ndjson.md) - convert an RF2 Snapshot directory to a canonical NDJSON artefact
+* [sct sqlite](docs/sqlite.md) - load NDJSON into a SQLite database with FTS5
+* [sct parquet](docs/parquet.md) - export NDJSON to a Parquet file for DuckDB / analytics
+* [sct markdown](docs/markdown.md) - export NDJSON to per-concept Markdown files (or per-hierarchy with `--mode hierarchy`)
+* [sct mcp](docs/mcp.md) - start a local MCP server over stdio backed by the SQLite database
+* [sct embed](docs/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
+* [sct lexical](docs/lexical.md) - keyword (FTS5) search over the SQLite database
+* [sct fst](docs/commands/fst.md) - mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
+* [sct semantic](docs/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama)
+* `sct lookup <code>` - look up a concept by SCTID, or reverse-resolve a CTV3 code
+* `sct codelist` - build, validate, and publish clinical code lists; `add --ecl "<<73211009"` populates from an ECL query
+* `sct info <file>` - inspect any `.ndjson`, `.db`, or `.arrow` artefact and print a summary
+* `sct diff --old <file> --new <file>` - compare two NDJSON releases and report what changed
+* `sct paths` - show where sct looks for databases, embeddings, and config files
+* [sct completions](docs/completions.md) - print shell completion scripts (bash, zsh, fish, powershell, elvish)
+* [sct tui](docs/tui.md) - keyboard-driven terminal UI for interactive SNOMED CT exploration *(optional feature)*
+* [sct gui](docs/gui.md) - browser-based UI served over localhost for point-and-click exploration *(optional feature)*
 
 Run any subcommand with `--help` for full option reference.
 
@@ -213,7 +213,7 @@ SNOMED CT is licensed. Download the RF2 Snapshot for your region:
 * **UK:** [NHS Digital TRUD](https://isd.digital.nhs.uk/) → *SNOMED CT Monolith Edition, RF2: Snapshot*. Covered by the NHS England national licence.
 * **International:** [MLDS](https://mlds.ihtsdotools.org/) or [NLM](https://www.nlm.nih.gov/healthit/snomedct/us_edition.html).
 
-Download the **Monolith Snapshot** if available — it bundles the international base, clinical extension, and drug extension in one directory.
+Download the **Monolith Snapshot** if available - it bundles the international base, clinical extension, and drug extension in one directory.
 
 ---
 
@@ -225,7 +225,7 @@ Please try it out and let me know how it performs for you, especially if you hav
 
 A [devcontainer](https://containers.dev/) configuration is included in `.devcontainer/`. Open the project in VS Code and select "Reopen in Container" to get a ready-to-go environment with Rust, `sqlite3`, `duckdb`, `jq`, and `ripgrep` pre-installed. Also included is `python3` and Ollama, for working with the embeddings and semantic search features.
 
-Store SNOMED data files (zips, NDJSON, databases) in the `data-volume/` directory inside the container — it's backed by a Docker volume for faster I/O than the default bind mount.
+Store SNOMED data files (zips, NDJSON, databases) in the `data-volume/` directory inside the container - it's backed by a Docker volume for faster I/O than the default bind mount.
 
 ## Contributing
 

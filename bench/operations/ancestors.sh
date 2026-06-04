@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# operations/ancestors.sh — full ancestor chain from leaf to root
+# operations/ancestors.sh - full ancestor chain from leaf to root
 #
 # Representative fixture: 44054006 (Type 2 diabetes mellitus, depth ~8)
-# Local:  Recursive CTE on concept_isa — single query, all ancestors at once
+# Local:  Recursive CTE on concept_isa - single query, all ancestors at once
 # Remote: Sequential CodeSystem/$lookup?property=parent calls (one per hop).
 #         This accurately reflects the real cost of ancestor traversal via FHIR,
 #         since most servers do not support the non-standard property=ancestor.

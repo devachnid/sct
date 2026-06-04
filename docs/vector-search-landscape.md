@@ -1,4 +1,4 @@
-# SNOMED CT Vector / Semantic Search — Landscape Review
+# SNOMED CT Vector / Semantic Search - Landscape Review
 
 *Researched March 2026. Covers production tools, research models, clinical NLP, and RAG
 prototypes. Updated as the ecosystem evolves.*
@@ -8,7 +8,7 @@ prototypes. Updated as the ecosystem evolves.*
 ## TL;DR
 
 No open-source, local-first, single-binary tool combines RF2 ingestion with vector
-semantic search — until `sct`. The only production server with genuine vector search is
+semantic search - until `sct`. The only production server with genuine vector search is
 John Snow Labs', which is commercial and cloud-oriented. The research literature has rich
 embedding models but none are packaged as deployable SNOMED servers.
 
@@ -32,7 +32,7 @@ embeddings. No movement in this direction as of v10.5.0.
 
 ---
 
-### Hermes (wardle/hermes — Clojure)
+### Hermes (wardle/hermes - Clojure)
 
 Lightweight SNOMED library and microservice. LMDB storage, Apache Lucene full-text
 search, no JVM heap tuning required. Imports UK + International in ~5 minutes. Used in
@@ -53,7 +53,7 @@ licence required.
 
 **Vector/semantic search:** None natively. CSIRO's own published research acknowledges
 that their autocompletion performs poorly when input strings are not partial prefixes and
-proposes BioBERT-based semantic search as a future extension — but this has not been
+proposes BioBERT-based semantic search as a future extension - but this has not been
 integrated into the product.
 
 **Verdict:** Best FHIR-conformance story; no vector capability.
@@ -92,7 +92,7 @@ Wraps any FHIR R4 server (Snowstorm, Ontoserver, HAPI FHIR) to expose SNOMED loo
 tools to LLMs via Model Context Protocol. Supports Claude Desktop, Claude Code. Domain
 scoping via ECL.
 
-**Vector search:** None — proxies the underlying server's lexical/ECL search. Semantic
+**Vector search:** None - proxies the underlying server's lexical/ECL search. Semantic
 reasoning is provided by the LLM, not by embeddings.
 
 ---
@@ -109,16 +109,16 @@ NLM/WHO APIs. No vector search.
 These are model weights, not packaged servers. They require you to build your own
 embedding + index pipeline.
 
-### SapBERT (Cambridge, NAACL 2021 — dominant 2024–2026)
+### SapBERT (Cambridge, NAACL 2021 - dominant 2024–2026)
 
 Self-alignment pre-training on UMLS synonyms using metric learning. Clusters synonyms
 of the same concept close together in 768-dim space. The most widely adopted backbone
 for SNOMED concept normalization.
 
 **HuggingFace models:**
-- `cambridgeltl/SapBERT-from-PubMedBERT-fulltext` — English, 768-dim
-- `cambridgeltl/SapBERT-from-PubMedBERT-fulltext-mean-token` — used by SNOBERT
-- `cambridgeltl/SapBERT-UMLS-2020AB-all-lang-from-XLMR` — multilingual (XLM-R Large)
+- `cambridgeltl/SapBERT-from-PubMedBERT-fulltext` - English, 768-dim
+- `cambridgeltl/SapBERT-from-PubMedBERT-fulltext-mean-token` - used by SNOBERT
+- `cambridgeltl/SapBERT-UMLS-2020AB-all-lang-from-XLMR` - multilingual (XLM-R Large)
 
 **2024 result (Abdulnazar et al., *Digital Health*):** Unsupervised SNOMED CT annotation
 in English and German using SapBERT + FAISS. English F1: 0.765 unsupervised.
@@ -184,7 +184,7 @@ used as a biomedical embedding baseline. 200-dim, 13 GB binary.
 These are *annotation* tools (free text → SNOMED concept ID), not *search* tools
 (query → ranked SNOMED concepts). Different problem, but relevant context.
 
-### MedCAT v2 (CogStack — Apache 2.0)
+### MedCAT v2 (CogStack - Apache 2.0)
 
 Self-supervised NER + linking. Learns contextual concept embeddings from clinical text;
 resolves ambiguous mentions via cosine similarity to learnt concept centroids.
@@ -265,9 +265,9 @@ countries via MLDS or national licence).
 | `cambridgeltl/SapBERT-from-PubMedBERT-fulltext-mean-token` | Model (generate yourself) | 768 | Apache 2.0 |
 | `GanjinZero/coder_eng_pp` | Model (generate yourself) | 768 | MIT |
 | `Hierarchy-Transformers/HiT-MiniLM-L12-SnomedCT` | Hierarchy-aware model | 384 | Apache 2.0 |
-| `xlreator/biosyn-biobert-snomed` | BioBERT sentence embedding model | 768 | — |
+| `xlreator/biosyn-biobert-snomed` | BioBERT sentence embedding model | 768 | - |
 | `FremyCompany/AGCT-Dataset` | Pre-computed ADAv2 embeddings (Parquet) | 1536 | + SNOMED licence |
-| `HengJay/snomed-ct-assistant` | 634k concepts, ChromaDB index | — | + SNOMED licence |
+| `HengJay/snomed-ct-assistant` | 634k concepts, ChromaDB index | - | + SNOMED licence |
 | `dchang56/snomed_kge` | 5 KGE checkpoints (TransE, RotatE, etc.) | 200 | Research |
 | `justin13601/loinc_snomed_embeddings` | SNOMED + LOINC, ADAv2, Parquet | 1536 | + SNOMED + LOINC licences |
 | BioWordVec (NCBI FTP) | PubMed + MIMIC-III word vectors | 200 | Open (MeSH-trained) |
@@ -307,7 +307,7 @@ countries via MLDS or national licence).
    on HuggingFace provide pre-computed SNOMED embeddings. `sct` could publish an
    official pre-built `.arrow` embeddings file alongside each NDJSON release (for
    distributions where SNOMED CT licensing permits), saving users the Ollama step
-   entirely. See `specs/roadmap.md` — IPS Free Set bundling is already flagged as a
+   entirely. See `specs/roadmap.md` - IPS Free Set bundling is already flagged as a
    future item.
 
 4. **MedCAT v2 is complementary, not competing.** MedCAT maps free clinical text → SNOMED

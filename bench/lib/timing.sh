@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/timing.sh — timing primitives
+# lib/timing.sh - timing primitives
 #
 # Usage: time_cmd RUNS WARMUP CMD [ARGS...]
 # Outputs median wall-clock microseconds to stdout.
@@ -88,7 +88,7 @@ time_manual_loop() {
   _time_cmd_manual "${BENCH_RUNS:-5}" "${BENCH_WARMUP:-1}" "$@"
 }
 
-# timing_tool_name — human-readable name for the active timing tool.
+# timing_tool_name - human-readable name for the active timing tool.
 timing_tool_name() {
   if command -v hyperfine >/dev/null 2>&1; then
     local v; v=$(hyperfine --version 2>/dev/null | head -1)

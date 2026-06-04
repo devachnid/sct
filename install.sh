@@ -1,5 +1,5 @@
 #!/bin/sh
-# sct installer — downloads the latest prebuilt binary from GitHub Releases,
+# sct installer - downloads the latest prebuilt binary from GitHub Releases,
 # verifies its SHA-256 checksum, and installs it to ~/.local/bin by default.
 #
 # Usage:
@@ -35,7 +35,7 @@ detect_target() {
                 *) err "unsupported macOS architecture: $arch" ;;
             esac
             ;;
-        *) err "unsupported OS: $os — try 'cargo install sct-rs' instead" ;;
+        *) err "unsupported OS: $os - try 'cargo install sct-rs' instead" ;;
     esac
 }
 
@@ -120,7 +120,7 @@ main() {
             info "$INSTALL_DIR is not on your PATH. Add it with:"
             info ""
             info "  echo 'export PATH=\"$INSTALL_DIR:\$PATH\"' >> ~/.bashrc"
-            info "  # or ~/.zshrc, ~/.profile, ~/.config/fish/config.fish — whichever your shell uses"
+            info "  # or ~/.zshrc, ~/.profile, ~/.config/fish/config.fish - whichever your shell uses"
             info ""
             ;;
     esac

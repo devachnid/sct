@@ -31,4 +31,4 @@ database:     ./snomed.db                  current directory
 embeddings:   ~/.local/share/sct/data/snomed-embeddings.arrow   data home, canonical name
 ```
 
-Each row shows the resolved path and, on the right, which rule in the discovery chain produced it (explicit env var → current directory → config file → data-home canonical name → newest matching file). A `─` with "not found" means no artefact of that kind was discovered — pass an explicit `--db` / `--embeddings`, or build one.
+Each row shows the resolved path and, on the right, which rule in the discovery chain produced it (explicit env var → current directory → config file → data-home canonical name → newest matching file). A `─` with "not found" means no artefact of that kind was discovered - pass an explicit `--db` / `--embeddings`, or build one.

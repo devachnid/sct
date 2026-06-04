@@ -10,7 +10,7 @@ status: draft
 licence: CC-BY-4.0
 copyright: SNOMED CT content © IHTSDO, used under NHS England national licence.
 appropriate_use: Identifying MMR / MMRV / MR / single-component measles, mumps, or rubella vaccination events in UK primary-care records. Grouped by clinical intent (core MMR, MMRV, single-component, administrative) so downstream analyses can include/exclude each group as appropriate.
-misuse: Do not use this list to identify vaccine products (use the NHS dm+d vaccine-product refsets instead — refset 553391000001108, and specific-vaccine refsets such as 133231000001105 for MMR products). Does not resolve Read v2 codes (pre-2000 GP records may contain codes that will not match). Does not include inactivated SNOMED concepts — older records may reference retired SCTIDs that need resolving via a history/association refset (not yet supported in sct).
+misuse: Do not use this list to identify vaccine products (use the NHS dm+d vaccine-product refsets instead - refset 553391000001108, and specific-vaccine refsets such as 133231000001105 for MMR products). Does not resolve Read v2 codes (pre-2000 GP records may contain codes that will not match). Does not include inactivated SNOMED concepts - older records may reference retired SCTIDs that need resolving via a history/association refset (not yet supported in sct).
 warnings:
 - code: not-universal-definition
   severity: info

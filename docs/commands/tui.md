@@ -1,6 +1,6 @@
 # sct tui `experimental!` :lucide-test-tube:
 
-Keyboard-driven terminal UI for exploring SNOMED CT interactively — no browser required.
+Keyboard-driven terminal UI for exploring SNOMED CT interactively - no browser required.
 
 Three panels: **Hierarchy** (top-left), **Search / Results** (bottom-left), **Concept detail** (right). Navigate entirely with the keyboard.
 
@@ -26,7 +26,7 @@ sct tui [--db <PATH>]
 
 ```bash
 # Open the TUI using the auto-discovered database
-# (cwd → $SCT_DATA_HOME/data/ — see Path resolution)
+# (cwd → $SCT_DATA_HOME/data/ - see Path resolution)
 sct tui
 
 # Specify a database path explicitly
@@ -81,7 +81,7 @@ sct tui
 | `←` / `→` | Move focus left / right |
 | `↑` / `↓` | Move selection up / down in focused panel |
 | `PgUp` / `PgDn` | Scroll detail panel |
-| `b` | Back — return to previously viewed concept |
+| `b` | Back - return to previously viewed concept |
 | `h` | Jump focus to Hierarchy panel |
 | `q` / `Q` | Quit |
 | `Ctrl-C` | Quit |
@@ -90,13 +90,13 @@ sct tui
 
 ## Workflow
 
-1. **Browse by hierarchy** — focus the Hierarchy panel (press `h`), use `↑↓` to select a hierarchy category, press `Enter` to load its concepts into the Results list.
+1. **Browse by hierarchy** - focus the Hierarchy panel (press `h`), use `↑↓` to select a hierarchy category, press `Enter` to load its concepts into the Results list.
 
-2. **Search** — press `/` to open the search input. Type a term and wait (150 ms debounce) or press `Enter` to search immediately. Results appear in the Results list ranked by FTS5 relevance.
+2. **Search** - press `/` to open the search input. Type a term and wait (150 ms debounce) or press `Enter` to search immediately. Results appear in the Results list ranked by FTS5 relevance.
 
-3. **Inspect a concept** — use `↑↓` in the Results list, press `Enter` to load the full concept detail on the right.
+3. **Inspect a concept** - use `↑↓` in the Results list, press `Enter` to load the full concept detail on the right.
 
-4. **Navigate relationships** — the detail panel lists parents and attributes with their SCTIDs. Type the SCTID into the search box to jump to any related concept, or use `b` to navigate back through your history (up to 20 steps).
+4. **Navigate relationships** - the detail panel lists parents and attributes with their SCTIDs. Type the SCTID into the search box to jump to any related concept, or use `b` to navigate back through your history (up to 20 steps).
 
 ---
 
@@ -106,7 +106,7 @@ The search box accepts plain terms as well as FTS5 expressions:
 
 | Input | Behaviour |
 |:---|:---|
-| `diabetes` | Prefix match — finds `diabetes`, `diabetic`, etc. |
+| `diabetes` | Prefix match - finds `diabetes`, `diabetic`, etc. |
 | `heart attack` | Exact phrase match |
 | `"heart attack"` | Explicit phrase match |
 | `diabetes* OR hypertension` | Boolean OR |
@@ -148,6 +148,6 @@ sct sqlite --input snomed.ndjson --output snomed.db
 
 ## See also
 
-- [`sct gui`](gui.md) — browser-based UI with the same data
-- [`sct lexical`](lexical.md) — CLI keyword search without the TUI
-- [`sct mcp`](mcp.md) — expose the same database to an AI assistant
+- [`sct gui`](gui.md) - browser-based UI with the same data
+- [`sct lexical`](lexical.md) - CLI keyword search without the TUI
+- [`sct mcp`](mcp.md) - expose the same database to an AI assistant

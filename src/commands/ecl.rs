@@ -1,7 +1,7 @@
-//! `sct ecl expand` — evaluate a SNOMED CT ECL expression against the database
+//! `sct ecl expand` - evaluate a SNOMED CT ECL expression against the database
 //! and emit the matching concept SCTIDs.
 //!
-//! Composable by design (see `specs/spec.md` — "Composability"): stdout is
+//! Composable by design (see `specs/spec.md` - "Composability"): stdout is
 //! newline-delimited SCTIDs, so it pipes straight into `sct codelist add <file> -`,
 //! `sct lookup`, `jq`, or anything else. `--json` emits a JSON array instead.
 //! The human-readable match count goes to stderr, keeping stdout clean for pipes.

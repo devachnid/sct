@@ -5,9 +5,9 @@
 //! `sct codelist add --ecl`, the future `sct serve` `$expand`, and is the
 //! compile target for SCT-QL.
 //!
-//! - [`parse`] — ECL text → [`ast::Expr`]
-//! - [`evaluate`] — [`ast::Expr`] × SQLite → set of matching SCTIDs
-//! - [`expand`] — convenience: ECL text × SQLite → sorted `Vec` of SCTIDs
+//! - [`parse`] - ECL text → [`ast::Expr`]
+//! - [`evaluate`] - [`ast::Expr`] × SQLite → set of matching SCTIDs
+//! - [`expand`] - convenience: ECL text × SQLite → sorted `Vec` of SCTIDs
 
 pub mod ast;
 pub mod eval;

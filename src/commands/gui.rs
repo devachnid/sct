@@ -1,4 +1,4 @@
-//! `sct gui` — Browser-based UI for SNOMED CT exploration.
+//! `sct gui` - Browser-based UI for SNOMED CT exploration.
 //!
 //! Starts a local Axum HTTP server bound to 127.0.0.1 only, serves an
 //! embedded single-page app, and opens the browser automatically.
@@ -87,7 +87,7 @@ async fn serve(
     };
 
     if let Some(path) = &state.dev_html {
-        eprintln!("sct gui: dev mode — serving HTML from {}", path.display());
+        eprintln!("sct gui: dev mode - serving HTML from {}", path.display());
     }
 
     let app = Router::new()
@@ -328,7 +328,7 @@ fn inner_graph(db_path: &PathBuf, id: &str) -> Result<Value> {
         )
         .map_err(|_| anyhow::anyhow!("concept {} not found", id))?;
 
-    // Parents — read from JSON column, then look up preferred_term for each
+    // Parents - read from JSON column, then look up preferred_term for each
     let parents_raw: Option<String> = conn
         .query_row(
             "SELECT parents FROM concepts WHERE id = ?1",

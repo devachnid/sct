@@ -1,6 +1,6 @@
 # Contributing to sct
 
-Thank you for your interest in contributing! This project is licensed under the **GNU Affero General Public License v3.0** — by contributing, you agree that your contributions will be licensed under the same terms.
+Thank you for your interest in contributing! This project is licensed under the **GNU Affero General Public License v3.0** - by contributing, you agree that your contributions will be licensed under the same terms.
 
 ## Code of Conduct
 
@@ -45,9 +45,9 @@ To catch formatting and lint issues before they hit CI, install the repo-tracked
 git config core.hooksPath .githooks
 ```
 
-The `pre-commit` hook runs `cargo fmt --check` and `cargo clippy -- -D warnings` — the same fast checks CI runs. It only triggers when Rust-relevant files (`*.rs`, `*.toml`, `Cargo.lock`) are staged, so doc-only commits are never blocked. Tests are not run in the hook (too slow for a commit gate) — run `cargo test` yourself or let CI do it.
+The `pre-commit` hook runs `cargo fmt --check` and `cargo clippy -- -D warnings` - the same fast checks CI runs. It only triggers when Rust-relevant files (`*.rs`, `*.toml`, `Cargo.lock`) are staged, so doc-only commits are never blocked. Tests are not run in the hook (too slow for a commit gate) - run `cargo test` yourself or let CI do it.
 
-Bypass the hook for a single commit with `git commit --no-verify` — use sparingly, since CI will still reject what you bypass.
+Bypass the hook for a single commit with `git commit --no-verify` - use sparingly, since CI will still reject what you bypass.
 
 ## Licensing Note
 

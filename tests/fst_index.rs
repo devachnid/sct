@@ -112,7 +112,7 @@ fn diacritics_are_preserved_not_folded() {
     let (idx, _dir) = build_fixture();
     // Exact accented form matches.
     assert_eq!(idx.lookup_exact("ménière's disease").len(), 1);
-    // The de-accented form must NOT match — we deliberately keep precision.
+    // The de-accented form must NOT match - we deliberately keep precision.
     assert!(idx.lookup_exact("meniere's disease").is_empty());
 }
 

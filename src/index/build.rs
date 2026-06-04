@@ -81,7 +81,7 @@ impl Accumulator {
     }
 
     /// Resolve (allocating on first sight) a tag id for a tag string. Caps at
-    /// 255 distinct tags — SNOMED has well under 256 (see `specs/fst.md` §4.2);
+    /// 255 distinct tags - SNOMED has well under 256 (see `specs/fst.md` §4.2);
     /// anything beyond is folded to "no tag" rather than corrupting the byte.
     fn tag_id(&mut self, tag: &str) -> u8 {
         if let Some(&id) = self.tag_ids.get(tag) {
@@ -216,7 +216,7 @@ fn serialise<W: Write>(
 
     // --- terms_index + terms_text (concept SCTID -> preferred term) ---
     // Optional: when omitted, both sections are an empty (count = 0) table, and
-    // the reader resolves no labels — callers supply display text elsewhere.
+    // the reader resolves no labels - callers supply display text elsewhere.
     let mut terms_index: Vec<u8> = Vec::new();
     let mut terms_text: Vec<u8> = Vec::new();
     let term_count = if opts.include_terms {
@@ -299,7 +299,7 @@ fn serialise<W: Write>(
 
 /// Append a posting list as `uvarint(len)` followed by delta-encoded SCTIDs,
 /// each delta a uvarint. A `BTreeSet` iterates ascending, so deltas are positive
-/// and small for dense runs — the whole point of the encoding. The ascending
+/// and small for dense runs - the whole point of the encoding. The ascending
 /// order is also what the merge-intersection in `query` relies on.
 fn write_posting(buf: &mut Vec<u8>, concepts: &BTreeSet<u64>) {
     format::write_uvarint(buf, concepts.len() as u64);

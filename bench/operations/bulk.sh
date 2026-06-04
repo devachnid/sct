@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# operations/bulk.sh — resolve all fixture concepts in one request/query
+# operations/bulk.sh - resolve all fixture concepts in one request/query
 #
 # Local:  Single SELECT ... WHERE id IN (...) across all fixture IDs
 # Remote: FHIR batch Bundle POST (falls back to sequential $lookup calls

@@ -1,4 +1,4 @@
-# `sct serve` — FHIR R4 Terminology Server
+# `sct serve` - FHIR R4 Terminology Server
 
 A spec for implementing `sct serve`: a FHIR R4 HTTP terminology server backed by the SQLite
 artefact produced by `sct sqlite`. The goal is a standards-compliant, drop-in replacement for
@@ -23,11 +23,11 @@ engines) can point at it with no change to their configuration other than the ba
 
 Most FHIR terminology servers are:
 
-- **Remote** — every lookup is a network round trip (200–2000 ms)
-- **Operationally heavy** — Elasticsearch, PostgreSQL, Docker, JVM heap tuning
-- **Expensive** — Ontoserver licences are per-organisation; Snowstorm requires significant
+- **Remote** - every lookup is a network round trip (200–2000 ms)
+- **Operationally heavy** - Elasticsearch, PostgreSQL, Docker, JVM heap tuning
+- **Expensive** - Ontoserver licences are per-organisation; Snowstorm requires significant
   infrastructure
-- **Opaque** — you cannot inspect the data with standard tools
+- **Opaque** - you cannot inspect the data with standard tools
 
 `sct serve` is backed by a plain SQLite file. Lookups are sub-millisecond. The entire server is
 a single statically-linked binary. The database is inspectable with `sqlite3`. It can run on a
@@ -42,7 +42,7 @@ Before treating `sct serve` as an Ontoserver drop-in replacement, the following 
 be understood and consciously accepted or worked around. They are documented here rather than
 buried in implementation notes because they will surface in production.
 
-### 1. ECL coverage is partial — this is the biggest gap
+### 1. ECL coverage is partial - this is the biggest gap
 
 Ontoserver's commercial value is largely its Expression Constraint Language (ECL) engine.
 `ValueSet/$expand` with ECL is the workhorse of modern SNOMED usage in UK clinical systems.
@@ -68,7 +68,7 @@ search, `sct serve` cannot replace Ontoserver without implementing an ECL parser
 parser is a substantial engineering effort (the ANTLR grammar for ECL v2.1 runs to ~400 rules).
 See §Future work.
 
-### 2. Reference set membership — partial support
+### 2. Reference set membership - partial support
 
 UK clinical systems use SNOMED reference sets heavily: drug extension, national reference sets,
 map reference sets, language reference sets, simple reference sets for administrative coding.
@@ -77,10 +77,10 @@ The ECL `^` operator (member-of) requires refset membership data.
 **Loaded today:**
 - Concept-level Simple refsets (`der2_Refset_Simple*Snapshot*.txt`) are loaded into the
   `refset_members` table via `sct ndjson --refsets simple` (default) + `sct sqlite`. This covers
-  the UK administrative refsets (SCR exclusion, care connect, accessibility, etc.) — the bulk
+  the UK administrative refsets (SCR exclusion, care connect, accessibility, etc.) - the bulk
   of what clinical systems need `^` ECL for.
-- Language refsets (used for preferred term selection) — unchanged.
-- CTV3 / Read v2 simple map refsets — unchanged.
+- Language refsets (used for preferred term selection) - unchanged.
+- CTV3 / Read v2 simple map refsets - unchanged.
 
 **Still to come (`--refsets all`, not yet implemented):**
 - Complex refsets (`der2_Refset_Complex*`)
@@ -148,7 +148,7 @@ FHIR clients that cache subsumption results. It is rarely used and is explicitly
 | `/CodeSystem/$lookup` | GET, POST | Look up a SNOMED concept by SCTID |
 | `/CodeSystem/$validate-code` | GET, POST | Check if a code is active and valid |
 | `/CodeSystem/$subsumes` | GET, POST | Subsumption (is-a) check between two codes |
-| `/ValueSet/$expand` | GET, POST | Expand a ValueSet — text filter + simple ECL |
+| `/ValueSet/$expand` | GET, POST | Expand a ValueSet - text filter + simple ECL |
 
 ### Should-have (phase 2)
 
@@ -238,7 +238,7 @@ GET /CodeSystem/$subsumes?system=http://snomed.info/sct&codeA=44054006&codeB=732
 ```
 
 Returns a `Parameters` resource with outcome `subsumedBy`, `subsumes`, `equivalent`, or
-`not-subsumed`. Implemented via recursive CTE on `concept_isa` — same query as `sct lexical`
+`not-subsumed`. Implemented via recursive CTE on `concept_isa` - same query as `sct lexical`
 subsumption.
 
 ---
@@ -354,14 +354,14 @@ Options:
   --read-only           Refuse write operations (always true; flag is for explicit documentation)
 ```
 
-**Example — local dev, Ontoserver-compatible base path:**
+**Example - local dev, Ontoserver-compatible base path:**
 
 ```
 sct serve --db snomed.db --port 8080 --fhir-base /fhir
 # Endpoints at http://localhost:8080/fhir/CodeSystem/$lookup etc.
 ```
 
-**Example — network-accessible server:**
+**Example - network-accessible server:**
 
 ```
 sct serve --db /data/snomed.db --host 0.0.0.0 --port 8080
@@ -463,7 +463,7 @@ LIMIT ?3 OFFSET ?4
 
 Concept-level Simple refsets are loaded into the `refset_members` table whenever `sct ndjson`
 runs with `--refsets simple` (the default). Refsets are themselves SNOMED CT concepts, so no
-separate catalog table is needed — JOIN `refset_members.refset_id` to `concepts.id` to get
+separate catalog table is needed - JOIN `refset_members.refset_id` to `concepts.id` to get
 the refset's preferred term, module, FSN, etc.
 
 ```sql
@@ -498,7 +498,7 @@ CREATE TABLE concept_maps_rf2 (
 );
 ```
 
-This table is not yet created — part of the future `--refsets all` work.
+This table is not yet created - part of the future `--refsets all` work.
 
 ---
 
@@ -516,16 +516,16 @@ substantially faster than Ontoserver on the same hardware.
 
 ## Implementation phases
 
-### Phase 1 — Core operations (foundation)
+### Phase 1 - Core operations (foundation)
 
 Deliverables:
 
 - `sct serve` binary with `--features serve`
 - `/metadata` CapabilityStatement
-- `CodeSystem/$lookup` (GET + POST) — properties: display, designation, parent, child, inactive, moduleId, effectiveTime
+- `CodeSystem/$lookup` (GET + POST) - properties: display, designation, parent, child, inactive, moduleId, effectiveTime
 - `CodeSystem/$validate-code` (GET + POST)
 - `CodeSystem/$subsumes` (GET + POST)
-- `ValueSet/$expand` (GET + POST) — text filter only (no ECL)
+- `ValueSet/$expand` (GET + POST) - text filter only (no ECL)
 - FHIR `OperationOutcome` error responses throughout
 - Content negotiation (JSON only; 406 for XML)
 - Basic request/response logging (INFO: method, path, status, latency)
@@ -536,7 +536,7 @@ Acceptance criteria:
 - HL7 FHIR validator reports no structural errors on sample responses
 - `sct serve` passes all existing bench fixture queries against `sct`'s own SQLite DB
 
-### Phase 2 — ECL hierarchy + pagination
+### Phase 2 - ECL hierarchy + pagination
 
 Deliverables:
 
@@ -552,18 +552,18 @@ Acceptance criteria:
 - `bench/bench.sh` children and ancestors operations work via FHIR ECL
 - A FHIR client (e.g. HAPI FHIR test suite) can perform a full terminology operation cycle
 
-### Phase 3 — Refsets + ConceptMap
+### Phase 3 - Refsets + ConceptMap
 
-Prerequisites: `refset_members` table (done — shipped in `sct ndjson --refsets simple`)
+Prerequisites: `refset_members` table (done - shipped in `sct ndjson --refsets simple`)
 
 Deliverables:
 
 - `^` ECL operator (member-of reference set) via `refset_members` table
 - `ConceptMap/$translate` for CTV3 and Read v2 (using existing `concept_maps` table)
-- `ConceptMap/$translate` for ICD-10 and OPCS-4 (requires `concept_maps_rf2` — `--refsets all`)
+- `ConceptMap/$translate` for ICD-10 and OPCS-4 (requires `concept_maps_rf2` - `--refsets all`)
 - `ValueSet/$expand` with `^` ECL
 
-### Phase 4 — R5 + hardening
+### Phase 4 - R5 + hardening
 
 Deliverables:
 
@@ -582,7 +582,7 @@ Deliverables:
 - Write operations (create/update/delete resources)
 - SMART on FHIR / OAuth2 (defer to reverse proxy)
 - `ConceptMap/$closure`
-- Full ECL v2.1 (dossier, history supplements, language scoping) — phase 4 stretch goal only
+- Full ECL v2.1 (dossier, history supplements, language scoping) - phase 4 stretch goal only
 - Multi-edition / multi-version routing within a single process
 - Concept authoring or editorial workflows
 - FHIR R2 / DSTU3 compatibility

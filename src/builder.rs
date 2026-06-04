@@ -179,7 +179,7 @@ pub fn build_records(
     // a concept's preferred term is the synonym marked Preferred in the
     // highest-priority refset that has an opinion for it, falling back to a
     // synonym preferred in any refset, then the FSN. This is what makes
-    // `en-GB` ("Appendicectomy") differ from `en-US` ("Appendectomy") — the
+    // `en-GB` ("Appendicectomy") differ from `en-US` ("Appendectomy") - the
     // dialect lives in the refset id, not the description's `languageCode`
     // (which is "en" for both).
     let priority = language_refset_priority(locale);

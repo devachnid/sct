@@ -3,7 +3,7 @@
 //!
 //! The goal is a single, grep-friendly, `wc -l`-accurate line per concept
 //! with a format the user can tune per-invocation (CLI flag) or globally
-//! (`$SCT_CONFIG_HOME/config.toml` — see [`crate::paths`]):
+//! (`$SCT_CONFIG_HOME/config.toml` - see [`crate::paths`]):
 //!
 //! ```toml
 //! [format]

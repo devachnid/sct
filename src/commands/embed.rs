@@ -1,14 +1,14 @@
-//! `sct embed` — Generate vector embeddings from a SNOMED CT NDJSON artefact
+//! `sct embed` - Generate vector embeddings from a SNOMED CT NDJSON artefact
 //! and write an Apache Arrow IPC file for vector search.
 //!
 //! Embeddings are produced by an Ollama instance running locally.
 //! Default model: `nomic-embed-text` (768 dimensions, excellent for medical text).
 //!
 //! Output format: Arrow IPC (`.arrow`) with columns:
-//!   id            — SCTID (UTF-8)
-//!   preferred_term — preferred term (UTF-8)
-//!   hierarchy     — top-level hierarchy name (UTF-8)
-//!   embedding     — FixedSizeList<Float32>(dim)
+//!   id            - SCTID (UTF-8)
+//!   preferred_term - preferred term (UTF-8)
+//!   hierarchy     - top-level hierarchy name (UTF-8)
+//!   embedding     - FixedSizeList<Float32>(dim)
 //!
 //! The Arrow IPC file can be queried directly in DuckDB:
 //!   SELECT id, preferred_term,
@@ -111,7 +111,7 @@ pub fn run(args: Args) -> Result<()> {
         .context("Ollama returned an empty embedding on probe")?;
 
     pb.set_message(format!(
-        "Ollama ready — model={}, dim={dim}. Reading concepts...",
+        "Ollama ready - model={}, dim={dim}. Reading concepts...",
         args.model
     ));
 

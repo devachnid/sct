@@ -1,7 +1,7 @@
 //! Release provenance metadata for sct-produced artefacts.
 //!
 //! Every artefact (`NDJSON`, SQLite DB, Parquet, Markdown export, Arrow embeddings)
-//! should be able to answer: **which SNOMED CT release did this come from?** —
+//! should be able to answer: **which SNOMED CT release did this come from?** -
 //! edition (International / UK Clinical / UK Drug / Monolith / extension),
 //! release date, the full release identifier, and the sct version that built it.
 //!
@@ -170,7 +170,7 @@ pub struct ProvenanceFlags {
     pub no_provenance: bool,
 }
 
-/// Output mode for a query command — drives the default provenance behaviour
+/// Output mode for a query command - drives the default provenance behaviour
 /// when neither `--provenance` nor `--no-provenance` is set.
 #[derive(Debug, Clone, Copy)]
 pub enum OutputMode {
@@ -225,7 +225,7 @@ pub fn inject_into_json(value: &mut serde_json::Value, prov: Option<&Provenance>
 }
 
 /// If a line is a `sct_provenance` metadata record, parse and return it.
-/// Otherwise return `None` — the caller should treat the line as a ConceptRecord.
+/// Otherwise return `None` - the caller should treat the line as a ConceptRecord.
 ///
 /// Callers that want to tolerate older (v3) NDJSONs without a header line simply
 /// iterate as usual: this helper returns `None` for concept records, so the
@@ -298,7 +298,7 @@ pub fn read_sqlite(conn: &Connection) -> Result<Option<Provenance>> {
 
     let edition_label = get("edition_label").unwrap_or_default();
     if edition_label.is_empty() {
-        // Table is present but unpopulated — treat as absent.
+        // Table is present but unpopulated - treat as absent.
         return Ok(None);
     }
     let source_paths: Vec<String> = get("source_paths")
@@ -317,10 +317,10 @@ pub fn read_sqlite(conn: &Connection) -> Result<Option<Provenance>> {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers — edition classification and date extraction
+// Helpers - edition classification and date extraction
 // ---------------------------------------------------------------------------
 
-/// Extract the release identifier from an input path — the final path
+/// Extract the release identifier from an input path - the final path
 /// component with any `.zip` extension stripped.
 fn release_id_from_path(p: &Path) -> String {
     let name = p

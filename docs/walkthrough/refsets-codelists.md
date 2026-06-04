@@ -7,7 +7,7 @@ as version-controlled plain-text files.
 
 ## Reference Sets
 
-SNOMED CT uses **reference sets** (refsets) to group concepts for specific purposes — drug
+SNOMED CT uses **reference sets** (refsets) to group concepts for specific purposes - drug
 safety alerts, summary care record exclusions, diagnostic imaging procedures, and hundreds
 more. Each refset is itself a SNOMED CT concept, so it has its own ID, preferred term, and
 module.
@@ -88,23 +88,23 @@ See the [`sct refset` docs](../commands/refset.md) for the full list of template
 
 ### Which refsets does a concept belong to?
 
-Use `sct lookup` — its output includes a **Member of refsets** section listing every refset
+Use `sct lookup` - its output includes a **Member of refsets** section listing every refset
 the concept appears in. The `snomed_concept` MCP tool returns the same data as a `member_of` array.
 
 ### When members are missing
 
 `sct refset` only sees what `sct sqlite` loaded. If a refset has no members:
 
-- Check that `sct ndjson` was run with `--refsets simple` (the default) — if the pipeline used `--refsets none`, no memberships were written.
+- Check that `sct ndjson` was run with `--refsets simple` (the default) - if the pipeline used `--refsets none`, no memberships were written.
 - Check that the RF2 release actually contains a `der2_Refset_Simple*Snapshot*.txt` file. The International release does not include UK national refsets; you need the UK Monolith or UK Clinical release for those.
-- A refset whose members are all inactive concepts will have zero rows in `refset_members` — inactive concepts are filtered at RF2 load time.
+- A refset whose members are all inactive concepts will have zero rows in `refset_members` - inactive concepts are filtered at RF2 load time.
 
 ---
 
 ## Code Lists
 
 Manage curated collections of clinical codes as plain-text `.codelist` files with YAML
-front-matter — designed to live in version control and be reviewed like source code.
+front-matter - designed to live in version control and be reviewed like source code.
 
 Also accessible as `sct refset` and `sct valueset`.
 
@@ -137,7 +137,7 @@ sct codelist add codelists/diabetes.codelist --ecl "<<73211009"
 
 ### Compose with pipes
 
-Every read-side command can emit bare SCTIDs with `--ids` (and [`sct ecl expand`](../commands/ecl.md) does so by default), and `sct codelist add <file> -` reads SCTIDs from stdin. So any way of *finding* concepts becomes a way of *building* a code list — just pipe one into the other:
+Every read-side command can emit bare SCTIDs with `--ids` (and [`sct ecl expand`](../commands/ecl.md) does so by default), and `sct codelist add <file> -` reads SCTIDs from stdin. So any way of *finding* concepts becomes a way of *building* a code list - just pipe one into the other:
 
 ```bash
 # From an ECL query
@@ -156,19 +156,19 @@ sct semantic "water tablets" --ids | sct codelist add diuretics.codelist -
 sct refset members 447562003 --ids | sct codelist add refset-copy.codelist -
 ```
 
-This is the **composability** principle in action: small, single-purpose commands that speak SCTIDs over Unix pipes — machine output on stdout, human chatter on stderr. The `--ecl` flag above is the one-step convenience for the most common case; the pipe is the general building block.
+This is the **composability** principle in action: small, single-purpose commands that speak SCTIDs over Unix pipes - machine output on stdout, human chatter on stderr. The `--ecl` flag above is the one-step convenience for the most common case; the pipe is the general building block.
 
 ### Remove (exclude) a concept
 
 ```bash
 sct codelist remove codelists/asthma-diagnosis.codelist 41553006 \
-  --comment "occupational asthma — separate pathway"
+  --comment "occupational asthma - separate pathway"
 ```
 
 Moves the line to a commented exclusion record, preserving the audit trail:
 
 ```
-# 41553006      Occupational asthma  # occupational asthma — separate pathway
+# 41553006      Occupational asthma  # occupational asthma - separate pathway
 ```
 
 ### Validate (CI-ready)

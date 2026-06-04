@@ -1,4 +1,4 @@
-//! `sct semantic` — Semantic similarity search over a SNOMED CT Arrow IPC embeddings file.
+//! `sct semantic` - Semantic similarity search over a SNOMED CT Arrow IPC embeddings file.
 //!
 //! Embeds the query text via Ollama, then performs cosine similarity against
 //! every concept embedding in the Arrow IPC file produced by `sct embed`.
@@ -30,7 +30,7 @@ pub struct Args {
     #[arg(long, short)]
     pub embeddings: Option<PathBuf>,
 
-    /// Ollama embedding model — must match the model used by `sct embed`.
+    /// Ollama embedding model - must match the model used by `sct embed`.
     #[arg(long, default_value = "nomic-embed-text")]
     pub model: String,
 
@@ -97,7 +97,7 @@ pub fn run(args: Args) -> Result<()> {
         args.limit,
     )?;
 
-    // `--ids`: machine output for pipes — just SCTIDs on stdout.
+    // `--ids`: machine output for pipes - just SCTIDs on stdout.
     if args.ids {
         use std::io::Write;
         let mut out = std::io::stdout().lock();
@@ -203,7 +203,7 @@ pub fn semantic_search(
         let stored_dim = list.value_length() as usize;
         anyhow::ensure!(
             query_vec.len() == stored_dim,
-            "query embedding dimension ({}) does not match embeddings file dimension ({}) — \
+            "query embedding dimension ({}) does not match embeddings file dimension ({}) - \
              the file was built with a different model. Re-run `sct embed` with --model {}",
             query_vec.len(),
             stored_dim,

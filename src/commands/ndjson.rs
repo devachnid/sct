@@ -1,4 +1,4 @@
-//! `sct ndjson` — Convert an RF2 Snapshot directory to a canonical NDJSON artefact.
+//! `sct ndjson` - Convert an RF2 Snapshot directory to a canonical NDJSON artefact.
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -17,7 +17,7 @@ pub enum RefsetMode {
     /// Load concept-level simple refsets (default).
     #[default]
     Simple,
-    /// Load all refset types — not yet implemented.
+    /// Load all refset types - not yet implemented.
     All,
 }
 
@@ -217,7 +217,7 @@ fn maybe_extract_zip(path: &PathBuf) -> Result<(PathBuf, Option<tempfile::TempDi
     let tmp = tempfile::tempdir().context("creating temporary extraction directory")?;
     extract_zip(path, tmp.path()).with_context(|| format!("extracting {}", path.display()))?;
 
-    // If the archive contains exactly one top-level directory, use that —
+    // If the archive contains exactly one top-level directory, use that -
     // SNOMED CT ZIPs normally contain a single directory named after the release.
     let top_dirs: Vec<_> = std::fs::read_dir(tmp.path())
         .context("reading extraction directory")?

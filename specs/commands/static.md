@@ -1,4 +1,4 @@
-# `sct static` — Static-File Terminology Server
+# `sct static` - Static-File Terminology Server
 
 A spec for `sct static`: a build-time command that materialises the SQLite artefact
 into a tree of static JSON files that any HTTP server (or `file://` consumer) can
@@ -38,14 +38,14 @@ engine in the request path. Everything is pre-expanded at build time. This is
 the right answer when:
 
 - The set of useful queries is known ahead of time (the common case in
-  clinical informatics — a fixed set of value sets, refsets, and lookups
+  clinical informatics - a fixed set of value sets, refsets, and lookups
   drives 99% of traffic)
 - The deploy target is a CDN, a static site host, or a non-server environment
   (browser-only apps, GitEHR's `/state` directory, an offline tablet)
 - Operational simplicity matters more than ad-hoc query flexibility
 - The audience is broad enough that "spin up a Java server" is too high a bar
 
-It also democratises the idea of a terminology server — anyone with a SNOMED
+It also democratises the idea of a terminology server - anyone with a SNOMED
 license and a static host can publish one.
 
 ---
@@ -85,7 +85,7 @@ alone refinements.
 
 **Proposed:** a new `crate::ecl` module that:
 
-- Parses ECL expressions into an AST (subset of the official grammar — focus
+- Parses ECL expressions into an AST (subset of the official grammar - focus
   on the operators clinical refsets actually use)
 - Compiles each AST node into the SQL needed against `concepts`,
   `concept_isa`, and `refset_members`
@@ -94,7 +94,7 @@ alone refinements.
 
 Initial coverage: the same operator set in the `serve.md` table, plus `^`
 (now possible since refset_members is loaded). Refinements
-(`* : 246075003 = 372687004`) deferred to a later phase — the static command
+(`* : 246075003 = 372687004`) deferred to a later phase - the static command
 should warn-and-skip ECL it can't compile rather than failing the build.
 
 **Why this pays off twice:** `sct serve` Phase 2 needs it, `sct static` needs
@@ -156,7 +156,7 @@ Sharding rules:
 ## Output shapes
 
 `--shape fhir` (default): every JSON file is a valid FHIR R4 `Parameters` or
-`ValueSet` or `CodeSystem` resource — byte-identical to what `sct serve` would
+`ValueSet` or `CodeSystem` resource - byte-identical to what `sct serve` would
 return. URL conventions match the FHIR spec where possible:
 
 | FHIR endpoint | Static path |
@@ -185,12 +185,12 @@ This is the meat of the command. The static export is only useful if it
 contains the value sets people actually query. Three sources, in order of
 priority:
 
-1. **Codelists in the repo** — every `.codelist` file in `--codelists` is
+1. **Codelists in the repo** - every `.codelist` file in `--codelists` is
    compiled to a value set. The codelist's `id` becomes the value-set id.
    This is the primary mechanism: codelists are the curated, versioned
    "common ECL" the user mentioned.
 
-2. **`valuesets.toml`** — a config file listing additional ECL expressions
+2. **`valuesets.toml`** - a config file listing additional ECL expressions
    to expand:
 
    ```toml
@@ -204,7 +204,7 @@ priority:
    ecl = "^816080008"   # IPS Conditions reference set
    ```
 
-3. **Implicit SNOMED value sets for every loaded refset** — `^{refset_id}`
+3. **Implicit SNOMED value sets for every loaded refset** - `^{refset_id}`
    for each refset in `refset_members`. Cheap, useful, and what the
    FHIR `http://snomed.info/sct?fhir_vs=refset/X` URL expects.
 
@@ -253,7 +253,7 @@ groupings, `sct static` gives you the queryable endpoint.
 
 ## Phasing
 
-**Phase 1 — Core lookup**
+**Phase 1 - Core lookup**
 
 - ECL parser module (initial subset: simple operators + `^`)
 - `sct static` skeleton: emit `concepts/{sctid}.json`, `refsets/`, `index.json`
@@ -262,7 +262,7 @@ groupings, `sct static` gives you the queryable endpoint.
 
 Sufficient for: lookup, refset membership, basic subsumption.
 
-**Phase 2 — Value sets and search**
+**Phase 2 - Value sets and search**
 
 - Pre-expand codelists and `valuesets.toml`
 - Emit `valuesets/{id}/expansion.json`
@@ -271,14 +271,14 @@ Sufficient for: lookup, refset membership, basic subsumption.
 
 Sufficient for: codelist-driven static deployments, GitEHR integration.
 
-**Phase 3 — Maps and FHIR shim**
+**Phase 3 - Maps and FHIR shim**
 
 - Emit `maps/` for every loaded `ConceptMap` (depends on Concept Maps roadmap item)
 - Ship `clients/fhir-shim.js` that maps `/CodeSystem/$lookup?code=X` to
   `concepts/X.json`
 - Document Cloudflare Worker example (~20 lines)
 
-**Phase 4 — Hardening**
+**Phase 4 - Hardening**
 
 - Sharding flags for object-store deploys
 - Build-time provenance: every JSON file carries the same `_provenance`
@@ -290,7 +290,7 @@ Sufficient for: codelist-driven static deployments, GitEHR integration.
 ## Open questions
 
 1. **Output size on the full International Edition.** ~830k concept files,
-   each with parents/children/synonyms — back-of-envelope, ~1-2GB raw,
+   each with parents/children/synonyms - back-of-envelope, ~1-2GB raw,
    ~300-500MB gzipped. Acceptable for a static deploy but not for a GitHub
    Pages repo (1GB soft limit). May need a "lite" mode that emits only what
    the codelists reference.
@@ -300,7 +300,7 @@ Sufficient for: codelist-driven static deployments, GitEHR integration.
    `concepts/{sctid}.json` is a format shift; pre-computing ancestors over
    GPS data is not (the GPS has no ancestry, so this is moot for GPS-only
    builds). Full-edition static deploys remain bound by the Affiliate
-   License — same as `sct serve`.
+   License - same as `sct serve`.
 
 3. **FHIR or bespoke first.** FHIR shape is the bigger market but the JSON
    is verbose. Bespoke JSON is friendlier for the GitEHR / browser case.

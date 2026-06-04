@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# operations/lookup.sh — single concept lookup by SCTID
+# operations/lookup.sh - single concept lookup by SCTID
 #
 # Representative fixture: 22298006 (Myocardial infarction)
 # Local:  SELECT on concepts table (exact primary-key lookup)

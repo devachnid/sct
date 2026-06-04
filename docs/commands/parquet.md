@@ -58,7 +58,7 @@ Array/object columns are stored as JSON strings. DuckDB's `json_extract`, `json_
 ## Example queries (DuckDB)
 
 Queries are ordered from simple to complex. For context on the JSON array columns
-(`synonyms`, `hierarchy_path`, `parents`, `attributes`) — they are stored as
+(`synonyms`, `hierarchy_path`, `parents`, `attributes`) - they are stored as
 `VARCHAR` JSON strings, so use DuckDB's `json_extract`, `json_array_length`, and
 `from_json` rather than list functions.
 
@@ -125,7 +125,7 @@ duckdb -c "
 
 #### Leaf concepts per hierarchy
 
-Leaf concepts have no children — the most specific, fully-refined terms in the
+Leaf concepts have no children - the most specific, fully-refined terms in the
 polyhierarchy.
 
 ```bash
@@ -137,7 +137,7 @@ duckdb -c "
   ORDER BY leaf_count DESC"
 ```
 
-#### Release timeline — how many concepts were last updated per release date
+#### Release timeline - how many concepts were last updated per release date
 
 ```bash
 duckdb -c "
@@ -249,7 +249,7 @@ duckdb -c "
 
 #### Top 2 most-synonymised concepts per hierarchy
 
-`QUALIFY` filters rows after window functions are evaluated — equivalent to
+`QUALIFY` filters rows after window functions are evaluated - equivalent to
 wrapping in a subquery and filtering on the ranked result, but more concise.
 
 ```bash
@@ -286,7 +286,7 @@ df[df.hierarchy == "Procedure"].preferred_term.head(20)
 
 ## Tips
 
-- DuckDB reads Parquet files in-place with zero import overhead — just reference the file path directly in queries.
+- DuckDB reads Parquet files in-place with zero import overhead - just reference the file path directly in queries.
 - The Parquet file is ~250 MB for the full UK Monolith (vs ~1.2 GB NDJSON), owing to columnar compression.
 - Written in batches of 50,000 rows using Arrow for memory efficiency.
 - For analytics workloads, Parquet is faster than SQLite; for FTS and exact lookups, prefer [`sct sqlite`](sqlite.md).

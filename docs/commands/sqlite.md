@@ -4,7 +4,7 @@ Load a SNOMED CT NDJSON artefact into a SQLite database with full-text search (F
 
 **When to use:** you want keyword/phrase search, SQL queries, or to run the MCP server or UIs. For meaning-based search, see [`sct embed`](embed.md) + [`sct semantic`](semantic.md).
 
-The resulting `snomed.db` is a single portable file queryable with `sqlite3` or any SQLite library — no custom binary needed at query time.
+The resulting `snomed.db` is a single portable file queryable with `sqlite3` or any SQLite library - no custom binary needed at query time.
 
 ---
 
@@ -20,10 +20,10 @@ sct sqlite --input <NDJSON> [--output <DB>]
 |---|---|---|
 | `--input <FILE>` | *(required)* | NDJSON file produced by `sct ndjson`. Use `-` for stdin. |
 | `--output <FILE>` | `snomed.db` | Output SQLite database path. |
-| `--transitive-closure` | off | Build the transitive closure table (`concept_ancestors`) after loading — same as running [`sct tct`](tct.md) immediately after. Adds build time and size; needed for subsumption-heavy workloads. |
+| `--transitive-closure` | off | Build the transitive closure table (`concept_ancestors`) after loading - same as running [`sct tct`](tct.md) immediately after. Adds build time and size; needed for subsumption-heavy workloads. |
 | `--include-self` | off | Include reflexive rows (`ancestor_id = descendant_id`, depth 0) in the TCT. Only meaningful with `--transitive-closure`. |
 
-The database always includes a `concept_relationships` table (typed attribute triples) used by ECL attribute refinement — see [`sct codelist add --ecl`](codelist.md).
+The database always includes a `concept_relationships` table (typed attribute triples) used by ECL attribute refinement - see [`sct codelist add --ecl`](codelist.md).
 
 ---
 
@@ -194,7 +194,7 @@ sqlite3 snomed.db "
 - JSON columns can be queried with `json_extract(col, '$.key')` and iterated with `json_each(col)`.
 - The FTS5 `rank` column gives BM25 relevance ordering: `ORDER BY rank`.
 - For Python: `import sqlite3; con = sqlite3.connect("snomed.db")`.
-- The database is read-only safe — `sct mcp`, `sct tui`, and `sct gui` all open it read-only.
+- The database is read-only safe - `sct mcp`, `sct tui`, and `sct gui` all open it read-only.
 
 ---
 
@@ -207,7 +207,7 @@ They demonstrate the kind of terminology reasoning that ECL (Expression Constrai
 
 > **Note on `UNION` vs `UNION ALL` in recursive CTEs**
 >
-> SNOMED CT is a *polyhierarchy* — a concept can have more than one parent.
+> SNOMED CT is a *polyhierarchy* - a concept can have more than one parent.
 > Recursive CTEs with `UNION ALL` will visit the same ancestor or descendant
 > multiple times (once per path), causing exponential row explosion on large
 > hierarchies. Always use `UNION` in recursive CTEs so that visited nodes are
@@ -219,7 +219,7 @@ They demonstrate the kind of terminology reasoning that ECL (Expression Constrai
 
 **In plain English:** "How many concepts in SNOMED CT are a type of *Diabetes mellitus*?"
 
-This is the most fundamental ECL operation — `<<73211009|Diabetes mellitus|` — the
+This is the most fundamental ECL operation - `<<73211009|Diabetes mellitus|` - the
 double-chevron meaning *self plus all descendants*. The recursive CTE walks the
 `concept_isa` table downward from the seed concept, following every IS-A
 relationship until no new children are found.

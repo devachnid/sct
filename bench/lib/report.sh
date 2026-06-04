@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# lib/report.sh — render benchmark results as table, json, csv, or markdown.
+# lib/report.sh - render benchmark results as table, json, csv, or markdown.
 #
 # Reads from BENCH_RESULTS_TSV (tab-separated: op|label|lms|lsd|rms|rsd|notes)
 # Uses metadata globals: SNOMED_VERSION SNOMED_CONCEPT_COUNT FHIR_PING_MS
 #                        BENCH_SERVER BENCH_DB BENCH_RUNS BENCH_WARMUP BENCH_DATE
 
-# _speedup LOCAL REMOTE — compute Nx speedup as string, or "—"
+# _speedup LOCAL REMOTE - compute Nx speedup as string, or "-"
 _speedup() {
   local lms="$1" rms="$2"
   if [[ "$rms" == "-" || "$lms" == "-" || "$lms" -le 0 ]]; then
-    echo "—"
+    echo "-"
     return
   fi
   awk -v l="$lms" -v r="$rms" 'BEGIN {
@@ -19,13 +19,13 @@ _speedup() {
   }'
 }
 
-# _time_fmt US — auto-scale microseconds for human display
+# _time_fmt US - auto-scale microseconds for human display
 #   < 1000 us  → "NNN us"   e.g. "847 us"
 #   < 10000 us → "N.N ms"   e.g. "1.3 ms"
 #   >= 10000   → "NNNN ms"  e.g. "131 ms"
 _time_fmt() {
   local us="$1"
-  [[ "$us" == "-" ]] && echo "—" && return
+  [[ "$us" == "-" ]] && echo "-" && return
   if (( us < 1000 )); then
     echo "${us} us"
   elif (( us < 10000 )); then
@@ -38,14 +38,14 @@ _time_fmt() {
 # Keep _ms_fmt as an alias so any direct callers still work.
 _ms_fmt() { _time_fmt "$@"; }
 
-# _pm_fmt US — "±N us" / "±N.N ms" / "±NNN ms" or "—"
+# _pm_fmt US - "±N us" / "±N.N ms" / "±NNN ms" or "-"
 _pm_fmt() {
   local us="$1"
-  [[ "$us" == "-" ]] && echo "—" && return
+  [[ "$us" == "-" ]] && echo "-" && return
   printf '±%s' "$(_time_fmt "$us")"
 }
 
-# _footnotes — collect and de-duplicate footnote notes
+# _footnotes - collect and de-duplicate footnote notes
 _footnotes=()
 _add_footnote() {
   local note="$1"
@@ -59,7 +59,7 @@ render_table() {
   [[ -z "$BENCH_SERVER" ]] && remote_label="(not measured)"
 
   # Header
-  printf '\nsct benchmark — %s\n' "$BENCH_DATE"
+  printf '\nsct benchmark - %s\n' "$BENCH_DATE"
   printf '  local db  : %s' "$BENCH_DB"
   [[ -n "$SNOMED_CONCEPT_COUNT" && "$SNOMED_CONCEPT_COUNT" != "?" ]] && \
     printf ' (%s concepts, v%s)' \
@@ -122,9 +122,9 @@ render_table() {
 
   # Totals row
   printf '%s\n' "$(printf '─%.0s' $(seq 1 $(( w_op + w_l + w_sd + w_r + w_rsd + w_sp + 12 ))))"
-  local total_sp="—"
+  local total_sp="-"
   $total_rms_valid && total_sp=$(_speedup "$total_lms" "$total_rms")
-  local total_rms_str="—"
+  local total_rms_str="-"
   $total_rms_valid && total_rms_str="$(_ms_fmt "$total_rms")"
   printf '%-*s  %*s  %*s  %*s  %*s  %*s\n' \
     "$w_op" "total (sum)" \
@@ -238,7 +238,7 @@ render_markdown() {
         note_marker=" [${fnidx}]"
       fi
       local sp_cell="${row_sp[$i]}"
-      [[ "$sp_cell" != "—" ]] && sp_cell="**${sp_cell} faster**"
+      [[ "$sp_cell" != "-" ]] && sp_cell="**${sp_cell} faster**"
       printf '| %s | %s | %s | %s%s | %s | %s |\n' \
         "${row_labels[$i]}" \
         "$(_ms_fmt "${row_lms[$i]}")" \
@@ -250,10 +250,10 @@ render_markdown() {
     done
 
     # Totals
-    local total_sp="—"
+    local total_sp="-"
     $total_rms_valid && total_sp=$(_speedup "$total_lms" "$total_rms")
-    [[ "$total_sp" != "—" ]] && total_sp="**${total_sp} faster**"
-    local total_rms_str="—"
+    [[ "$total_sp" != "-" ]] && total_sp="**${total_sp} faster**"
+    local total_rms_str="-"
     $total_rms_valid && total_rms_str="$(_ms_fmt "$total_rms")"
     printf '| **total** | **%s** | | **%s** | | %s |\n\n' \
       "$(_ms_fmt "$total_lms")" "$total_rms_str" "$total_sp"

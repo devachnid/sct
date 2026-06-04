@@ -1,6 +1,6 @@
-//! `sct tui` — Keyboard-driven terminal UI for SNOMED CT exploration.
+//! `sct tui` - Keyboard-driven terminal UI for SNOMED CT exploration.
 //!
-//! Layout: three panels — hierarchy list (top-left), search/results (bottom-left),
+//! Layout: three panels - hierarchy list (top-left), search/results (bottom-left),
 //! concept detail (right). Navigate with Tab/←→, search with /, quit with q.
 //!
 //! Requires the `tui` Cargo feature: `cargo build --features tui`
@@ -545,7 +545,7 @@ fn render(frame: &mut Frame, app: &mut App) {
 
     // Title bar
     let title = Paragraph::new(
-        "  sct — SNOMED CT Explorer        [/] search  [Tab] switch panel  [q] quit",
+        "  sct - SNOMED CT Explorer        [/] search  [Tab] switch panel  [q] quit",
     )
     .style(Style::default().fg(Color::White).bg(NHS_BLUE));
     frame.render_widget(title, outer[0]);

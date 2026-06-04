@@ -1,4 +1,4 @@
-//! `sct completions` — Print shell completion scripts to stdout.
+//! `sct completions` - Print shell completion scripts to stdout.
 //!
 //! Supports bash, zsh, fish, powershell, and elvish.
 //!
@@ -10,7 +10,7 @@
 //!   # zsh (add to a directory on $fpath, then `compinit`)
 //!   mkdir -p ~/.zfunc
 //!   sct completions zsh > ~/.zfunc/_sct
-//!   # ensure ~/.zfunc is on fpath — add to ~/.zshrc before compinit:
+//!   # ensure ~/.zfunc is on fpath - add to ~/.zshrc before compinit:
 //!   #   fpath=(~/.zfunc $fpath)
 //!
 //!   # fish

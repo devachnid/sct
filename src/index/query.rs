@@ -257,7 +257,7 @@ impl Index {
 
     /// Read a delta-varint posting list at `offset` within a postings section.
     /// Decoding is bounded by the section slice, so a corrupt offset/length can
-    /// at worst return a short or empty list — never read out of bounds.
+    /// at worst return a short or empty list - never read out of bounds.
     fn read_postings(&self, section: &Range<usize>, offset: u64) -> Vec<u64> {
         let data = &self.mmap[section.clone()];
         let mut p = offset as usize;

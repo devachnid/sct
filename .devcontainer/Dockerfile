@@ -25,7 +25,7 @@ RUN wget https://github.com/duckdb/duckdb/releases/download/${DUCKDB_VERSION}/du
     rm /tmp/duckdb.zip && \
     chmod +x /usr/local/bin/duckdb
 
-# Ollama — used by `sct embed` and `sct semantic` for vector embeddings
+# Ollama - used by `sct embed` and `sct semantic` for vector embeddings
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 RUN mkdir -p $WORKSPACE_FOLDER/data-volume \

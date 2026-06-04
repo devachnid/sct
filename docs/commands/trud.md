@@ -11,15 +11,15 @@ using the TRUD REST API. Handles authentication, SHA-256 integrity verification,
 
 1. Register at [isd.digital.nhs.uk/trud](https://isd.digital.nhs.uk/trud/users/guest/filters/0/account/form)
 2. Once logged in, subscribe to the editions you need:
-   - **UK Monolith** (item 1799) — recommended for most users; includes International + UK Clinical + UK Drug (dm+d) + UK Pathology in one merged zip. Snapshot only.
-   - **UK Clinical Edition** (item 101) — International + UK Clinical, without dm+d.
-   - **UK Drug Extension** (item 105) — dm+d prescribing/medicines concepts only.
+   - **UK Monolith** (item 1799) - recommended for most users; includes International + UK Clinical + UK Drug (dm+d) + UK Pathology in one merged zip. Snapshot only.
+   - **UK Clinical Edition** (item 101) - International + UK Clinical, without dm+d.
+   - **UK Drug Extension** (item 105) - dm+d prescribing/medicines concepts only.
 
 ### Get your API key
 
 Your API key is shown on your [TRUD account page](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/account/manage)
 once you are signed in. It is unique to your account and derived from your email address and
-password — if either changes, a new key is generated and the old one is disabled immediately.
+password - if either changes, a new key is generated and the old one is disabled immediately.
 
 **Keep your API key private.** Anyone who has it can download releases as if they were you.
 
@@ -105,7 +105,7 @@ TRUD maintenance windows: weekdays 18:00–08:00 UK time, and midnight–06:00.
 Original error: …
 ```
 
-This check is connection-level only — any HTTP response from TRUD (even an error page) counts
+This check is connection-level only - any HTTP response from TRUD (even an error page) counts
 as "reachable". Only DNS failures, TCP timeouts, or TLS errors trigger this message.
 
 > **Tip:** If `sct trud` fails during a scheduled automation run, check the time against the
@@ -173,7 +173,7 @@ New release available: uk_sct2mo_41.6.0_20260311000001Z.zip (2026-03-18)
 ```
 
 ```
-Local file present but SHA-256 does not match TRUD metadata — re-download recommended: uk_sct2mo_41.6.0_20260311000001Z.zip
+Local file present but SHA-256 does not match TRUD metadata - re-download recommended: uk_sct2mo_41.6.0_20260311000001Z.zip
 Expected: A1B2C3D4…
 Got:      9F8E7D6C…
 ```
@@ -186,7 +186,7 @@ Got:      9F8E7D6C…
 | `2`  | New release available, **or** local file fails the checksum and needs re-downloading |
 | `1`  | Error (network, bad key, etc.)                                                       |
 
-The `2` exit code (not `1`) is deliberate — it lets shell scripts distinguish "update
+The `2` exit code (not `1`) is deliberate - it lets shell scripts distinguish "update
 available" from an error without using `set -e` workarounds:
 
 ```bash
@@ -211,7 +211,7 @@ sct trud download [--edition <NAME>] [--item <N>]
 ```
 
 Downloads the release zip to `~/.local/share/sct/releases/` (or `download_dir` from config,
-or `--output-dir`). The SHA-256 checksum is verified before the file is committed — if it does
+or `--output-dir`). The SHA-256 checksum is verified before the file is committed - if it does
 not match, the partial download is deleted and an error is returned.
 
 Built artefacts produced by `--pipeline` (NDJSON, SQLite, Parquet, Arrow) are written to
@@ -286,7 +286,7 @@ sct trud download --output-dir /data/snomed/
 | Flag                    | Description                                                      |
 | ----------------------- | ---------------------------------------------------------------- |
 | `--edition <NAME>`      | Named edition: `uk_monolith` (default), `uk_clinical`, `uk_drug` |
-| `--item <N>`            | Raw TRUD item number — overrides `--edition`                     |
+| `--item <N>`            | Raw TRUD item number - overrides `--edition`                     |
 | `--api-key <KEY>`       | API key as a plain string                                        |
 | `--api-key-file <PATH>` | File whose first line is the API key                             |
 
@@ -295,7 +295,7 @@ sct trud download --output-dir /data/snomed/
 | Flag                  | Default                   | Description                                                             |
 | --------------------- | ------------------------- | ----------------------------------------------------------------------- |
 | `--latest`            | on                        | Download the most recent release                                        |
-| `--release <VERSION>` | —                         | Download a specific version (e.g. `41.5.0`)                             |
+| `--release <VERSION>` | -                         | Download a specific version (e.g. `41.5.0`)                             |
 | `--output-dir <PATH>` | `$SCT_DATA_HOME/releases` | Where to save the downloaded zip                                        |
 | `--data-dir <PATH>`   | `$SCT_DATA_HOME/data`     | Where to write built artefacts (NDJSON, SQLite, …)                      |
 | `--skip-if-current`   | off                       | Do nothing if the latest zip is already cached with a matching checksum |
@@ -342,7 +342,7 @@ flags or `download_dir` / `data_dir` in `~/.config/sct/config.toml`.
 
 ## Config file
 
-`~/.config/sct/config.toml` — `sct trud` reads but never writes this file.
+`~/.config/sct/config.toml` - `sct trud` reads but never writes this file.
 
 ```toml
 [trud]
@@ -366,7 +366,7 @@ trud_item = 42
 UK SNOMED releases are published roughly monthly, typically on a Wednesday. TRUD recommends
 running automation between **08:00–18:00** or **midnight–06:00 UK time**.
 
-### macOS — launchd (runs weekly, Wednesday 09:00)
+### macOS - launchd (runs weekly, Wednesday 09:00)
 
 Save as `~/Library/LaunchAgents/uk.nhs.sct.trud-sync.plist`, then load it:
 
@@ -405,7 +405,7 @@ Save as `~/Library/LaunchAgents/uk.nhs.sct.trud-sync.plist`, then load it:
 launchctl load ~/Library/LaunchAgents/uk.nhs.sct.trud-sync.plist
 ```
 
-### Linux — systemd user timer
+### Linux - systemd user timer
 
 `~/.config/systemd/user/sct-trud.service`:
 
@@ -423,7 +423,7 @@ EnvironmentFile=%h/.config/sct/env
 
 ```ini
 [Unit]
-Description=Weekly SNOMED TRUD sync — Wednesday 09:00
+Description=Weekly SNOMED TRUD sync - Wednesday 09:00
 
 [Timer]
 OnCalendar=Wed *-*-* 09:00:00
@@ -434,7 +434,7 @@ WantedBy=timers.target
 ```
 
 ```bash
-# ~/.config/sct/env — permissions should be 600
+# ~/.config/sct/env - permissions should be 600
 TRUD_API_KEY=your-key-here
 ```
 
@@ -445,7 +445,7 @@ systemctl --user enable --now sct-trud.timer
 ### Crontab
 
 ```cron
-# Weekly Wednesday 09:00 — check and rebuild if a new SNOMED release is available
+# Weekly Wednesday 09:00 - check and rebuild if a new SNOMED release is available
 0 9 * * 3  TRUD_API_KEY=your-key sct trud download --edition uk_monolith --skip-if-current --pipeline >> ~/.local/share/sct/trud-sync.log 2>&1
 ```
 
@@ -491,9 +491,9 @@ jobs:
 
 The TRUD service is not reachable. Check:
 
-1. **Maintenance window** — TRUD is offline weekdays 18:00–08:00 UK time and midnight–06:00.
-2. **Network connectivity** — can you load [isd.digital.nhs.uk](https://isd.digital.nhs.uk) in a browser?
-3. **Firewall / proxy** — some corporate networks block direct HTTPS to NHS services.
+1. **Maintenance window** - TRUD is offline weekdays 18:00–08:00 UK time and midnight–06:00.
+2. **Network connectivity** - can you load [isd.digital.nhs.uk](https://isd.digital.nhs.uk) in a browser?
+3. **Firewall / proxy** - some corporate networks block direct HTTPS to NHS services.
 
 ### "Invalid API key (HTTP 400)"
 
@@ -508,10 +508,10 @@ item (1799 for Monolith, 101 for Clinical Edition, 105 for Drug Extension).
 ### "SHA-256 checksum mismatch"
 
 The downloaded file is corrupt. The partial file has been deleted automatically. Re-run the
-command — this is almost always a transient network issue.
+command - this is almost always a transient network issue.
 
 ### `--pipeline` fails at the `sct ndjson` step
 
 Check that the downloaded zip is a valid SNOMED RF2 Snapshot archive. The UK Monolith
-(item 1799) ships Snapshot only — if you downloaded a different item that ships Full or Delta
+(item 1799) ships Snapshot only - if you downloaded a different item that ships Full or Delta
 files, `sct ndjson` will need the Snapshot sub-directory pointed to explicitly.

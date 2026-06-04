@@ -1,4 +1,4 @@
-//! `sct tct` — Build a transitive closure table over the IS-A hierarchy.
+//! `sct tct` - Build a transitive closure table over the IS-A hierarchy.
 //!
 //! Computes all (ancestor, descendant, depth) triples from the `concept_isa`
 //! table and stores them in `concept_ancestors`. This is an optional
@@ -33,7 +33,7 @@ pub fn run(args: Args) -> Result<()> {
     let mut conn = Connection::open(&args.db)
         .with_context(|| format!("opening database {}", args.db.display()))?;
 
-    // Performance pragmas — safe for a build-time write operation.
+    // Performance pragmas - safe for a build-time write operation.
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
@@ -146,7 +146,7 @@ pub fn build(conn: &mut Connection, include_self: bool) -> Result<()> {
                 // BFS upward from this concept through all its ancestors.
                 //
                 // Because this is BFS, the first time we encounter any given
-                // ancestor is always via the shortest path — no deduplication
+                // ancestor is always via the shortest path - no deduplication
                 // or MIN(depth) logic is needed beyond the visited set.
                 let mut visited: HashSet<String> = HashSet::new();
                 visited.insert(concept_id.clone());

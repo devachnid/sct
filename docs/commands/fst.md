@@ -1,9 +1,9 @@
 # sct fst
 
-Build and query an **FST-backed lexical index** — a single, mmap-able `snomed.fst` file offering exact, prefix, fuzzy, and word-intersection search over SNOMED CT terms.
+Build and query an **FST-backed lexical index** - a single, mmap-able `snomed.fst` file offering exact, prefix, fuzzy, and word-intersection search over SNOMED CT terms.
 
 !!! warning "Experimental"
-    `sct fst` is an additive, experimental feature. It does not replace or change any existing command — [`sct lexical`](lexical.md) (SQLite FTS5) remains the default keyword-search path. `sct fst` exists to evaluate a finite-state-transducer index as a lighter-weight, typo-tolerant alternative. See [`specs/fst.md`](https://github.com/pacharanero/sct/blob/main/specs/fst.md) for the design and benchmark results.
+    `sct fst` is an additive, experimental feature. It does not replace or change any existing command - [`sct lexical`](lexical.md) (SQLite FTS5) remains the default keyword-search path. `sct fst` exists to evaluate a finite-state-transducer index as a lighter-weight, typo-tolerant alternative. See [`specs/fst.md`](https://github.com/pacharanero/sct/blob/main/specs/fst.md) for the design and benchmark results.
 
 **When to use:** you want sub-millisecond prefix/autocomplete or **fuzzy (typo-tolerant)** matching that FTS5 can't do, or a lexical index you can mmap without opening the full database. For ranked BM25 keyword search, [`sct lexical`](lexical.md) is still the tool.
 
@@ -16,7 +16,7 @@ sct fst build  --input <NDJSON> [--output <FST>]
 sct fst search <QUERY> [--index <FST>] [--prefix | --fuzzy <N> | --words] [--limit <N>]
 ```
 
-`build` consumes the canonical NDJSON produced by [`sct ndjson`](ndjson.md) — the same input as [`sct sqlite`](sqlite.md) and [`sct parquet`](parquet.md) — and inherits its active-only filtering and edition merge. The index is static: rebuild it once per SNOMED release.
+`build` consumes the canonical NDJSON produced by [`sct ndjson`](ndjson.md) - the same input as [`sct sqlite`](sqlite.md) and [`sct parquet`](parquet.md) - and inherits its active-only filtering and edition merge. The index is static: rebuild it once per SNOMED release.
 
 ---
 
@@ -65,10 +65,10 @@ Built snomed.fst in 16.30s
 # Prefix / autocomplete
 sct fst search myocard --prefix --limit 6
 
-# Fuzzy — tolerates a single typo
+# Fuzzy - tolerates a single typo
 sct fst search "diabetes mellitis" --fuzzy 1
 
-# Word intersection — concepts whose terms contain both words
+# Word intersection - concepts whose terms contain both words
 sct fst search "fracture femur" --words
 
 # Pipe matching SCTIDs into a code list
@@ -85,7 +85,7 @@ Normalisation (fixed, and stable across releases):
 
 1. NFC Unicode normalisation
 2. Unicode lowercase
-3. Strip the trailing semantic tag from FSNs (e.g. `(disorder)`) — the tag is stored alongside the key, not in it
+3. Strip the trailing semantic tag from FSNs (e.g. `(disorder)`) - the tag is stored alongside the key, not in it
 4. Collapse internal whitespace, trim
 
 Normalisation is deliberately **lossless** with respect to accents and punctuation: `Ménière's disease` is indexed as `ménière's disease`, and the de-accented spelling will **not** match. This keeps clinically distinct terms distinct, at the cost of a larger index.
@@ -94,7 +94,7 @@ Normalisation is deliberately **lossless** with respect to accents and punctuati
 
 ## Index file
 
-`snomed.fst` is a single, self-contained, mmap-able file (no sidecar directory). It bundles two finite-state transducers (a term index and a word index), their posting lists, a display side-table, the semantic-tag table, and the release [provenance](../path-resolution.md). Opening it is a single constant-time mmap — the first query is the only one that touches disk pages.
+`snomed.fst` is a single, self-contained, mmap-able file (no sidecar directory). It bundles two finite-state transducers (a term index and a word index), their posting lists, a display side-table, the semantic-tag table, and the release [provenance](../path-resolution.md). Opening it is a single constant-time mmap - the first query is the only one that touches disk pages.
 
 ---
 
@@ -110,7 +110,7 @@ Normalisation is deliberately **lossless** with respect to accents and punctuati
 | Start-up | single mmap | open SQLite DB |
 | Status | experimental | stable, the default |
 
-On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms`, delta-varint posting compression) is **~72 MB — roughly 30% smaller** than the FTS5 inverted index (~103 MB); with display labels it is ~133 MB, still an order of magnitude below the full ~1.8 GB `snomed.db`. Query latency is one to two orders of magnitude lower than warm FTS5, and it adds fuzzy and prefix matching. The headline trade-offs are **speed and typo-tolerance**; FTS5 still wins on BM25 ranking. Full numbers are in [`specs/fst.md` §10](https://github.com/pacharanero/sct/blob/main/specs/fst.md).
+On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms`, delta-varint posting compression) is **~72 MB - roughly 30% smaller** than the FTS5 inverted index (~103 MB); with display labels it is ~133 MB, still an order of magnitude below the full ~1.8 GB `snomed.db`. Query latency is one to two orders of magnitude lower than warm FTS5, and it adds fuzzy and prefix matching. The headline trade-offs are **speed and typo-tolerance**; FTS5 still wins on BM25 ranking. Full numbers are in [`specs/fst.md` §10](https://github.com/pacharanero/sct/blob/main/specs/fst.md).
 
 ---
 
@@ -119,4 +119,4 @@ On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms
 - **Fuzzy distance is measured over the whole key.** Edits accumulate across a phrase, so a two-typo query over a long FSN can exceed distance 2 and miss. Fuzzy is most effective on shorter terms / single words.
 - **No ranking yet.** Results are ordered by a crude exact > prefix > fuzzy score, not BM25. Use [`sct lexical`](lexical.md) when relevance ordering matters.
 - **`--no-terms` indexes have no labels.** Search returns SCTIDs only; resolve display text from a companion SQLite database (or rebuild with labels).
-- The index is licensed SNOMED CT content — like every other artefact, `*.fst` is git-ignored and never distributed here.
+- The index is licensed SNOMED CT content - like every other artefact, `*.fst` is git-ignored and never distributed here.

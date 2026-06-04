@@ -158,4 +158,4 @@ The full UK Monolith produces ~831,000 files in `--mode concept`. This is handle
 Some tools that may struggle with 800k+ files:
 - Windows Explorer
 - Certain filesystem MCP servers with directory listing limits
-- Git (do not commit the output directory — add it to `.gitignore`)
+- Git (do not commit the output directory - add it to `.gitignore`)

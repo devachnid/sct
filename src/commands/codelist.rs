@@ -1,4 +1,4 @@
-//! `sct codelist` — Build, validate, and publish clinical code lists.
+//! `sct codelist` - Build, validate, and publish clinical code lists.
 //!
 //! Also accessible as `sct refset` and `sct valueset`.
 //!
@@ -207,7 +207,7 @@ pub fn run(args: Args) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
-// .codelist file format — types
+// .codelist file format - types
 // ---------------------------------------------------------------------------
 
 /// YAML front-matter of a `.codelist` file.
@@ -402,7 +402,7 @@ fn parse_body_line(line: &str) -> ConceptLine {
         }
     }
 
-    // Unrecognised — treat as comment
+    // Unrecognised - treat as comment
     ConceptLine::Comment(trimmed.to_string())
 }
 
@@ -615,7 +615,7 @@ fn cmd_add(args: AddArgs) -> Result<()> {
 
     // Auto-populate snomed_release from the DB's provenance the first time
     // we touch this codelist with a real DB. Don't overwrite an existing
-    // value — the user may have set it deliberately to a different release.
+    // value - the user may have set it deliberately to a different release.
     if cl.front_matter.snomed_release.is_none() {
         if let Ok(Some(p)) = crate::provenance::read_sqlite(&conn) {
             if !p.release_date.is_empty() {
@@ -704,7 +704,7 @@ fn read_sctids_from_stdin() -> Result<Vec<String>> {
 
 /// Parse SCTIDs from free-form lines: take the first whitespace token of each
 /// non-empty, non-comment line. Tolerates `id` or `id  Some term` lines, and
-/// `#`-prefixed comments — so the output of `sct ecl expand` (bare ids) and
+/// `#`-prefixed comments - so the output of `sct ecl expand` (bare ids) and
 /// loosely-formatted lists both work.
 fn parse_sctid_lines(s: &str) -> Vec<String> {
     s.lines()
@@ -778,7 +778,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
                 ));
             } else {
                 warnings.push(format!(
-                    "`{field}` is a placeholder — fill in before publishing"
+                    "`{field}` is a placeholder - fill in before publishing"
                 ));
             }
         }
@@ -939,7 +939,7 @@ fn cmd_stats(args: StatsArgs) -> Result<()> {
             let age_days = (today - release_date).num_days();
             println!("\nSNOMED release: {} ({} days ago)", release, age_days);
             if age_days > 365 {
-                println!("  ⚠ Release is more than 12 months old — consider rebuilding");
+                println!("  ⚠ Release is more than 12 months old - consider rebuilding");
             }
         }
     }

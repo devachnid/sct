@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# operations/search.sh — free-text search (FTS5 vs ValueSet/$expand)
+# operations/search.sh - free-text search (FTS5 vs ValueSet/$expand)
 #
 # Representative fixture: "heart attack"
 # Local:  FTS5 MATCH query on concepts_fts

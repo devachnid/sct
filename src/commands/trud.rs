@@ -1,9 +1,9 @@
-//! `sct trud` — Download SNOMED CT RF2 releases via the NHS TRUD API.
+//! `sct trud` - Download SNOMED CT RF2 releases via the NHS TRUD API.
 //!
 //! Subcommands:
-//!   sct trud list     — list available releases for an edition/item
-//!   sct trud check    — check whether a newer release is available (exit 0/2)
-//!   sct trud download — download a release, verifying SHA-256, with optional pipeline
+//!   sct trud list     - list available releases for an edition/item
+//!   sct trud check    - check whether a newer release is available (exit 0/2)
+//!   sct trud download - download a release, verifying SHA-256, with optional pipeline
 //!
 //! API key resolution order (first non-empty value wins):
 //!   1. --api-key <KEY>           plain string flag
@@ -24,7 +24,7 @@ use std::time::Duration;
 use crate::paths::{self, Config};
 
 // ---------------------------------------------------------------------------
-// TRUD endpoint constants — change here if NHS TRUD ever moves their API.
+// TRUD endpoint constants - change here if NHS TRUD ever moves their API.
 // ---------------------------------------------------------------------------
 /// Base URL for the TRUD REST API (v1).
 const TRUD_API_BASE: &str = "https://isd.digital.nhs.uk/trud/api/v1";
@@ -63,8 +63,8 @@ pub enum TrudCommand {
 
     /// Check whether a newer release is available.
     ///
-    /// Compares the latest TRUD release against what is on disk, and — if the
-    /// local file is present — verifies its SHA-256 against the TRUD metadata
+    /// Compares the latest TRUD release against what is on disk, and - if the
+    /// local file is present - verifies its SHA-256 against the TRUD metadata
     /// so a corrupt or half-downloaded local file is not reported as current.
     ///
     /// Exit codes: 0 = already up to date and SHA-256 verified, 2 = new release
@@ -76,7 +76,7 @@ pub enum TrudCommand {
     Download(DownloadArgs),
 }
 
-/// Flags for supplying the TRUD API key — shared across all subcommands.
+/// Flags for supplying the TRUD API key - shared across all subcommands.
 #[derive(Parser, Debug)]
 struct KeyArgs {
     /// TRUD API key as a plain string.
@@ -103,7 +103,7 @@ pub struct ListArgs {
     #[arg(long)]
     edition: Option<String>,
 
-    /// Raw TRUD item number — overrides --edition.
+    /// Raw TRUD item number - overrides --edition.
     #[arg(long)]
     item: Option<u32>,
 
@@ -117,7 +117,7 @@ pub struct CheckArgs {
     #[arg(long, default_value = "uk_monolith")]
     edition: String,
 
-    /// Raw TRUD item number — overrides --edition.
+    /// Raw TRUD item number - overrides --edition.
     #[arg(long)]
     item: Option<u32>,
 
@@ -131,7 +131,7 @@ pub struct DownloadArgs {
     #[arg(long, default_value = "uk_monolith")]
     edition: String,
 
-    /// Raw TRUD item number — overrides --edition.
+    /// Raw TRUD item number - overrides --edition.
     #[arg(long)]
     item: Option<u32>,
 
@@ -322,8 +322,8 @@ fn run_list_all(api_key: &str) -> Result<()> {
             }
             None => {
                 println!(
-                    "{:<16}  {:>4}  {:<14}  {:<52}  —",
-                    name, item_id, "not subscribed", "—"
+                    "{:<16}  {:>4}  {:<14}  {:<52}  -",
+                    name, item_id, "not subscribed", "-"
                 );
             }
         }
@@ -363,11 +363,11 @@ fn run_check(args: CheckArgs) -> Result<()> {
             "New release available: {} ({})",
             latest.archive_file_name, latest.release_date
         );
-        // exit 2 — not an error, but signals "please update"
+        // exit 2 - not an error, but signals "please update"
         std::process::exit(2);
     }
 
-    // File exists — verify its SHA-256 against the TRUD metadata so we don't
+    // File exists - verify its SHA-256 against the TRUD metadata so we don't
     // report a corrupt or half-downloaded local file as "up to date".
     let local_hash = sha256_of_file(&local_path)?;
     if local_hash.eq_ignore_ascii_case(&latest.archive_file_sha256) {
@@ -375,15 +375,15 @@ fn run_check(args: CheckArgs) -> Result<()> {
             "Up to date: {} ({})\nSHA-256 verified: {}",
             latest.archive_file_name, latest.release_date, latest.archive_file_sha256
         );
-        // exit 0 — already current and intact
+        // exit 0 - already current and intact
         return Ok(());
     }
 
     // File is present but does not match the expected checksum. Treat this as
-    // "action required" — exit 2, same as "new release available" — so shell
+    // "action required" - exit 2, same as "new release available" - so shell
     // scripts that re-download on exit 2 will heal a corrupt local file.
     println!(
-        "Local file present but SHA-256 does not match TRUD metadata — re-download recommended: {}\n\
+        "Local file present but SHA-256 does not match TRUD metadata - re-download recommended: {}\n\
          Expected: {}\n\
          Got:      {}",
         latest.archive_file_name, latest.archive_file_sha256, local_hash
@@ -437,7 +437,7 @@ fn run_download(args: DownloadArgs) -> Result<()> {
         if existing_hash.eq_ignore_ascii_case(&release.archive_file_sha256) {
             if args.skip_if_current {
                 println!(
-                    "Already up to date: {} — skipping download.",
+                    "Already up to date: {} - skipping download.",
                     release.archive_file_name
                 );
                 return run_pipeline_if_requested(&args, &dest, &data_dir);
@@ -448,9 +448,9 @@ fn run_download(args: DownloadArgs) -> Result<()> {
             );
             return run_pipeline_if_requested(&args, &dest, &data_dir);
         }
-        // Checksum mismatch — re-download
+        // Checksum mismatch - re-download
         eprintln!(
-            "Warning: existing file has unexpected SHA-256 — re-downloading {}",
+            "Warning: existing file has unexpected SHA-256 - re-downloading {}",
             release.archive_file_name
         );
     }
@@ -537,7 +537,7 @@ fn run_download(args: DownloadArgs) -> Result<()> {
         if !computed.eq_ignore_ascii_case(&release.archive_file_sha256) {
             std::fs::remove_file(&tmp_path).ok();
             anyhow::bail!(
-                "SHA-256 checksum mismatch — download may be corrupt. Temporary file deleted.\n\
+                "SHA-256 checksum mismatch - download may be corrupt. Temporary file deleted.\n\
                  Expected: {}\n\
                  Got:      {}",
                 release.archive_file_sha256,
@@ -605,7 +605,7 @@ fn run_pipeline_if_requested(args: &DownloadArgs, zip_path: &Path, data_dir: &Pa
         })
         .context("sct tct step failed")?;
 
-        // --- sct embed (best-effort — skip if Ollama unavailable) ---
+        // --- sct embed (best-effort - skip if Ollama unavailable) ---
         println!("\n→ Running: sct embed");
         let arrow_path = data_dir.join(format!("{stem}.arrow"));
         if let Err(e) = super::embed::run(super::embed::Args {
@@ -615,7 +615,7 @@ fn run_pipeline_if_requested(args: &DownloadArgs, zip_path: &Path, data_dir: &Pa
             output: arrow_path,
             batch_size: 64,
         }) {
-            eprintln!("Warning: sct embed skipped — {e}");
+            eprintln!("Warning: sct embed skipped - {e}");
             eprintln!("  (Is Ollama running? Start with: ollama serve)");
         }
     }
@@ -764,7 +764,7 @@ fn resolve_data_dir(flag_dir: Option<&Path>, config: &Config) -> PathBuf {
 }
 
 // ---------------------------------------------------------------------------
-// Config file — schema in crate::paths, this thin wrapper preserves the
+// Config file - schema in crate::paths, this thin wrapper preserves the
 // historic helper name so tests don't need to be rewritten.
 // ---------------------------------------------------------------------------
 
@@ -785,7 +785,7 @@ fn load_config() -> Config {
 /// users get a clear, actionable message rather than a cryptic network error.
 fn ping_trud() -> Result<()> {
     match ureq::get(TRUD_HEALTH_URL).call() {
-        // Any HTTP response — including 4xx/5xx — means we reached the server.
+        // Any HTTP response - including 4xx/5xx - means we reached the server.
         Ok(_) | Err(ureq::Error::StatusCode(_)) => Ok(()),
         Err(e) => Err(anyhow::anyhow!(
             "Cannot reach NHS TRUD ({TRUD_HEALTH_URL}).
@@ -801,9 +801,9 @@ Original error: {e}"
 /// Probe a single TRUD item to determine subscription status.
 ///
 /// Returns:
-///   Ok(Some(release)) — subscribed; `release` is the latest available release
-///   Ok(None)          — not subscribed to this item (HTTP 404)
-///   Err(...)          — unexpected error (bad key, network failure, etc.)
+///   Ok(Some(release)) - subscribed; `release` is the latest available release
+///   Ok(None)          - not subscribed to this item (HTTP 404)
+///   Err(...)          - unexpected error (bad key, network failure, etc.)
 ///
 /// The caller is responsible for calling `ping_trud()` first if needed.
 fn probe_edition(api_key: &str, item_id: u32) -> Result<Option<TrudRelease>> {
@@ -933,7 +933,7 @@ mod tests {
 
     #[test]
     fn expand_tilde_no_tilde_is_unchanged() {
-        // Safe to keep standalone — does not touch the process environment.
+        // Safe to keep standalone - does not touch the process environment.
         assert_eq!(
             paths::expand_tilde("/absolute/path"),
             PathBuf::from("/absolute/path")
@@ -945,7 +945,7 @@ mod tests {
     }
 
     // The `expand_tilde_expands_home` case was folded into
-    // `env_directory_resolution_smoke` below — it mutates HOME and races
+    // `env_directory_resolution_smoke` below - it mutates HOME and races
     // with the data_home/data_dir tests under parallel `cargo test`.
 
     // --- resolve_api_key -------------------------------------------------------
@@ -967,7 +967,7 @@ mod tests {
     #[test]
     fn api_key_from_file_first_line() {
         let mut f = NamedTempFile::new().unwrap();
-        writeln!(f, "file-key   ").unwrap(); // trailing whitespace — must be trimmed
+        writeln!(f, "file-key   ").unwrap(); // trailing whitespace - must be trimmed
         writeln!(f, "second-line-is-ignored").unwrap();
         let config = Config::default();
         let key = resolve_api_key(None, Some(f.path()), &config).unwrap();

@@ -7,7 +7,7 @@ for connecting SNOMED CT to Claude and other LLMs.
 
 ## Markdown Export for RAG
 
-Export SNOMED CT as a directory of Markdown files — one per concept. Ideal for
+Export SNOMED CT as a directory of Markdown files - one per concept. Ideal for
 retrieval-augmented generation (RAG), Claude Code file reading, or filesystem MCP.
 
 !!! danger "CRASH WARNING"
@@ -83,7 +83,7 @@ Generate dense vector embeddings for semantic (nearest-neighbour) search.
 !!! tip "Local AI required"
     Requires [Ollama](https://ollama.ai) running locally.
 
-The embeddings take quite a while to generate for the whole release (about 40 minutes for the UK Monolith with 831k concepts), and the resulting Arrow IPC file is about 2.7 GB, but the resulting semantic search capabilities are pretty impressive — you can find relevant concepts even when there are no shared keywords between the query and the concept text.
+The embeddings take quite a while to generate for the whole release (about 40 minutes for the UK Monolith with 831k concepts), and the resulting Arrow IPC file is about 2.7 GB, but the resulting semantic search capabilities are pretty impressive - you can find relevant concepts even when there are no shared keywords between the query and the concept text.
 
 > **Docs**: [`sct embed`](../commands/embed.md)
 
@@ -144,12 +144,12 @@ Example output:
 ```
 
 The first column is the **cosine similarity** between the query vector and the concept
-embedding — a value between 0 and 1 where 1 means identical direction in vector space.
+embedding - a value between 0 and 1 where 1 means identical direction in vector space.
 In practice, scores above ~0.85 indicate strong semantic relevance; scores below ~0.70
-are usually noise. There is no hard threshold — results are always returned ranked, so
+are usually noise. There is no hard threshold - results are always returned ranked, so
 the top few are what matter.
 
-Semantic search finds concepts even when the exact terms don't match — useful for
+Semantic search finds concepts even when the exact terms don't match - useful for
 natural-language queries, typos, and synonym gaps.
 
 The same search is also available to Claude via the `snomed_semantic_search` MCP tool
@@ -208,7 +208,7 @@ With semantic search:
 
 | Tool | Description |
 |---|---|
-| `snomed_search` | Free-text search — returns top matching concepts |
+| `snomed_search` | Free-text search - returns top matching concepts |
 | `snomed_concept` | Full concept detail by SCTID |
 | `snomed_children` | Immediate IS-A children of a concept |
 | `snomed_ancestors` | Full ancestor chain to SNOMED root |
@@ -228,7 +228,7 @@ with accurate SNOMED-grounded terminology.
 ### UK edition: CTV3 cross-mapping
 
 If your database was built from a UK NHS SNOMED CT release, the MCP server also has access to
-`snomed_map` — a bidirectional lookup tool for CTV3 legacy codes.
+`snomed_map` - a bidirectional lookup tool for CTV3 legacy codes.
 
 Example MCP interaction:
 

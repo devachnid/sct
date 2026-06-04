@@ -1,4 +1,4 @@
-//! `sct parquet` — Export a SNOMED CT NDJSON artefact to a Parquet file.
+//! `sct parquet` - Export a SNOMED CT NDJSON artefact to a Parquet file.
 //!
 //! Array/object columns (synonyms, hierarchy_path, parents, attributes) are
 //! stored as JSON strings so DuckDB can query them with `json_extract` /

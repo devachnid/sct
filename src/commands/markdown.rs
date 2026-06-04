@@ -1,13 +1,13 @@
-//! `sct markdown` — Export a SNOMED CT NDJSON artefact to Markdown files.
+//! `sct markdown` - Export a SNOMED CT NDJSON artefact to Markdown files.
 //!
 //! Two output modes are available:
 //!
-//! **concept** (default) — one file per concept:
+//! **concept** (default) - one file per concept:
 //!   <output-dir>/
 //!     clinical-finding/22298006.md
 //!     procedure/173171007.md
 //!
-//! **hierarchy** — one file per top-level hierarchy:
+//! **hierarchy** - one file per top-level hierarchy:
 //!   <output-dir>/
 //!     clinical-finding.md   (all concepts in Clinical Finding)
 //!     procedure.md

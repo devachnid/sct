@@ -17,7 +17,7 @@ sct mcp [--db <DB>] [--embeddings <ARROW>] [--model <MODEL>] [--ollama-url <URL>
 | Flag | Default | Description |
 |---|---|---|
 | `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
-| `--embeddings <FILE>` | — | Arrow IPC embeddings file produced by `sct embed`. When supplied, the `snomed_semantic_search` tool is registered. Not auto-discovered — requires explicit opt-in because the tool needs Ollama. |
+| `--embeddings <FILE>` | - | Arrow IPC embeddings file produced by `sct embed`. When supplied, the `snomed_semantic_search` tool is registered. Not auto-discovered - requires explicit opt-in because the tool needs Ollama. |
 | `--model <MODEL>` | `nomic-embed-text` | Ollama embedding model (must match the model used by `sct embed`). |
 | `--ollama-url <URL>` | `http://localhost:11434` | Ollama API base URL. |
 
@@ -29,7 +29,7 @@ sct mcp [--db <DB>] [--embeddings <ARROW>] [--model <MODEL>] [--ollama-url <URL>
 
 | Tool | Available | Description |
 |---|---|---|
-| `snomed_search` | Always | Free-text search — returns concept ID, preferred term, FSN, hierarchy |
+| `snomed_search` | Always | Free-text search - returns concept ID, preferred term, FSN, hierarchy |
 | `snomed_concept` | Always | Full concept detail by SCTID |
 | `snomed_children` | Always | Immediate IS-A children of a concept |
 | `snomed_ancestors` | Always | Full ancestor chain up to root |
@@ -42,11 +42,11 @@ sct mcp [--db <DB>] [--embeddings <ARROW>] [--model <MODEL>] [--ollama-url <URL>
 | Tool | Description |
 |---|---|
 | `codelist_list` | List `.codelist` files in a directory, with title, status, and concept count |
-| `codelist_read` | Read a codelist — returns metadata and concept lists (active, excluded, pending) |
+| `codelist_read` | Read a codelist - returns metadata and concept lists (active, excluded, pending) |
 | `codelist_new` | Scaffold a new `.codelist` file with YAML front-matter template |
-| `codelist_add` | Add concept(s) by SCTID — resolves preferred terms from the database |
+| `codelist_add` | Add concept(s) by SCTID - resolves preferred terms from the database |
 | `codelist_remove` | Move a concept to explicitly excluded, preserving the audit trail |
-| `codelist_validate` | Validate against the database — inactive concepts, term drift, pending items |
+| `codelist_validate` | Validate against the database - inactive concepts, term drift, pending items |
 | `codelist_stats` | Concept count, hierarchy breakdown, leaf/intermediate ratio, release age |
 | `codelist_export` | Export the codelist as `csv`, `opencodelists-csv`, or `markdown` |
 
@@ -127,9 +127,9 @@ Claude:
 5. Calls `codelist_validate` to confirm everything is active and correct
 6. Calls `codelist_stats` to summarise the result
 
-> "The occupational asthma concept shouldn't be in there — exclude it with a note."
+> "The occupational asthma concept shouldn't be in there - exclude it with a note."
 
-Claude calls `codelist_remove` with the SCTID and `comment: "occupational pathway — separate codelist"`.
+Claude calls `codelist_remove` with the SCTID and `comment: "occupational pathway - separate codelist"`.
 
 > "Export this as CSV for upload."
 
@@ -150,7 +150,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
 
 - **Transport:** stdio only (JSON-RPC 2.0 over stdin/stdout)
 - **Protocol versions supported:** MCP 2024-11-05 (Content-Length framing) and MCP 2025-03-26+ (newline-delimited JSON). The version is negotiated on `initialize`.
-- **Database access:** read-only — the SNOMED CT database is never modified
+- **Database access:** read-only - the SNOMED CT database is never modified
 - **Codelist files:** `codelist_new`, `codelist_add`, and `codelist_remove` write `.codelist` files on disk; all other tools are read-only
 - **Startup time:** < 5 ms (well under the 100 ms MCP budget)
 - **Schema version check:** validates `schema_version` on startup; warns if the database is newer than the binary, refuses to start if the gap exceeds 5 versions

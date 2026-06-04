@@ -1,13 +1,13 @@
-//! `sct sqlite` — Load a SNOMED CT NDJSON artefact into a SQLite database with FTS5.
+//! `sct sqlite` - Load a SNOMED CT NDJSON artefact into a SQLite database with FTS5.
 //!
 //! Creates:
 //!   - `concepts` table (all fields)
-//!   - `concept_isa` table (child_id, parent_id) — indexed for fast children/ancestor queries
-//!   - `concept_relationships` table (source, type, destination, group) — typed attributes for ECL
+//!   - `concept_isa` table (child_id, parent_id) - indexed for fast children/ancestor queries
+//!   - `concept_relationships` table (source, type, destination, group) - typed attributes for ECL
 //!   - `concept_maps` table (code → concept reverse lookup for CTV3 / Read v2)
-//!   - `refset_members` table (refset_id → concept_id) — refset membership
+//!   - `refset_members` table (refset_id → concept_id) - refset membership
 //!   - `concepts_fts` FTS5 virtual table over id, preferred_term, synonyms, fsn
-//!   - `concept_ancestors` table (optional, --transitive-closure) — precomputed TCT
+//!   - `concept_ancestors` table (optional, --transitive-closure) - precomputed TCT
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -60,7 +60,7 @@ pub fn run(args: Args) -> Result<()> {
     let mut conn = Connection::open(&args.output)
         .with_context(|| format!("opening database {}", args.output.display()))?;
 
-    // Performance pragmas — safe for a build-time operation
+    // Performance pragmas - safe for a build-time operation
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
@@ -114,7 +114,7 @@ pub fn run(args: Args) -> Result<()> {
                 continue;
             }
 
-            // Provenance header line (if present) — capture and skip.
+            // Provenance header line (if present) - capture and skip.
             if let Some(p) = provenance::try_parse_ndjson_line(&line) {
                 captured_provenance = Some(p);
                 continue;
@@ -203,7 +203,7 @@ pub fn run(args: Args) -> Result<()> {
     conn.execute_batch("INSERT INTO concepts_fts(concepts_fts) VALUES('rebuild')")?;
 
     // Persist provenance (if the NDJSON had a header line). Older v3 NDJSONs
-    // without a header leave the metadata table empty — downstream commands
+    // without a header leave the metadata table empty - downstream commands
     // treat that as "provenance not recorded" and degrade gracefully.
     provenance::create_sqlite_table(&conn)?;
     if let Some(ref p) = captured_provenance {
@@ -264,7 +264,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
         );
 
         -- Simple refset membership. Each row asserts that a concept belongs to
-        -- a refset. The refset itself is a concept — JOIN to `concepts` on
+        -- a refset. The refset itself is a concept - JOIN to `concepts` on
         -- refset_id to get its preferred term, module, and other metadata.
         CREATE TABLE IF NOT EXISTS refset_members (
             refset_id                TEXT NOT NULL,

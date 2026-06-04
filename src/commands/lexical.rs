@@ -1,4 +1,4 @@
-//! `sct lexical` — Full-text keyword search over a SNOMED CT SQLite database.
+//! `sct lexical` - Full-text keyword search over a SNOMED CT SQLite database.
 //!
 //! Uses the FTS5 virtual table built by `sct sqlite`. Supports any FTS5 query
 //! syntax: phrase search, prefix search, column filters, boolean operators.
@@ -92,7 +92,7 @@ pub fn run(args: Args) -> Result<()> {
             .collect()
     };
 
-    // `--ids`: machine output for pipes — just SCTIDs on stdout, nothing else.
+    // `--ids`: machine output for pipes - just SCTIDs on stdout, nothing else.
     if args.ids {
         use std::io::Write;
         let mut out = std::io::stdout().lock();

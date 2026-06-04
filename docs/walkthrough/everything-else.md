@@ -60,7 +60,7 @@ All timings below are for the **UK Monolith (831k active concepts)** on NVMe SSD
 | NDJSON → SQLite | ~11 s | 1.3 GB |
 | NDJSON → Parquet | ~5 s | 824 MB |
 | NDJSON → Markdown | ~15 s | 3.2 GB (831k files) |
-| MCP server startup | < 5 ms | — |
+| MCP server startup | < 5 ms | - |
 
 **vs. remote FHIR terminology server (benchmark results):**
 
@@ -122,9 +122,9 @@ flag selects GB English preferred terms from the UK language reference set.
 
 ## Next Steps
 
-- `sct trud` — automated download from NHS TRUD API
-- `sct serve` — drop-in FHIR R4/R5 terminology server backed by SQLite
-- `sct codelist search` — interactive FTS5 search → include/exclude (coming)
-- `sct codelist import` / `sct codelist publish` — import from OpenCodelists, publish back (coming)
+- `sct trud` - automated download from NHS TRUD API
+- `sct serve` - drop-in FHIR R4/R5 terminology server backed by SQLite
+- `sct codelist search` - interactive FTS5 search → include/exclude (coming)
+- `sct codelist import` / `sct codelist publish` - import from OpenCodelists, publish back (coming)
 
 See `specs/roadmap.md` for the full list of planned features.

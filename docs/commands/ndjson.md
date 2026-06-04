@@ -2,7 +2,7 @@
 
 Convert an RF2 Snapshot directory into the canonical SNOMED CT NDJSON artefact.
 
-**This is the required first step — all other `sct` subcommands consume this output.** It joins the RF2 files once, deterministically, and writes each active concept as a single line of JSON.
+**This is the required first step - all other `sct` subcommands consume this output.** It joins the RF2 files once, deterministically, and writes each active concept as a single line of JSON.
 
 ---
 
@@ -64,7 +64,7 @@ sct ndjson \
 
 ## Locale and preferred-term selection
 
-`--locale` chooses the **dialect** of the preferred term, by selecting the SNOMED **language reference set** to honour — not just filtering on language code (GB and US English descriptions both have `languageCode` "en"; only the refset id distinguishes them):
+`--locale` chooses the **dialect** of the preferred term, by selecting the SNOMED **language reference set** to honour - not just filtering on language code (GB and US English descriptions both have `languageCode` "en"; only the refset id distinguishes them):
 
 | `--locale` | Language reference sets consulted, in priority order |
 |---|---|
@@ -72,11 +72,11 @@ sct ndjson \
 | `en-US` | International US English (`900000000000509007`) |
 | other `en-*` | GB English → US English |
 
-A concept's preferred term is the synonym marked **Preferred** in the highest-priority refset that has an entry for it, falling back to any preferred synonym, then the FSN. Refsets absent from your input are simply skipped — so `en-GB` works correctly on an International-only release (it falls through to GB English). Concretely, `80146002` resolves to *Appendicectomy* under `en-GB` and *Appendectomy* under `en-US`.
+A concept's preferred term is the synonym marked **Preferred** in the highest-priority refset that has an entry for it, falling back to any preferred synonym, then the FSN. Refsets absent from your input are simply skipped - so `en-GB` works correctly on an International-only release (it falls through to GB English). Concretely, `80146002` resolves to *Appendicectomy* under `en-GB` and *Appendectomy* under `en-US`.
 
 ### Layering multiple `--rf2` sources
 
-When you repeat `--rf2`, sources are layered in argument order and **the last source wins** on any conflicting component (concept, description acceptability). There is no Module Dependency Reference Set resolution — for robust extension-on-base layering, use a publisher-merged Edition (e.g. the UK Monolith) instead.
+When you repeat `--rf2`, sources are layered in argument order and **the last source wins** on any conflicting component (concept, description acceptability). There is no Module Dependency Reference Set resolution - for robust extension-on-base layering, use a publisher-merged Edition (e.g. the UK Monolith) instead.
 
 ---
 
@@ -90,7 +90,7 @@ sct ndjson --rf2 ./SnomedCT_Release/ -o - | jq 'select(.id == "22298006")'
 
 ## Output format
 
-One JSON object per line, sorted by concept SCTID. Every line is a standalone JSON object — the file is valid NDJSON.
+One JSON object per line, sorted by concept SCTID. Every line is a standalone JSON object - the file is valid NDJSON.
 
 ```json
 {
@@ -126,7 +126,7 @@ One JSON object per line, sorted by concept SCTID. Every line is a standalone JS
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | SNOMED CT concept identifier (SCTID) |
-| `fsn` | string | Fully Specified Name — unique, includes semantic tag in parentheses |
+| `fsn` | string | Fully Specified Name - unique, includes semantic tag in parentheses |
 | `preferred_term` | string | Preferred synonym for the requested locale |
 | `synonyms` | string[] | All other active synonyms (preferred term excluded) |
 | `hierarchy` | string | Top-level hierarchy label (e.g. `Clinical finding`, `Procedure`) |
@@ -214,7 +214,7 @@ The file can be checksummed, committed to git-lfs, and used as a pinned dependen
 | `der2_cRefset_Language_*.txt` | Language reference sets (preferred term acceptability) |
 | `der2_sRefset_SimpleMap_*.txt` | Simple map reference sets (CTV3/Read v2 crossmaps) |
 
-Stated relationship files (`sct2_StatedRelationship_*`) are intentionally skipped — the inferred release is used for hierarchy and attributes. Full and Delta files are ignored.
+Stated relationship files (`sct2_StatedRelationship_*`) are intentionally skipped - the inferred release is used for hierarchy and attributes. Full and Delta files are ignored.
 
 ---
 

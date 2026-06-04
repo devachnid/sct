@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/local.sh — sqlite3 wrappers for each benchmark operation.
+# lib/local.sh - sqlite3 wrappers for each benchmark operation.
 #
 # Each function times BENCH_RUNS executions (+ BENCH_WARMUP warmup) of the
 # relevant SQLite query. Sets TIMING_MEDIAN / TIMING_STDDEV globals and
@@ -85,7 +85,7 @@ local_time_bulk() {
 
 # local_concept_depth CODE
 # Returns the depth of a concept in the IS-A hierarchy by reading the
-# pre-computed hierarchy_path column — no recursive CTE needed.
+# pre-computed hierarchy_path column - no recursive CTE needed.
 local_concept_depth() {
   local code="$1"
   sqlite3 "$BENCH_DB" \

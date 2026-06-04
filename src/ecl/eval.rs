@@ -217,7 +217,7 @@ fn eval_attr(
             }
         }
         None => {
-            // Wildcard attribute type — full scan. Acceptable at codelist scale;
+            // Wildcard attribute type - full scan. Acceptable at codelist scale;
             // see specs/ecl.md §6 on the eventual SQL-compilation path.
             let mut stmt =
                 conn.prepare_cached("SELECT source_id, destination_id FROM concept_relationships")?;

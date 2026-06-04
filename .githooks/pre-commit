@@ -4,7 +4,7 @@
 #
 # Runs the same fast checks as CI (`cargo fmt --check` and
 # `cargo clippy -- -D warnings`) so we don't push commits that will
-# fail the GitHub Actions build. Tests are NOT run here — they're too
+# fail the GitHub Actions build. Tests are NOT run here - they're too
 # slow for a commit-time gate; they run in CI and in `cargo test`.
 #
 # Install by running (once per clone):
@@ -12,7 +12,7 @@
 #     git config core.hooksPath .githooks
 #
 # Skip the hook for a single commit with `git commit --no-verify`
-# (use sparingly — CI will still catch anything you bypass).
+# (use sparingly - CI will still catch anything you bypass).
 
 set -euo pipefail
 
@@ -27,7 +27,7 @@ fi
 # only non-Rust files that somehow touched a .toml) get a clear message
 # instead of a cryptic failure.
 if ! command -v cargo >/dev/null 2>&1; then
-    echo "pre-commit: cargo not found on PATH — install Rust via https://rustup.rs" >&2
+    echo "pre-commit: cargo not found on PATH - install Rust via https://rustup.rs" >&2
     exit 1
 fi
 
@@ -40,10 +40,10 @@ fail() {
 
 echo "pre-commit: cargo fmt --check"
 cargo fmt --check \
-    || fail "formatting issues — run 'cargo fmt' and re-stage"
+    || fail "formatting issues - run 'cargo fmt' and re-stage"
 
 echo "pre-commit: cargo clippy --all-targets -- -D warnings"
 cargo clippy --quiet --all-targets -- -D warnings \
-    || fail "clippy warnings — fix them or suppress individually"
+    || fail "clippy warnings - fix them or suppress individually"
 
 echo "pre-commit: ok"

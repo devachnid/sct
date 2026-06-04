@@ -1,8 +1,8 @@
 Timing measurements for `sct` commands run against two SNOMED CT editions:
-- **UK Monolith** — `SnomedCT_MonolithRF2_PRODUCTION_20260311T120000Z` (831,132 active concepts)
-- **UK Clinical** — `SnomedCT_UKClinicalRF2_PRODUCTION_20260311T000001Z` (34,553 active concepts)
+- **UK Monolith** - `SnomedCT_MonolithRF2_PRODUCTION_20260311T120000Z` (831,132 active concepts)
+- **UK Clinical** - `SnomedCT_UKClinicalRF2_PRODUCTION_20260311T000001Z` (34,553 active concepts)
 
-**Machine**: Lenovo Yoga 9i Pro — Intel Core Ultra 9 185H (16 cores), 64 GB RAM, NVMe SSD.
+**Machine**: Lenovo Yoga 9i Pro - Intel Core Ultra 9 185H (16 cores), 64 GB RAM, NVMe SSD.
 
 ---
 
@@ -19,7 +19,7 @@ time sct markdown --input snomed.ndjson
 
 ---
 
-## Results — UK Monolith Edition (831,132 concepts)
+## Results - UK Monolith Edition (831,132 concepts)
 
 | Command | Concepts | Output size | Wall time | Notes |
 |---|---|---|---|---|
@@ -28,7 +28,7 @@ time sct markdown --input snomed.ndjson
 | `sct parquet` | 831,132 | 824 MB | 5.2 s | Batched Arrow writes (50k rows/batch) |
 | `sct markdown` | 831,132 | 3.2 GB | 14.5 s | One file per concept (831k files) |
 
-## Results — UK Clinical Edition (34,553 concepts)
+## Results - UK Clinical Edition (34,553 concepts)
 
 | Command | Concepts | Output size | Wall time | Notes |
 |---|---|---|---|---|
@@ -55,7 +55,7 @@ Result on the Monolith database (1.3 GB SQLite):
 {"id":1,"jsonrpc":"2.0","result":{"capabilities":{"tools":{}},"protocolVersion":"2024-11-05","serverInfo":{"name":"sct-mcp","version":"0.2.0"}}}
 ```
 
-The response appears in **< 5 ms** — well within the 100 ms budget. The `sleep 0.3` in the timing harness dominates the wall-clock total; actual server response latency is sub-millisecond after the socket is open.
+The response appears in **< 5 ms** - well within the 100 ms budget. The `sleep 0.3` in the timing harness dominates the wall-clock total; actual server response latency is sub-millisecond after the socket is open.
 
 ---
 

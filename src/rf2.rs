@@ -52,7 +52,7 @@ pub struct RelationshipRow {
 #[derive(Debug)]
 pub struct LangRefsetRow {
     pub active: bool,
-    /// Language reference set SCTID — identifies the dialect (e.g. GB vs US
+    /// Language reference set SCTID - identifies the dialect (e.g. GB vs US
     /// English, or a UK realm refset). This is what distinguishes dialects;
     /// the description's `languageCode` is "en" for both GB and US English.
     pub refset_id: String,
@@ -99,13 +99,13 @@ pub const PREFERRED: &str = "900000000000548007";
 /// Refset ID for the SNOMED CT → CTV3 simple map reference set.
 pub const REFSET_CTV3_SIMPLE_MAP: &str = "900000000000497000";
 
-// Language reference set SCTIDs — the dialect selectors honoured by `--locale`.
+// Language reference set SCTIDs - the dialect selectors honoured by `--locale`.
 // See `builder::language_refset_priority`.
 /// Great Britain English (International edition).
 pub const LANG_GB_ENGLISH: &str = "900000000000508004";
 /// US English (International edition).
 pub const LANG_US_ENGLISH: &str = "900000000000509007";
-/// UK National (Clinical) language reference set — UK-realm preferred terms.
+/// UK National (Clinical) language reference set - UK-realm preferred terms.
 pub const LANG_UK_CLINICAL: &str = "999001261000000100";
 /// UK dm+d (drug extension) realm description language reference set.
 pub const LANG_UK_DRUG: &str = "999000691000001104";
@@ -351,13 +351,13 @@ pub struct Rf2Dataset {
     pub attributes: HashMap<String, Vec<(String, String, String)>>,
     /// (language_refset_id, description_id) -> Acceptability (from lang refsets).
     /// Keyed by refset id as well as description id so dialects (GB vs US
-    /// English, UK realm refsets) stay distinct — see `builder`.
+    /// English, UK realm refsets) stay distinct - see `builder`.
     pub acceptability: HashMap<(String, String), Acceptability>,
     /// concept_id (SCTID) -> Vec<CTV3 code> (active mappings from UK CTV3 simple map refset)
     pub ctv3_maps: HashMap<String, Vec<String>>,
     /// concept_id (SCTID) -> Vec<Read v2 code> (active mappings from UK Read Code simple map refset)
     pub read2_maps: HashMap<String, Vec<String>>,
-    /// concept_id (SCTID) -> Vec<refset_id> — generic simple refset memberships.
+    /// concept_id (SCTID) -> Vec<refset_id> - generic simple refset memberships.
     /// Only concept-level memberships are retained; rows whose referencedComponentId
     /// is not a known active concept are dropped.
     pub refset_members: HashMap<String, Vec<String>>,
@@ -400,7 +400,7 @@ impl Rf2Dataset {
 
         // --- Relationships ---
         for path in &files.relationship_files {
-            // Skip StatedRelationship files — use inferred only
+            // Skip StatedRelationship files - use inferred only
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if name.starts_with("sct2_StatedRelationship") {
                 continue;
@@ -465,7 +465,7 @@ impl Rf2Dataset {
                     continue;
                 }
                 // Drop rows whose referenced component isn't a known active
-                // concept — simple refsets can reference descriptions or
+                // concept - simple refsets can reference descriptions or
                 // relationships, which we don't model here.
                 if !concepts.contains_key(&row.referenced_component_id) {
                     continue;

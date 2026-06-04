@@ -1,13 +1,13 @@
-//! `sct refset` — Inspect SNOMED CT simple reference sets loaded into SQLite.
+//! `sct refset` - Inspect SNOMED CT simple reference sets loaded into SQLite.
 //!
 //! Refsets are themselves concepts in SNOMED CT, so metadata (preferred term,
 //! module, FSN) is looked up from the `concepts` table by JOINing on
 //! `refset_members.refset_id`.
 //!
 //! Subcommands:
-//!   list     — all refsets that have at least one member, with member counts
-//!   info     — metadata + member count for a single refset
-//!   members  — concepts in a given refset
+//!   list     - all refsets that have at least one member, with member counts
+//!   info     - metadata + member count for a single refset
+//!   members  - concepts in a given refset
 //!
 //! The [`list_refsets`] and [`list_refset_members`] query helpers are shared
 //! with the `sct mcp` server so the two surfaces always return the same data.
@@ -351,7 +351,7 @@ fn run_members(args: MembersArgs) -> Result<()> {
 
     let rows = list_refset_members(&conn, &args.id, args.limit.map(|n| n as i64))?;
 
-    // `--ids`: machine output for pipes — just member SCTIDs on stdout.
+    // `--ids`: machine output for pipes - just member SCTIDs on stdout.
     if args.ids {
         use std::io::Write;
         let mut out = std::io::stdout().lock();

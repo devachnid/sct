@@ -1,6 +1,6 @@
 # sct info
 
-Inspect any file produced by `sct` and print a summary — without needing to open a database or write a query.
+Inspect any file produced by `sct` and print a summary - without needing to open a database or write a query.
 
 Accepts `.ndjson`, `.db`, and `.arrow` files.
 
@@ -78,7 +78,7 @@ File:        snomed-embeddings.arrow
 Size:        2.4 GB
 Embeddings:  831,042
 Dimensions:  768
-Model:       (not stored — check how you built it)
+Model:       (not stored - check how you built it)
 ```
 
 Reports:
@@ -91,5 +91,5 @@ Reports:
 
 ## See also
 
-- [`sct ndjson`](ndjson.md) — build the artefact
-- [`sct diff`](diff.md) — compare two NDJSON artefacts
+- [`sct ndjson`](ndjson.md) - build the artefact
+- [`sct diff`](diff.md) - compare two NDJSON artefacts

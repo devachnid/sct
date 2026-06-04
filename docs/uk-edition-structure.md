@@ -7,7 +7,7 @@ that already knows what everything means. This page is for everyone else.
 
 ## What you're downloading and why it's this complicated
 
-NHS England distributes SNOMED CT as **RF2** (Release Format 2) — a set of tab-separated text files.
+NHS England distributes SNOMED CT as **RF2** (Release Format 2) - a set of tab-separated text files.
 The UK release is split into editions because different organisations need different subsets, and SNOMED
 International requires that the International Edition be shipped separately from UK extensions.
 
@@ -26,12 +26,12 @@ the Clinical Edition and is simpler to work with: one zip, one directory, done.
 
 ## Inside the zip: Full, Snapshot, and Delta
 
-Every UK release ships three copies of its data. They're not three versions — they're three ways of
+Every UK release ships three copies of its data. They're not three versions - they're three ways of
 slicing the same version:
 
 | Type | What it contains | Size |
 |---|---|---|
-| **Snapshot** | The current state — one row per active record | Moderate |
+| **Snapshot** | The current state - one row per active record | Moderate |
 | **Full** | Every version of every row ever published, including retired ones | Very large |
 | **Delta** | Only rows that changed since the last release | Small |
 
@@ -75,7 +75,7 @@ Filenames follow a rigid naming scheme. Breaking down `der2_sRefset_SimpleMapMON
 
 | Part | Meaning |
 |---|---|
-| `der2` | Derived file (a reference set — as opposed to `sct2` which means core content) |
+| `der2` | Derived file (a reference set - as opposed to `sct2` which means core content) |
 | `s` | Column type code (see below) |
 | `Refset` | It's a reference set |
 | `SimpleMap` | The type of reference set |
@@ -84,7 +84,7 @@ Filenames follow a rigid naming scheme. Breaking down `der2_sRefset_SimpleMapMON
 | `GB` | Locale |
 | `20260311` | Release date |
 
-The column type codes (`s`, `iissscc`, `iisssci`, etc.) describe the column structure of the file —
+The column type codes (`s`, `iissscc`, `iisssci`, etc.) describe the column structure of the file -
 `i` means integer, `s` means string, `c` means component reference. They exist for tooling validation
 purposes and you can otherwise ignore them.
 
@@ -110,7 +110,7 @@ different simple maps, identified by the `refsetId` column:
 
 | refsetId | What it maps to |
 |---|---|
-| `900000000000497000` | **CTV3 (Clinical Terms Version 3)** — NHS legacy GP/secondary care codes |
+| `900000000000497000` | **CTV3 (Clinical Terms Version 3)** - NHS legacy GP/secondary care codes |
 | `446608001` | ICD-O-3 (oncology morphology codes, e.g. `C76.5`) |
 | `82551000000107` | ICD-10 chapter M (musculoskeletal, e.g. `M20.3`) |
 | `1323081000000108` | NHS COVID-19 test catalogue codes |
@@ -125,9 +125,9 @@ Structure of each row:
 id  effectiveTime  active  moduleId  refsetId  referencedComponentId  mapTarget
 ```
 
-- `referencedComponentId` — the SNOMED CT SCTID
-- `mapTarget` — the legacy code (e.g. `X200E` for CTV3)
-- `active` — filter to `1` only
+- `referencedComponentId` - the SNOMED CT SCTID
+- `mapTarget` - the legacy code (e.g. `X200E` for CTV3)
+- `active` - filter to `1` only
 
 ---
 
@@ -139,9 +139,9 @@ id  effectiveTime  active  moduleId  refsetId  referencedComponentId  mapTarget
 - All `sct2_Description_*Snapshot*.txt` files
 - All `sct2_Relationship_*Snapshot*.txt` files
 - All `der2_cRefset_Language*Snapshot*.txt` files (for preferred term selection)
-- `der2_sRefset_SimpleMap*Snapshot*.txt` — CTV3 codes (refset `900000000000497000`)
+- `der2_sRefset_SimpleMap*Snapshot*.txt` - CTV3 codes (refset `900000000000497000`)
 
-It does **not** currently parse ICD-10, OPCS, or other maps — those are
+It does **not** currently parse ICD-10, OPCS, or other maps - those are
 different reference set types (ExtendedMap/ComplexMap) with more complex rule columns.
 
 ---
@@ -156,11 +156,11 @@ included in TRUD downloads.
 
 ## Which TRUD item should I download?
 
-- [Item 1799](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/1799/releases) — **UK Monolith** — International + UK Clinical + UK Drug (dm+d) + UK Pathology, fully merged and de-duplicated. Snapshot only.
-- [Item 101](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/101/releases) — **UK Clinical Edition** — International + UK Clinical extension (no dm+d drugs). Full, Snapshot & Delta.
-- [Item 105](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/105/releases) — **UK Drug Extension (dm+d)** — prescribing/medicines concepts only. Full, Snapshot & Delta.
+- [Item 1799](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/1799/releases) - **UK Monolith** - International + UK Clinical + UK Drug (dm+d) + UK Pathology, fully merged and de-duplicated. Snapshot only.
+- [Item 101](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/101/releases) - **UK Clinical Edition** - International + UK Clinical extension (no dm+d drugs). Full, Snapshot & Delta.
+- [Item 105](https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/105/releases) - **UK Drug Extension (dm+d)** - prescribing/medicines concepts only. Full, Snapshot & Delta.
 
-For most clinical/GP use cases, the **Monolith (item 1799)** is recommended — it includes everything
+For most clinical/GP use cases, the **Monolith (item 1799)** is recommended - it includes everything
 in a single zip with no layering to deal with. Note that the Monolith ships Snapshot only; use items
 101 + 105 if you need Full or Delta files.
 

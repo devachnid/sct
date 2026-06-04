@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bench.sh — sct benchmark suite entry point
+# bench.sh - sct benchmark suite entry point
 #
 # Compares sct (local SQLite) against a FHIR R4 terminology server across
 # six operations and renders a fair, like-for-like timing report.
@@ -74,7 +74,7 @@ _check_deps() {
     _die "missing required tools: ${missing[*]}"
   fi
   if ! command -v hyperfine >/dev/null 2>&1; then
-    printf 'note: hyperfine not found — using bash manual timing (less accurate).\n' >&2
+    printf 'note: hyperfine not found - using bash manual timing (less accurate).\n' >&2
     printf '      install: cargo install hyperfine\n\n' >&2
   fi
 }
@@ -115,7 +115,7 @@ append_result() {
 _check_deps
 _check_db
 
-printf 'sct benchmark — %s\n' "$BENCH_DATE" >&2
+printf 'sct benchmark - %s\n' "$BENCH_DATE" >&2
 printf 'db: %s\n' "$(realpath "$BENCH_DB" 2>/dev/null || printf '%s' "$BENCH_DB")" >&2
 
 # Resolve DB to absolute path for consistent display in report.
@@ -133,7 +133,7 @@ if [[ -n "$BENCH_SERVER" ]]; then
   if check_fhir_server; then
     printf 'remote ok (ping: %s ms)\n' "$FHIR_PING_MS" >&2
   else
-    printf 'warning: remote server unreachable — running local-only benchmark.\n' >&2
+    printf 'warning: remote server unreachable - running local-only benchmark.\n' >&2
     BENCH_SERVER=""
   fi
 fi
@@ -147,7 +147,7 @@ for op in "${OPS[@]}"; do
   op="${op// /}"  # trim whitespace
   opfile="${BENCH_DIR}/operations/${op}.sh"
   if [[ ! -f "$opfile" ]]; then
-    printf 'warning: unknown operation "%s" — skipped.\n' "$op" >&2
+    printf 'warning: unknown operation "%s" - skipped.\n' "$op" >&2
     continue
   fi
   # shellcheck source=/dev/null

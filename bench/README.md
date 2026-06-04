@@ -1,6 +1,6 @@
 # bench
 
-automated benchmarking suite for `sct` — compares local SQLite performance
+automated benchmarking suite for `sct` - compares local SQLite performance
 against any FHIR R4 terminology server across six operations.
 
 ## Requirements

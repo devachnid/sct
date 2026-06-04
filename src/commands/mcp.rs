@@ -1,18 +1,18 @@
-//! `sct mcp` — Local MCP server over stdio backed by a SNOMED CT SQLite database.
+//! `sct mcp` - Local MCP server over stdio backed by a SNOMED CT SQLite database.
 //!
 //! Transport: JSON-RPC 2.0 with Content-Length framing (same as LSP / MCP stdio spec).
 //! Protocol version: 2024-11-05
 //!
 //! Tools exposed:
-//!   snomed_search          — FTS5 free-text search
-//!   snomed_concept         — Full concept detail by SCTID
-//!   snomed_children        — Immediate children of a concept
-//!   snomed_ancestors       — Full ancestor chain to root
-//!   snomed_hierarchy       — All concepts in a named top-level hierarchy
-//!   snomed_map             — Cross-map between SNOMED CT and legacy UK terminologies
-//!   snomed_refsets         — List loaded refsets with member counts
-//!   snomed_refset_members  — List concepts in a refset
-//!   snomed_semantic_search — Nearest-neighbour semantic search (optional; requires --embeddings)
+//!   snomed_search          - FTS5 free-text search
+//!   snomed_concept         - Full concept detail by SCTID
+//!   snomed_children        - Immediate children of a concept
+//!   snomed_ancestors       - Full ancestor chain to root
+//!   snomed_hierarchy       - All concepts in a named top-level hierarchy
+//!   snomed_map             - Cross-map between SNOMED CT and legacy UK terminologies
+//!   snomed_refsets         - List loaded refsets with member counts
+//!   snomed_refset_members  - List concepts in a refset
+//!   snomed_semantic_search - Nearest-neighbour semantic search (optional; requires --embeddings)
 //!
 //! Claude Desktop config:
 //!   {
@@ -79,7 +79,7 @@ pub fn run(args: Args) -> Result<()> {
 
     // For embeddings: only consult the resolution chain when the user passed
     // --embeddings explicitly. We do not silently auto-discover an embeddings
-    // file here — registering `snomed_semantic_search` requires Ollama, so
+    // file here - registering `snomed_semantic_search` requires Ollama, so
     // implicit activation could surprise users who haven't set that up.
     let semantic_cfg = if let Some(p) = args.embeddings {
         let path = crate::paths::resolve_embeddings(Some(&p))?.path;
@@ -143,7 +143,7 @@ fn validate_schema_version(conn: &Connection) -> Result<()> {
     let db_version = match db_version {
         Some(v) => v,
         None => {
-            // Empty database — nothing to serve but not an error.
+            // Empty database - nothing to serve but not an error.
             return Ok(());
         }
     };
@@ -166,7 +166,7 @@ fn validate_schema_version(conn: &Connection) -> Result<()> {
     let gap = db_version - SCHEMA_VERSION;
     if gap <= SCHEMA_WARN_THRESHOLD {
         eprintln!(
-            "sct mcp: WARNING — database schema_version {} is newer than this binary ({}).\n\
+            "sct mcp: WARNING - database schema_version {} is newer than this binary ({}).\n\
              Some fields may not be served correctly. Upgrade sct to remove this warning.",
             db_version, SCHEMA_VERSION
         );
@@ -232,13 +232,13 @@ fn read_message<R: BufRead>(reader: &mut R) -> Result<Option<String>> {
             ));
         }
 
-        // Unrecognised line — skip it.
+        // Unrecognised line - skip it.
     }
 }
 
 fn write_message<W: Write>(writer: &mut W, msg: &str) -> Result<()> {
     // Always write newline-delimited JSON (current MCP spec).
-    // JSON-RPC objects must not contain embedded newlines — serde_json compact
+    // JSON-RPC objects must not contain embedded newlines - serde_json compact
     // output never does, so this is safe.
     writeln!(writer, "{}", msg)?;
     writer.flush()?;
@@ -298,7 +298,7 @@ fn handle_message(
         return None;
     }
 
-    // Notifications have no id — process but don't respond
+    // Notifications have no id - process but don't respond
     let id = match &req.id {
         Some(id) => id.clone(),
         None => return None,
@@ -505,7 +505,7 @@ fn handle_tools_list(semantic_cfg: Option<&SemanticConfig>) -> Value {
         tools.push(json!({
             "name": "snomed_semantic_search",
             "description": "Semantic nearest-neighbour search over SNOMED CT concepts using vector embeddings. \
-                            Finds conceptually similar concepts even when exact terms don't match — useful for \
+                            Finds conceptually similar concepts even when exact terms don't match - useful for \
                             natural-language queries, typos, and synonym gaps. Requires Ollama running locally.",
             "inputSchema": {
                 "type": "object",
@@ -524,7 +524,7 @@ fn handle_tools_list(semantic_cfg: Option<&SemanticConfig>) -> Value {
         }));
     }
 
-    // Codelist tools — always registered
+    // Codelist tools - always registered
     tools.push(json!({
         "name": "codelist_list",
         "description": "List .codelist files in a directory. Returns file paths with title, status, and concept count from each file's front-matter.",
@@ -742,7 +742,7 @@ fn tool_concept(conn: &Connection, args: &Value, prov: Option<&Provenance>) -> R
             let memberships =
                 crate::commands::lookup::lookup_refset_memberships(conn, id).unwrap_or_default();
             v["member_of"] = Value::Array(memberships);
-            // Always cite the source release in MCP responses — LLM clients
+            // Always cite the source release in MCP responses - LLM clients
             // benefit from being able to ground answers in a specific edition.
             provenance::inject_into_json(&mut v, prov, true);
             Ok(serde_json::to_string_pretty(&v)?)
@@ -1135,7 +1135,7 @@ fn tool_codelist_new(args: &Value) -> Result<String> {
             Warning {
                 code: "not-universal-definition".to_string(),
                 severity: "info".to_string(),
-                message: "Developed for a specific purpose — may not suit all uses.".to_string(),
+                message: "Developed for a specific purpose - may not suit all uses.".to_string(),
             },
             Warning {
                 code: "draft-not-reviewed".to_string(),
@@ -1794,7 +1794,7 @@ mod tests {
     #[test]
     fn ancestors_depth_order() {
         // Ancestors should be ordered by depth descending (deepest first = closest to root last).
-        // Wait — ORDER BY depth DESC means the deepest hierarchy_path is last alphabetically,
+        // Wait - ORDER BY depth DESC means the deepest hierarchy_path is last alphabetically,
         // but in SNOMED depth is measured from root, so ROOT has depth 1 and leaves have max depth.
         // depth DESC = leaves first, root last.
         let conn = build_test_db();
@@ -1830,7 +1830,7 @@ mod tests {
         );
         assert!(
             elapsed.as_millis() < 500,
-            "ancestors on 25-deep chain with 6× duplicates took {}ms — UNION ALL explosion?",
+            "ancestors on 25-deep chain with 6× duplicates took {}ms - UNION ALL explosion?",
             elapsed.as_millis()
         );
     }

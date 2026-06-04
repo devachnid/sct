@@ -1,7 +1,7 @@
 //! Term normalisation and semantic-tag handling for the FST index.
 //!
 //! Normalisation is deliberately *lossless* with respect to accents and
-//! punctuation — see `specs/fst.md` §7. We accept a larger index in exchange
+//! punctuation - see `specs/fst.md` §7. We accept a larger index in exchange
 //! for not collapsing clinically distinct terms. The transform is fixed and
 //! MUST stay stable across releases: changing it silently would invalidate any
 //! stored queries downstream.
@@ -108,7 +108,7 @@ mod tests {
     fn no_tag_returns_input_untouched() {
         assert_eq!(split_semantic_tag("Heart attack"), ("Heart attack", None));
         // A trailing paren that is part of the term, not a tag-style suffix,
-        // is still treated as the final group — acceptable; FSNs always end
+        // is still treated as the final group - acceptable; FSNs always end
         // in a real tag, and synonyms are never passed through this function.
         assert_eq!(split_semantic_tag("foo"), ("foo", None));
     }

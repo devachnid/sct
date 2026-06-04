@@ -4,7 +4,7 @@ Build, validate, and publish clinical code lists as plain-text `.codelist` files
 
 Also accessible as `sct refset` and `sct valueset`.
 
-A code list is a curated collection of clinical codes used to identify a patient population or clinical event in a health dataset. `.codelist` files use YAML front-matter and a simple concept list body — they're designed to live in version control and be reviewed like source code.
+A code list is a curated collection of clinical codes used to identify a patient population or clinical event in a health dataset. `.codelist` files use YAML front-matter and a simple concept list body - they're designed to live in version control and be reviewed like source code.
 
 ---
 
@@ -15,7 +15,7 @@ A code list is a curated collection of clinical codes used to identify a patient
 sct codelist new codelists/asthma-diagnosis.codelist \
   --title "Asthma diagnosis" --author "Your Name"
 
-# 2. Add concepts (database auto-discovered — see Path resolution)
+# 2. Add concepts (database auto-discovered - see Path resolution)
 sct codelist add codelists/asthma-diagnosis.codelist \
   195967001 389145006 266361008
 
@@ -26,7 +26,7 @@ sct codelist validate codelists/asthma-diagnosis.codelist
 sct codelist export codelists/asthma-diagnosis.codelist --format csv
 ```
 
-The `--db` flag is optional on every subcommand below — when omitted, `sct codelist` follows the [path resolution chain](../path-resolution.md) to find a SNOMED CT SQLite database (cwd → config → `$SCT_DATA_HOME/data/`). Pass `--db <path>` to override.
+The `--db` flag is optional on every subcommand below - when omitted, `sct codelist` follows the [path resolution chain](../path-resolution.md) to find a SNOMED CT SQLite database (cwd → config → `$SCT_DATA_HOME/data/`). Pass `--db <path>` to override.
 
 ---
 
@@ -48,14 +48,14 @@ status: draft
 licence: CC-BY-4.0
 copyright: Copyright 2026 RCPCH. SNOMED CT content © IHTSDO.
 appropriate_use: UK primary care EHR diagnosis identification.
-misuse: Do not use for secondary care — ICD-10 codes needed for HES.
+misuse: Do not use for secondary care - ICD-10 codes needed for HES.
 authors:
   - name: Marcus Baw
     role: author
 warnings:
   - code: not-universal-definition
     severity: info
-    message: Developed for a specific study — may not suit all uses.
+    message: Developed for a specific study - may not suit all uses.
 ---
 
 # concepts
@@ -76,10 +76,10 @@ warnings:
 
 | Line | Meaning |
 |---|---|
-| `195967001    Asthma` | Active — included in the codelist |
-| `# 41553006   Occupational asthma` | Explicitly excluded — preserved for audit |
-| `# ? 57607007 Irritant-induced asthma` | Pending review — flagged by `validate` |
-| `# ── heading ──` | Section comment — ignored by parsers |
+| `195967001    Asthma` | Active - included in the codelist |
+| `# 41553006   Occupational asthma` | Explicitly excluded - preserved for audit |
+| `# ? 57607007 Irritant-induced asthma` | Pending review - flagged by `validate` |
+| `# ── heading ──` | Section comment - ignored by parsers |
 
 ---
 
@@ -122,7 +122,7 @@ sct codelist add codelists/asthma.codelist 195967001 \
 sct codelist add codelists/diabetes.codelist \
   --ecl "<<73211009"
 
-# Read SCTIDs from stdin (the `-` form) — composes with any source
+# Read SCTIDs from stdin (the `-` form) - composes with any source
 sct ecl expand "<<73211009" | sct codelist add codelists/diabetes.codelist -
 ```
 
@@ -130,7 +130,7 @@ Deduplicates silently. Bumps `version` and updates `updated` date.
 
 #### Reading SCTIDs from stdin (`-`)
 
-Pass `-` in place of SCTIDs to read newline-delimited SCTIDs from stdin (the leading token of each non-comment line). This makes `add` compose with any concept source — most naturally [`sct ecl expand`](ecl.md):
+Pass `-` in place of SCTIDs to read newline-delimited SCTIDs from stdin (the leading token of each non-comment line). This makes `add` compose with any concept source - most naturally [`sct ecl expand`](ecl.md):
 
 ```bash
 sct ecl expand "<<73211009 MINUS <<46635009" | sct codelist add t2dm.codelist -
@@ -140,7 +140,7 @@ sct ecl expand "<<73211009 MINUS <<46635009" | sct codelist add t2dm.codelist -
 
 #### `--ecl <expression>`
 
-Add every concept matched by a SNOMED CT [Expression Constraint Language](https://confluence.ihtsdotools.org/display/DOCECL) expression, evaluated against the database. Mutually exclusive with positional SCTIDs. This is the most powerful way to populate a codelist — `<<73211009` is "Diabetes mellitus and all its subtypes".
+Add every concept matched by a SNOMED CT [Expression Constraint Language](https://confluence.ihtsdotools.org/display/DOCECL) expression, evaluated against the database. Mutually exclusive with positional SCTIDs. This is the most powerful way to populate a codelist - `<<73211009` is "Diabetes mellitus and all its subtypes".
 
 ```bash
 sct codelist add dm.codelist --ecl "<<73211009"                       # descendants-or-self
@@ -151,7 +151,7 @@ sct codelist add x.codelist  --ecl "^447562003"                       # members 
 
 Supported operators: `<` `<<` `>` `>>` (descendants/ancestors, with/without self), `<!` `>!` (children/parents), `^` (refset member), `AND` `OR` `MINUS`, parentheses, `*` (wildcard), and attribute refinement (`focus : type = value`, comma-conjoined, with `{ }` groups and `!=`). Optional `|term|` annotations are accepted and ignored.
 
-Hierarchy and refset expressions work on any database built by `sct sqlite`. **Attribute refinement** (the `:` operator) requires a database built with a current `sct` (schema v4+), which adds the `concept_relationships` table — rebuild with `sct ndjson` then `sct sqlite` if you see a message to that effect.
+Hierarchy and refset expressions work on any database built by `sct sqlite`. **Attribute refinement** (the `:` operator) requires a database built with a current `sct` (schema v4+), which adds the `concept_relationships` table - rebuild with `sct ndjson` then `sct sqlite` if you see a message to that effect.
 
 Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes, and group-cardinality semantics. See [`specs/ecl.md`](https://github.com/pacharanero/sct/blob/main/specs/ecl.md).
 
@@ -161,7 +161,7 @@ Move a concept from active to explicitly excluded, preserving the audit trail.
 
 ```bash
 sct codelist remove codelists/asthma.codelist 41553006 \
-  --comment "occupational asthma — separate pathway"
+  --comment "occupational asthma - separate pathway"
 ```
 
 ### `sct codelist validate <file>`
@@ -211,8 +211,8 @@ sct codelist export codelists/asthma.codelist --format markdown --output asthma.
 
 | Format | Description |
 |---|---|
-| `csv` | `sctid,preferred_term` — plain CSV |
-| `opencodelists-csv` | `code,term` — OpenCodelists-compatible upload format |
+| `csv` | `sctid,preferred_term` - plain CSV |
+| `opencodelists-csv` | `code,term` - OpenCodelists-compatible upload format |
 | `markdown` | Markdown table with front-matter metadata header |
 
 ---
@@ -241,7 +241,7 @@ sct codelist export codelists/asthma.codelist --format markdown --output asthma.
 | Field | Description |
 |---|---|
 | `authors` | `name`, `orcid`, `affiliation`, `role` per contributor |
-| `snomed_release` | Which SNOMED release was used (`YYYYMMDD`) — critical for reproducibility |
+| `snomed_release` | Which SNOMED release was used (`YYYYMMDD`) - critical for reproducibility |
 | `organisation` | Owning organisation |
 | `warnings` | Structured warnings (see below) |
 | `tags` | For discovery and grouping |
@@ -284,8 +284,8 @@ Git commits are the authoritative history. The `version` integer is a human labe
 
 ## Federation and sharing
 
-`.codelist` files are plain text — they distribute trivially:
+`.codelist` files are plain text - they distribute trivially:
 
-- **Git repo** — clone and `sct codelist validate` locally
-- **GitHub search** — `filename:*.codelist terminology:"SNOMED CT" asthma` finds public codelists via GitHub's index (no central registry required)
-- **OpenCodelists** — `sct codelist publish --to opencodelists` (coming)
+- **Git repo** - clone and `sct codelist validate` locally
+- **GitHub search** - `filename:*.codelist terminology:"SNOMED CT" asthma` finds public codelists via GitHub's index (no central registry required)
+- **OpenCodelists** - `sct codelist publish --to opencodelists` (coming)

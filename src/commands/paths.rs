@@ -1,4 +1,4 @@
-//! `sct paths` — Print the directories and files sct uses by default.
+//! `sct paths` - Print the directories and files sct uses by default.
 //!
 //! Diagnostic surface for the path-resolution chain defined in
 //! `crate::paths`. Running `sct paths` answers the question "where does sct

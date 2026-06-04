@@ -4,37 +4,37 @@
 /// A focus operator applied to a sub-expression.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Op {
-    /// `<` — descendants (not self)
+    /// `<` - descendants (not self)
     DescendantOf,
-    /// `<<` — descendants or self
+    /// `<<` - descendants or self
     DescendantOrSelfOf,
-    /// `>` — ancestors (not self)
+    /// `>` - ancestors (not self)
     AncestorOf,
-    /// `>>` — ancestors or self
+    /// `>>` - ancestors or self
     AncestorOrSelfOf,
-    /// `<!` — direct children
+    /// `<!` - direct children
     ChildOf,
-    /// `>!` — direct parents
+    /// `>!` - direct parents
     ParentOf,
-    /// `^` — members of the refset
+    /// `^` - members of the refset
     MemberOf,
 }
 
 /// Boolean combination of two expressions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoolOp {
-    /// `AND` — intersection
+    /// `AND` - intersection
     And,
-    /// `OR` — union
+    /// `OR` - union
     Or,
-    /// `MINUS` — set difference
+    /// `MINUS` - set difference
     Minus,
 }
 
 /// An ECL expression constraint.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    /// `*` — any concept.
+    /// `*` - any concept.
     Wildcard,
     /// A concept reference by SCTID. Any `|term|` annotation is parsed and
     /// dropped (it is a human label, not part of the semantics).
@@ -64,6 +64,6 @@ pub enum Refinement {
     /// Disjunction (`OR`).
     Or(Box<Refinement>, Box<Refinement>),
     /// An attribute group `{ … }`. Evaluated as a flat conjunction in v1
-    /// (group cardinality is deferred — see `specs/ecl.md` §5).
+    /// (group cardinality is deferred - see `specs/ecl.md` §5).
     Group(Box<Refinement>),
 }

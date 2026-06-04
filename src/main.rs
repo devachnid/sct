@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use sct_rs::commands;
 
-/// sct — SNOMED CT local-first toolchain.
+/// sct - SNOMED CT local-first toolchain.
 ///
 /// Converts an RF2 Snapshot release into a canonical NDJSON artefact
 /// and provides tools to load that artefact into SQLite, Parquet,
@@ -86,7 +86,7 @@ enum Command {
 /// Restore the default SIGPIPE disposition on Unix so that piping `sct` into
 /// `head`, `less`, or `diff <(sct …) …` terminates cleanly instead of
 /// panicking from `println!` on a closed stdout. Rust's runtime ignores
-/// SIGPIPE by default, which turns every broken-pipe write into a panic —
+/// SIGPIPE by default, which turns every broken-pipe write into a panic -
 /// fine for long-lived services, wrong for a CLI tool.
 #[cfg(unix)]
 fn reset_sigpipe() {

@@ -1,4 +1,4 @@
-# SNOMED Local-First Tooling — Architecture Overview
+# SNOMED Local-First Tooling - Architecture Overview
 
 ## Overview
 
@@ -11,20 +11,20 @@ terminology. The design follows a strict separation between:
    different use cases
 
 The philosophy is "convention over configuration" and "data over services". SNOMED CT is a
-dataset. It should be possible to work with it like any other dataset — from the command line,
+dataset. It should be possible to work with it like any other dataset - from the command line,
 from a script, from an LLM tool, without running a server.
 
 ---
 
 ## Design Principles
 
-- **Offline-first** — no network dependency at query time
-- **Deterministic** — the same RF2 input always produces the same artefact
-- **Single-file portability** — the core artefact is a single file you can copy, version, and share
-- **Standard tooling** — queryable with `sqlite3`, `duckdb`, `ripgrep`, `jq` without any custom binary
-- **Layered** — each layer is independently useful; you do not need the outer layers to use the inner ones
-- **Composable** — commands should be *pluripotent*: small, single-purpose, and connectable over Unix pipes wherever it makes sense. Read-side commands emit machine-friendly output on stdout (newline-delimited SCTIDs by default, `--json` when richer structure is wanted); write-side commands accept that same output on stdin (the `-` convention). Human-readable chatter (counts, progress) goes to **stderr**, keeping stdout clean for pipes. A capability should exist as a reusable primitive first (e.g. `sct ecl expand`), with integrated conveniences (e.g. `sct codelist add --ecl`) layered on top of the same engine rather than hiding it. Prefer `producer | consumer` over a bespoke flag whenever the producer is independently useful — but keep an integrated form when it can capture *intent* a pipe cannot (provenance, an intensional rule).
-- **LLM-native** — outputs are designed for direct consumption by language models and AI tooling
+- **Offline-first** - no network dependency at query time
+- **Deterministic** - the same RF2 input always produces the same artefact
+- **Single-file portability** - the core artefact is a single file you can copy, version, and share
+- **Standard tooling** - queryable with `sqlite3`, `duckdb`, `ripgrep`, `jq` without any custom binary
+- **Layered** - each layer is independently useful; you do not need the outer layers to use the inner ones
+- **Composable** - commands should be *pluripotent*: small, single-purpose, and connectable over Unix pipes wherever it makes sense. Read-side commands emit machine-friendly output on stdout (newline-delimited SCTIDs by default, `--json` when richer structure is wanted); write-side commands accept that same output on stdin (the `-` convention). Human-readable chatter (counts, progress) goes to **stderr**, keeping stdout clean for pipes. A capability should exist as a reusable primitive first (e.g. `sct ecl expand`), with integrated conveniences (e.g. `sct codelist add --ecl`) layered on top of the same engine rather than hiding it. Prefer `producer | consumer` over a bespoke flag whenever the producer is independently useful - but keep an integrated form when it can capture *intent* a pipe cannot (provenance, an intensional rule).
+- **LLM-native** - outputs are designed for direct consumption by language models and AI tooling
 
 ---
 
@@ -84,8 +84,8 @@ if any of the following change:
 - A planned feature moves from roadmap to implemented (remove the *(planned)* tag)
 - A new layer or output format is introduced
 
-The walkthrough is also the source material for the Remotion demo — each top-level section
-(prefixed `## N —`) corresponds to a demo scene. Keep section headings stable.
+The walkthrough is also the source material for the Remotion demo - each top-level section
+(prefixed `## N -`) corresponds to a demo scene. Keep section headings stable.
 
 ---
 

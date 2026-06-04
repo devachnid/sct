@@ -54,7 +54,7 @@ sct lexical "heart attack"
     ---
 
     Build version-controllable clinical **code lists**, and populate them with
-    **SNOMED CT Expression Constraint Language** — `sct codelist add --ecl
+    **SNOMED CT Expression Constraint Language** - `sct codelist add --ecl
     "<<73211009"` expands a query into concrete concepts.
 
     [:octicons-arrow-right-24: sct codelist](commands/codelist.md)
@@ -74,7 +74,7 @@ sct lexical "heart attack"
     ---
 
     A keyboard-driven **terminal UI** and a local **web GUI** for browsing
-    concepts, navigating hierarchies, and inspecting relationships — no browser
+    concepts, navigating hierarchies, and inspecting relationships - no browser
     extension or remote service needed.
 
     [:octicons-arrow-right-24: sct tui](commands/tui.md)

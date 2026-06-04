@@ -53,12 +53,12 @@ Terminology servers are stateful infrastructure. When a terminology server answe
 
 A `snomed.db` file checked into a repository alongside application code changes this. The exact terminology version used by a system becomes:
 
-- **Explicit** — the file's content hash identifies the release unambiguously
-- **Versioned** — git history tracks when the terminology was updated and who approved it
-- **Reproducible** — checking out a commit gives you both the code and the terminology it was written against
-- **Auditable** — a clinical decision made at a point in time can be re-evaluated against the exact terminology snapshot that was in use
+- **Explicit** - the file's content hash identifies the release unambiguously
+- **Versioned** - git history tracks when the terminology was updated and who approved it
+- **Reproducible** - checking out a commit gives you both the code and the terminology it was written against
+- **Auditable** - a clinical decision made at a point in time can be re-evaluated against the exact terminology snapshot that was in use
 
-This matters for clinical safety. A subsumption hierarchy that influenced a clinical decision rule, an inclusion criterion that defined a research cohort, a validation check that flagged an anomalous code — these are not abstract software artefacts. They have clinical consequences, and the question "what did the system believe about this concept on this date?" should have a deterministic answer.
+This matters for clinical safety. A subsumption hierarchy that influenced a clinical decision rule, an inclusion criterion that defined a research cohort, a validation check that flagged an anomalous code - these are not abstract software artefacts. They have clinical consequences, and the question "what did the system believe about this concept on this date?" should have a deterministic answer.
 
 Terminology server deployments rarely provide this. Snowstorm is updated out-of-band from the application that depends on it. There is no convention for pinning a terminology server to a specific release in the way you would pin a library dependency. The result is that the terminology version is implicit, often unknown, and effectively unauditable after the fact.
 
@@ -84,9 +84,9 @@ The most interesting prior art. Mark Wardle's Clojure implementation uses LMDB a
 
 Hermes is genuinely good work and represents the closest thinking to what is described here. 
 
-Hermes uses LMDB rather than SQLite for storage — a deliberate choice that trades ad-hoc queryability for zero-copy memory-mapped reads and higher performance characteristics. 
+Hermes uses LMDB rather than SQLite for storage - a deliberate choice that trades ad-hoc queryability for zero-copy memory-mapped reads and higher performance characteristics. 
 
-Hermes runs on the JVM, so startup time is slower than a compiled binary, but runtime performance is excellent as the [benchmarks](https://github.com/wardle/hermes#indicative-benchmarks) demonstrate. It is written in Clojure, a relatively niche language — this does not affect users of the HTTP, MCP, or Java APIs, but may be a barrier to direct source contributions or building custom command-line tooling on top of the library.
+Hermes runs on the JVM, so startup time is slower than a compiled binary, but runtime performance is excellent as the [benchmarks](https://github.com/wardle/hermes#indicative-benchmarks) demonstrate. It is written in Clojure, a relatively niche language - this does not affect users of the HTTP, MCP, or Java APIs, but may be a barrier to direct source contributions or building custom command-line tooling on top of the library.
 
 ### eigenbau/mcp-snomed-ct
 

@@ -1,4 +1,4 @@
-//! sct — SNOMED CT local-first toolchain.
+//! sct - SNOMED CT local-first toolchain.
 //!
 //! The library crate exposes the building blocks used by the `sct` binary so
 //! that integration tests (under `tests/`) and downstream tools can depend on

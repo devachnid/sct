@@ -1,4 +1,4 @@
-//! `sct fst` — build and query the FST-backed lexical index.
+//! `sct fst` - build and query the FST-backed lexical index.
 //!
 //! Two subcommands:
 //!   - `sct fst build  --input snomed.ndjson --output snomed.fst`
@@ -149,7 +149,7 @@ fn search(args: SearchArgs) -> Result<()> {
     };
     let elapsed = started.elapsed();
 
-    // `--ids`: machine output for pipes — SCTIDs on stdout, timing on stderr.
+    // `--ids`: machine output for pipes - SCTIDs on stdout, timing on stderr.
     if args.ids {
         use std::io::Write;
         let mut out = std::io::stdout().lock();

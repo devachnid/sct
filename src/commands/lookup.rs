@@ -1,4 +1,4 @@
-//! `sct lookup` — Look up a SNOMED CT concept by SCTID or CTV3 code.
+//! `sct lookup` - Look up a SNOMED CT concept by SCTID or CTV3 code.
 //!
 //! Accepts a bare SCTID (numeric) and returns full concept details.
 //! Also accepts a CTV3 code and attempts reverse lookup via the
@@ -54,7 +54,7 @@ pub fn run(args: Args) -> Result<()> {
 
     let code = args.code.trim();
 
-    // `--ids`: machine output for pipes — resolved SCTID(s) only.
+    // `--ids`: machine output for pipes - resolved SCTID(s) only.
     if args.ids {
         use std::io::Write;
         let mut out = std::io::stdout().lock();
@@ -90,14 +90,14 @@ pub fn run(args: Args) -> Result<()> {
     }
 
     if mapped.len() == 1 {
-        // Single mapping — show full concept detail.
+        // Single mapping - show full concept detail.
         if let Some(concept) = lookup_sctid(&conn, &mapped[0].0)? {
             println!("CTV3 {code} → SCTID {}\n", mapped[0].0);
             return print_concept(concept, args.json, prov.as_ref(), show_prov);
         }
     }
 
-    // Multiple mappings — list them, then show full detail for each.
+    // Multiple mappings - list them, then show full detail for each.
     println!(
         "CTV3 {code} maps to {} SNOMED CT concept{}:\n",
         mapped.len(),
@@ -162,7 +162,7 @@ fn lookup_sctid(conn: &Connection, id: &str) -> Result<Option<Value>> {
 /// Return the refsets a concept belongs to, each annotated with the refset's
 /// preferred term (since refsets are themselves concepts). Tolerates databases
 /// built before `refset_members` existed by returning an empty list only for
-/// that specific "no such table" error — all other SQL errors propagate.
+/// that specific "no such table" error - all other SQL errors propagate.
 pub(crate) fn lookup_refset_memberships(conn: &Connection, id: &str) -> Result<Vec<Value>> {
     let mut stmt = match conn.prepare(
         "SELECT rm.refset_id, COALESCE(c.preferred_term, '(unknown refset)')
@@ -188,7 +188,7 @@ pub(crate) fn lookup_refset_memberships(conn: &Connection, id: &str) -> Result<V
     Ok(rows)
 }
 
-/// True iff the error is SQLite's generic "no such table: …" — used to let
+/// True iff the error is SQLite's generic "no such table: …" - used to let
 /// callers gracefully degrade on databases built before a table existed.
 fn is_missing_table(e: &rusqlite::Error) -> bool {
     e.to_string().contains("no such table")
