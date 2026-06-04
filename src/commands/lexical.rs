@@ -35,6 +35,11 @@ pub struct Args {
     #[arg(long, short, default_value = "10")]
     pub limit: u32,
 
+    /// Emit only matching SCTIDs (newline-delimited) for piping, e.g.
+    /// `sct lexical "asthma" --ids | sct codelist add list.codelist -`.
+    #[arg(long)]
+    pub ids: bool,
+
     /// Override the per-concept line template. See `docs/commands/refset.md`
     /// for the variable list.
     #[arg(long)]
@@ -86,6 +91,16 @@ pub fn run(args: Args) -> Result<()> {
             .flatten()
             .collect()
     };
+
+    // `--ids`: machine output for pipes — just SCTIDs on stdout, nothing else.
+    if args.ids {
+        use std::io::Write;
+        let mut out = std::io::stdout().lock();
+        for (id, _, _, _) in &results {
+            writeln!(out, "{id}")?;
+        }
+        return Ok(());
+    }
 
     if results.is_empty() {
         println!("No results for {:?}", args.query);

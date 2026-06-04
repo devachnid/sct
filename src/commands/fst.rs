@@ -75,6 +75,10 @@ struct SearchArgs {
     /// Maximum number of results.
     #[arg(long, short, default_value = "10")]
     limit: usize,
+
+    /// Emit only matching SCTIDs (newline-delimited) for piping.
+    #[arg(long)]
+    ids: bool,
 }
 
 pub fn run(args: Args) -> Result<()> {
@@ -144,6 +148,21 @@ fn search(args: SearchArgs) -> Result<()> {
         idx.lookup_exact(&args.query)
     };
     let elapsed = started.elapsed();
+
+    // `--ids`: machine output for pipes — SCTIDs on stdout, timing on stderr.
+    if args.ids {
+        use std::io::Write;
+        let mut out = std::io::stdout().lock();
+        for h in &hits {
+            writeln!(out, "{}", h.concept_id)?;
+        }
+        eprintln!(
+            "{} result(s) in {:.3} ms",
+            hits.len(),
+            elapsed.as_secs_f64() * 1000.0
+        );
+        return Ok(());
+    }
 
     if hits.is_empty() {
         println!("No results for {:?}", args.query);

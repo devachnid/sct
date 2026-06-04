@@ -23,6 +23,7 @@ sct semantic <QUERY> [--embeddings <FILE>] [--model <MODEL>] [--ollama-url <URL>
 | `--model <MODEL>` | `nomic-embed-text` | Ollama model — must match the model used when building the embeddings. |
 | `--ollama-url <URL>` | `http://localhost:11434` | Ollama base URL. |
 | `--limit <N>` | `10` | Maximum number of results. |
+| `--ids` | off | Emit only matching SCTIDs (newline-delimited) for piping into other commands. |
 
 ---
 
@@ -50,6 +51,9 @@ sct semantic "sticky blood"           # → hypercoagulable state concepts
 
 # Return more results
 sct semantic "chest pain" --limit 20
+
+# Pipe matching SCTIDs into a code list
+sct semantic "water tablets" --ids --limit 30 | sct codelist add diuretics.codelist -
 
 # Use embeddings built with a different model
 sct semantic "fracture" \

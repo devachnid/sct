@@ -19,6 +19,7 @@ sct lookup <CODE> [--db <FILE>] [--json]
 | `<CODE>` | *(required)* | A numeric SCTID (e.g. `22298006`), or a CTV3 code (e.g. `XE0Uh`) for reverse lookup via the `concept_maps` table. |
 | `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 | `--json` | off | Emit the raw concept record as JSON instead of human-readable text. |
+| `--ids` | off | Emit only the resolved SCTID(s), newline-delimited, for piping. With a CTV3 code, prints the mapped SNOMED concept id(s). |
 | `--provenance` / `--no-provenance` | auto | Show or hide the release provenance footer (default: on for an interactive terminal). |
 
 ---
@@ -37,6 +38,11 @@ sct lookup XE0Uh
 
 # Explicit database
 sct lookup 73211009 --db /data/snomed.db
+```
+
+```bash
+# Resolve a CTV3 code to its SNOMED SCTID for piping
+sct lookup XE0Uh --ids
 ```
 
 CTV3 reverse lookup requires a database built from a UK edition that includes the CTV3 simple map refset; on an International-only database those codes won't resolve.

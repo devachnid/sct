@@ -20,7 +20,12 @@ Subcommands:
 | `info <ID>` | Show metadata and member count for a single refset. |
 | `members <ID>` | List the concepts belonging to a refset. |
 
-All subcommands accept `--db <PATH>` (auto-discovered when omitted — see [Path resolution](../path-resolution.md)) and `--json` for machine-readable output.
+All subcommands accept `--db <PATH>` (auto-discovered when omitted — see [Path resolution](../path-resolution.md)) and `--json` for machine-readable output. `members` also accepts `--ids` to emit just the member SCTIDs (newline-delimited) for piping:
+
+```bash
+# A whole refset becomes a code list in one line
+sct refset members 447562003 --ids | sct codelist add list.codelist -
+```
 
 ---
 

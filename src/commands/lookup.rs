@@ -29,8 +29,13 @@ pub struct Args {
     pub db: Option<PathBuf>,
 
     /// Output raw JSON instead of human-readable format.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "ids")]
     pub json: bool,
+
+    /// Emit only the resolved SCTID(s), newline-delimited, for piping. With a
+    /// CTV3 code this prints the mapped SNOMED concept id(s).
+    #[arg(long)]
+    pub ids: bool,
 
     #[command(flatten)]
     pub prov: ProvenanceFlags,
@@ -48,6 +53,22 @@ pub fn run(args: Args) -> Result<()> {
     let show_prov = provenance::should_show(args.prov, mode);
 
     let code = args.code.trim();
+
+    // `--ids`: machine output for pipes — resolved SCTID(s) only.
+    if args.ids {
+        use std::io::Write;
+        let mut out = std::io::stdout().lock();
+        if code.chars().all(|c| c.is_ascii_digit()) {
+            if lookup_sctid(&conn, code)?.is_some() {
+                writeln!(out, "{code}")?;
+            }
+        } else {
+            for (id, _, _, _) in lookup_ctv3(&conn, code)? {
+                writeln!(out, "{id}")?;
+            }
+        }
+        return Ok(());
+    }
 
     // If the code looks numeric, try SCTID first.
     if code.chars().all(|c| c.is_ascii_digit()) {

@@ -42,6 +42,10 @@ pub struct Args {
     #[arg(long, short, default_value = "10")]
     pub limit: usize,
 
+    /// Emit only matching SCTIDs (newline-delimited) for piping.
+    #[arg(long)]
+    pub ids: bool,
+
     /// Override the per-result line template.
     /// Default: `{score} | {id} | {pt}`. See `docs/commands/refset.md`.
     #[arg(long)]
@@ -92,6 +96,16 @@ pub fn run(args: Args) -> Result<()> {
         &args.query,
         args.limit,
     )?;
+
+    // `--ids`: machine output for pipes — just SCTIDs on stdout.
+    if args.ids {
+        use std::io::Write;
+        let mut out = std::io::stdout().lock();
+        for c in &results {
+            writeln!(out, "{}", c.id)?;
+        }
+        return Ok(());
+    }
 
     if results.is_empty() {
         println!("No embeddings found in {}", embeddings.display());

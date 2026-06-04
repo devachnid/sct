@@ -96,8 +96,13 @@ pub struct MembersArgs {
     pub limit: Option<usize>,
 
     /// Output raw JSON instead of a human-readable list.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "ids")]
     pub json: bool,
+
+    /// Emit only member SCTIDs (newline-delimited) for piping, e.g.
+    /// `sct refset members 447562003 --ids | sct codelist add list.codelist -`.
+    #[arg(long)]
+    pub ids: bool,
 
     /// Override the per-concept line template. See `sct help format` or
     /// `docs/commands/refset.md` for the variable list.
@@ -345,6 +350,16 @@ fn run_members(args: MembersArgs) -> Result<()> {
     let show_prov = provenance::should_show(args.prov, mode);
 
     let rows = list_refset_members(&conn, &args.id, args.limit.map(|n| n as i64))?;
+
+    // `--ids`: machine output for pipes — just member SCTIDs on stdout.
+    if args.ids {
+        use std::io::Write;
+        let mut out = std::io::stdout().lock();
+        for m in &rows {
+            writeln!(out, "{}", m.id)?;
+        }
+        return Ok(());
+    }
 
     if rows.is_empty() {
         println!("No members found for refset {}.", args.id);

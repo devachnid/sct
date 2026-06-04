@@ -54,6 +54,7 @@ Built snomed.fst in 16.30s
 | `--fuzzy <N>` | off | Fuzzy search up to `N` edits (Levenshtein distance 1 or 2). |
 | `--words` | off | Word-intersection: whitespace-split the query; return concepts whose terms contain **every** word. |
 | `--limit <N>`, `-l` | `10` | Maximum number of results. |
+| `--ids` | off | Emit only matching SCTIDs (newline-delimited) for piping; timing chatter goes to stderr. |
 
 `--prefix`, `--fuzzy`, and `--words` are mutually exclusive; with none of them the search is an exact (normalised) match.
 
@@ -69,6 +70,9 @@ sct fst search "diabetes mellitis" --fuzzy 1
 
 # Word intersection — concepts whose terms contain both words
 sct fst search "fracture femur" --words
+
+# Pipe matching SCTIDs into a code list
+sct fst search "fracture femur" --words --ids | sct codelist add fractures.codelist -
 ```
 
 ---

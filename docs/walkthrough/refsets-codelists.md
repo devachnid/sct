@@ -130,7 +130,33 @@ sct codelist add codelists/asthma-diagnosis.codelist 195967001 389145006 --db sn
 sct codelist add codelists/asthma-diagnosis.codelist 195967001 \
   --db snomed.db \
   --include-descendants
+
+# Add everything matched by an ECL expression
+sct codelist add codelists/diabetes.codelist --ecl "<<73211009"
 ```
+
+### Compose with pipes
+
+Every read-side command can emit bare SCTIDs with `--ids` (and [`sct ecl expand`](../commands/ecl.md) does so by default), and `sct codelist add <file> -` reads SCTIDs from stdin. So any way of *finding* concepts becomes a way of *building* a code list — just pipe one into the other:
+
+```bash
+# From an ECL query
+sct ecl expand "<<73211009 MINUS <<46635009" | sct codelist add t2dm.codelist -
+
+# From a keyword search
+sct lexical "asthma" --ids --limit 100 | sct codelist add asthma.codelist -
+
+# From a typo-tolerant FST search
+sct fst search "myocard" --prefix --ids | sct codelist add cardiac.codelist -
+
+# From semantic similarity (needs Ollama embeddings)
+sct semantic "water tablets" --ids | sct codelist add diuretics.codelist -
+
+# A whole reference set, in one line
+sct refset members 447562003 --ids | sct codelist add refset-copy.codelist -
+```
+
+This is the **composability** principle in action: small, single-purpose commands that speak SCTIDs over Unix pipes — machine output on stdout, human chatter on stderr. The `--ecl` flag above is the one-step convenience for the most common case; the pipe is the general building block.
 
 ### Remove (exclude) a concept
 

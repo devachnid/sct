@@ -20,6 +20,7 @@ sct lexical <QUERY> [--db <FILE>] [--hierarchy <NAME>] [--limit <N>]
 | `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 | `--hierarchy <NAME>` | *(all)* | Restrict results to a top-level hierarchy (e.g. `"Clinical finding"`). |
 | `--limit <N>` | `10` | Maximum number of results. |
+| `--ids` | off | Emit only matching SCTIDs (newline-delimited) for piping into other commands. |
 
 ---
 
@@ -30,6 +31,9 @@ sct lexical "heart attack"
 sct lexical "myocardial infarct*"
 sct lexical "heart attack" --hierarchy "Clinical finding"
 sct lexical "beta blocker" --limit 20 --db /data/snomed.db
+
+# Pipe matching SCTIDs straight into a code list
+sct lexical "asthma" --ids --limit 50 | sct codelist add asthma.codelist -
 ```
 
 ---
