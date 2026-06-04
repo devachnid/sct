@@ -58,6 +58,28 @@ sct ndjson \
   --output snomed-uk-full-20250401.ndjson
 ```
 
+> **Tip for UK users:** prefer the single, pre-merged **[UK Monolith Edition](https://isd.digital.nhs.uk/trud/users/guest/filters/0/categories/26/items/1799/releases)** from NHS TRUD (one `--rf2`) over hand-layering International + extensions. NHS merges International + UK Clinical + UK Drug + UK Pathology and *resolves the conflicts for you*; `sct` recognises it as the "UK Monolith" edition.
+
+---
+
+## Locale and preferred-term selection
+
+`--locale` chooses the **dialect** of the preferred term, by selecting the SNOMED **language reference set** to honour — not just filtering on language code (GB and US English descriptions both have `languageCode` "en"; only the refset id distinguishes them):
+
+| `--locale` | Language reference sets consulted, in priority order |
+|---|---|
+| `en-GB` (default) | UK National/Clinical (`999001261000000100`) → UK dm+d (`999000691000001104`) → International GB English (`900000000000508004`) |
+| `en-US` | International US English (`900000000000509007`) |
+| other `en-*` | GB English → US English |
+
+A concept's preferred term is the synonym marked **Preferred** in the highest-priority refset that has an entry for it, falling back to any preferred synonym, then the FSN. Refsets absent from your input are simply skipped — so `en-GB` works correctly on an International-only release (it falls through to GB English). Concretely, `80146002` resolves to *Appendicectomy* under `en-GB` and *Appendectomy* under `en-US`.
+
+### Layering multiple `--rf2` sources
+
+When you repeat `--rf2`, sources are layered in argument order and **the last source wins** on any conflicting component (concept, description acceptability). There is no Module Dependency Reference Set resolution — for robust extension-on-base layering, use a publisher-merged Edition (e.g. the UK Monolith) instead.
+
+---
+
 ### Write to stdout (pipe into another tool)
 
 ```bash

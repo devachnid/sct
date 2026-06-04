@@ -98,6 +98,7 @@ fn parse_lang_refset_preferred() {
     let rows = parse_lang_refset(f.path()).unwrap();
     assert_eq!(rows.len(), 1);
     assert!(rows[0].active);
+    assert_eq!(rows[0].refset_id, "900000000000508004");
     assert_eq!(rows[0].referenced_component_id, "999001");
     assert_eq!(rows[0].acceptability_id, PREFERRED);
 }
@@ -170,7 +171,11 @@ fn dataset_load_minimal() {
     let fever_parents = ds.parents.get("386661006").unwrap();
     assert!(fever_parents.contains(&"404684003".to_string()));
 
-    assert_eq!(ds.acceptability.get("4"), Some(&Acceptability::Preferred));
+    // Keyed by (refset_id, description_id); the fixture uses refsetId "0".
+    assert_eq!(
+        ds.acceptability.get(&("0".to_string(), "4".to_string())),
+        Some(&Acceptability::Preferred)
+    );
 
     assert!(ds.ctv3_maps.is_empty());
     assert!(ds.read2_maps.is_empty());

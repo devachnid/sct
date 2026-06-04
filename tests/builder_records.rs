@@ -53,9 +53,12 @@ fn minimal_dataset() -> Rf2Dataset {
     parents.insert("404684003".into(), vec!["138875005".into()]);
     parents.insert("386661006".into(), vec!["404684003".into()]);
 
-    // Mark description "4" (Pyrexia) as Preferred
+    // Mark description "4" (Pyrexia) as Preferred in GB English.
     let mut acceptability = HashMap::new();
-    acceptability.insert("4".into(), Acceptability::Preferred);
+    acceptability.insert(
+        ("900000000000508004".into(), "4".into()),
+        Acceptability::Preferred,
+    );
 
     Rf2Dataset {
         concepts,
@@ -117,6 +120,73 @@ fn schema_version_is_current() {
     for r in &records {
         assert_eq!(r.schema_version, SCHEMA_VERSION);
     }
+}
+
+#[test]
+fn locale_selects_dialect_preferred_term() {
+    // One concept, two synonyms; GB English refset prefers "Appendicectomy",
+    // US English refset prefers "Appendectomy". Both descriptions carry
+    // languageCode "en", so only the refset id distinguishes the dialect.
+    let mut concepts = HashMap::new();
+    concepts.insert(
+        "80146002".to_string(),
+        ConceptRow {
+            id: "80146002".into(),
+            effective_time: "20020131".into(),
+            active: true,
+            module_id: "900000000000207008".into(),
+            definition_status_id: "900000000000074008".into(),
+        },
+    );
+
+    let mk = |id: &str, type_id: &str, term: &str| DescriptionRow {
+        id: id.into(),
+        effective_time: "20020131".into(),
+        active: true,
+        concept_id: "80146002".into(),
+        language_code: "en".into(),
+        type_id: type_id.into(),
+        term: term.into(),
+        case_significance_id: "0".into(),
+    };
+    let mut descriptions = HashMap::new();
+    descriptions.insert(
+        "80146002".to_string(),
+        vec![
+            mk("1", TYPE_FSN, "Appendectomy (procedure)"),
+            mk("10", TYPE_SYNONYM, "Appendicectomy"),
+            mk("11", TYPE_SYNONYM, "Appendectomy"),
+        ],
+    );
+
+    let mut acceptability = HashMap::new();
+    // GB English (900000000000508004) prefers Appendicectomy (desc 10).
+    acceptability.insert(
+        ("900000000000508004".into(), "10".into()),
+        Acceptability::Preferred,
+    );
+    // US English (900000000000509007) prefers Appendectomy (desc 11).
+    acceptability.insert(
+        ("900000000000509007".into(), "11".into()),
+        Acceptability::Preferred,
+    );
+
+    let ds = Rf2Dataset {
+        concepts,
+        descriptions,
+        parents: HashMap::new(),
+        attributes: HashMap::new(),
+        acceptability,
+        ctv3_maps: HashMap::new(),
+        read2_maps: HashMap::new(),
+        refset_members: HashMap::new(),
+    };
+
+    let gb = build_records(&ds, "en-GB", false).unwrap();
+    assert_eq!(gb[0].preferred_term, "Appendicectomy");
+
+    let us = build_records(&ds, "en-US", false).unwrap();
+    assert_eq!(us[0].preferred_term, "Appendectomy");
 }
 
 #[test]

@@ -3,7 +3,10 @@ use anyhow::Result;
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet};
 
-use crate::rf2::{Acceptability, Rf2Dataset, TYPE_FSN, TYPE_SYNONYM};
+use crate::rf2::{
+    Acceptability, Rf2Dataset, LANG_GB_ENGLISH, LANG_UK_CLINICAL, LANG_UK_DRUG, LANG_US_ENGLISH,
+    TYPE_FSN, TYPE_SYNONYM,
+};
 use crate::schema::{ConceptRecord, ConceptRef, SCHEMA_VERSION};
 
 // ---------------------------------------------------------------------------
@@ -86,6 +89,23 @@ fn ancestor_chain(
         .collect()
 }
 
+/// Ordered language reference set ids to consult for a locale, most-preferred
+/// first. Dialect lives in the refset id (GB vs US English; UK realm refsets),
+/// not the description `languageCode`. Refsets absent from the loaded data
+/// simply yield no match and are skipped, so the UK-first ordering for `en-GB`
+/// is safe for International-only inputs too (it falls through to GB English).
+pub fn language_refset_priority(locale: &str) -> Vec<&'static str> {
+    match locale.to_ascii_lowercase().replace('_', "-").as_str() {
+        // UK realm: UK Clinical overrides, then dm+d, then International GB English.
+        "en-gb" => vec![LANG_UK_CLINICAL, LANG_UK_DRUG, LANG_GB_ENGLISH],
+        "en-us" => vec![LANG_US_ENGLISH],
+        // Other English (e.g. bare "en"): International GB then US English.
+        l if l.starts_with("en") => vec![LANG_GB_ENGLISH, LANG_US_ENGLISH],
+        // Non-English locale: no dialect refset known; fall back to any-preferred.
+        _ => vec![],
+    }
+}
+
 /// Strip the semantic tag from an FSN and return a borrowed slice.
 /// "Myocardial infarction (disorder)" → "Myocardial infarction"
 pub fn strip_semantic_tag(fsn: &str) -> &str {
@@ -154,29 +174,29 @@ pub fn build_records(
         }
     }
 
-    // Determine which lang refset files match the requested locale.
-    // The locale string ("en-GB", "en-US", "en") is matched against the
-    // language_code field on descriptions. For preferred-term selection we use
-    // the acceptability map (already filtered to the right refset files by the
-    // caller or by locale matching in rf2.rs).
-    //
-    // Strategy: for each concept, prefer descriptions whose description_id is
-    // marked Preferred in the acceptability map AND whose language_code starts
-    // with the locale language tag.
-    let locale_lang = locale.split('-').next().unwrap_or("en");
+    // Preferred-term selection is dialect-aware. `--locale` maps to an ordered
+    // list of language reference set ids (see `language_refset_priority`):
+    // a concept's preferred term is the synonym marked Preferred in the
+    // highest-priority refset that has an opinion for it, falling back to a
+    // synonym preferred in any refset, then the FSN. This is what makes
+    // `en-GB` ("Appendicectomy") differ from `en-US` ("Appendectomy") — the
+    // dialect lives in the refset id, not the description's `languageCode`
+    // (which is "en" for both).
+    let priority = language_refset_priority(locale);
 
-    // Build the set of description IDs that are Preferred in the loaded refset
-    let preferred_desc_ids: HashSet<&str> = dataset
-        .acceptability
-        .iter()
-        .filter_map(|(did, acc)| {
-            if *acc == Acceptability::Preferred {
-                Some(did.as_str())
-            } else {
-                None
-            }
-        })
-        .collect();
+    // refset_id -> {description_id Preferred in that refset}, plus the union
+    // (description_ids Preferred in *any* refset) for the fallback.
+    let mut preferred_in: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut preferred_any: HashSet<&str> = HashSet::new();
+    for ((refset, did), acc) in &dataset.acceptability {
+        if *acc == Acceptability::Preferred {
+            preferred_in
+                .entry(refset.as_str())
+                .or_default()
+                .insert(did.as_str());
+            preferred_any.insert(did.as_str());
+        }
+    }
 
     let mut records: Vec<ConceptRecord> = Vec::with_capacity(dataset.concepts.len());
 
@@ -199,23 +219,24 @@ pub fn build_records(
             .unwrap_or_default();
 
         // --- Preferred term ---
-        // 1. Active synonym, locale language, preferred in acceptability map
-        // 2. Fall back: any active synonym with preferred acceptability
-        // 3. Fall back: FSN
+        // 1. Synonym Preferred in the highest-priority locale refset
+        // 2. Fall back: any synonym Preferred in any refset
+        // 3. Fall back: FSN (semantic tag stripped)
         let preferred_term = {
             let candidates = descs.map(|ds| ds.as_slice()).unwrap_or(&[]);
 
-            let by_locale_preferred = candidates.iter().find(|d| {
-                d.type_id == TYPE_SYNONYM
-                    && d.language_code.starts_with(locale_lang)
-                    && preferred_desc_ids.contains(d.id.as_str())
+            let by_priority = priority.iter().find_map(|refset| {
+                let prefset = preferred_in.get(refset)?;
+                candidates
+                    .iter()
+                    .find(|d| d.type_id == TYPE_SYNONYM && prefset.contains(d.id.as_str()))
             });
 
             let any_preferred = candidates
                 .iter()
-                .find(|d| d.type_id == TYPE_SYNONYM && preferred_desc_ids.contains(d.id.as_str()));
+                .find(|d| d.type_id == TYPE_SYNONYM && preferred_any.contains(d.id.as_str()));
 
-            by_locale_preferred
+            by_priority
                 .or(any_preferred)
                 .map(|d| d.term.clone())
                 .unwrap_or_else(|| label_for_path(&fsn))

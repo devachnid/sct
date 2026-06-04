@@ -52,6 +52,10 @@ pub struct RelationshipRow {
 #[derive(Debug)]
 pub struct LangRefsetRow {
     pub active: bool,
+    /// Language reference set SCTID — identifies the dialect (e.g. GB vs US
+    /// English, or a UK realm refset). This is what distinguishes dialects;
+    /// the description's `languageCode` is "en" for both GB and US English.
+    pub refset_id: String,
     pub referenced_component_id: String, // description id
     pub acceptability_id: String, // 900000000000548007 = preferred, 900000000000549004 = acceptable
 }
@@ -94,6 +98,17 @@ pub const IS_A: &str = "116680003";
 pub const PREFERRED: &str = "900000000000548007";
 /// Refset ID for the SNOMED CT → CTV3 simple map reference set.
 pub const REFSET_CTV3_SIMPLE_MAP: &str = "900000000000497000";
+
+// Language reference set SCTIDs — the dialect selectors honoured by `--locale`.
+// See `builder::language_refset_priority`.
+/// Great Britain English (International edition).
+pub const LANG_GB_ENGLISH: &str = "900000000000508004";
+/// US English (International edition).
+pub const LANG_US_ENGLISH: &str = "900000000000509007";
+/// UK National (Clinical) language reference set — UK-realm preferred terms.
+pub const LANG_UK_CLINICAL: &str = "999001261000000100";
+/// UK dm+d (drug extension) realm description language reference set.
+pub const LANG_UK_DRUG: &str = "999000691000001104";
 
 // ---------------------------------------------------------------------------
 // RF2 file discovery
@@ -262,6 +277,7 @@ pub fn parse_lang_refset(path: &Path) -> Result<Vec<LangRefsetRow>> {
         let active = record.get(2).unwrap_or("0") == "1";
         rows.push(LangRefsetRow {
             active,
+            refset_id: record.get(4).unwrap_or("").to_string(),
             referenced_component_id: record.get(5).unwrap_or("").to_string(),
             acceptability_id: record.get(6).unwrap_or("").to_string(),
         });
@@ -333,8 +349,10 @@ pub struct Rf2Dataset {
     pub parents: HashMap<String, Vec<String>>,
     /// concept_id -> Vec<(type_id, destination_id, group)> for non-IS-A active attributes
     pub attributes: HashMap<String, Vec<(String, String, String)>>,
-    /// description_id -> Acceptability (from lang refset)
-    pub acceptability: HashMap<String, Acceptability>,
+    /// (language_refset_id, description_id) -> Acceptability (from lang refsets).
+    /// Keyed by refset id as well as description id so dialects (GB vs US
+    /// English, UK realm refsets) stay distinct — see `builder`.
+    pub acceptability: HashMap<(String, String), Acceptability>,
     /// concept_id (SCTID) -> Vec<CTV3 code> (active mappings from UK CTV3 simple map refset)
     pub ctv3_maps: HashMap<String, Vec<String>>,
     /// concept_id (SCTID) -> Vec<Read v2 code> (active mappings from UK Read Code simple map refset)
@@ -351,7 +369,7 @@ impl Rf2Dataset {
         let mut descriptions: HashMap<String, Vec<DescriptionRow>> = HashMap::new();
         let mut parents: HashMap<String, Vec<String>> = HashMap::new();
         let mut attributes: HashMap<String, Vec<(String, String, String)>> = HashMap::new();
-        let mut acceptability: HashMap<String, Acceptability> = HashMap::new();
+        let mut acceptability: HashMap<(String, String), Acceptability> = HashMap::new();
         let mut ctv3_maps: HashMap<String, Vec<String>> = HashMap::new();
         let read2_maps: HashMap<String, Vec<String>> = HashMap::new();
         let mut refset_members: HashMap<String, Vec<String>> = HashMap::new();
@@ -417,8 +435,8 @@ impl Rf2Dataset {
                     } else {
                         Acceptability::Acceptable
                     };
-                    // Last write wins (later rows in file take precedence)
-                    acceptability.insert(row.referenced_component_id, acc);
+                    // Keyed by (refset, description); last write wins per pair.
+                    acceptability.insert((row.refset_id, row.referenced_component_id), acc);
                 }
             }
         }
