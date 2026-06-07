@@ -118,7 +118,7 @@ canonical intermediate artefact that everything else is built from.
 **Docs**: [`sct ndjson`](../commands/ndjson.md)
 
 ```bash
-sct ndjson --rf2 .downloads/uk_sct2mo_41.6.0_20260311000001Z.zip \
+sct ndjson --rf2 ~/Downloads/uk_sct2mo_41.6.0_20260311000001Z.zip \
            --output snomed.ndjson
 
 # ~30 s for 831k concepts → snomed.ndjson (1.1 GB)
