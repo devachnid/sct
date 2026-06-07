@@ -5,9 +5,10 @@
 
 use rusqlite::Connection;
 use sct_rs::commands::ndjson::{self, RefsetMode};
-use sct_rs::commands::serve::{ops, serve_listener};
+use sct_rs::commands::serve::{ops, serve_listener, valuesets};
 use sct_rs::commands::sqlite;
 use serde_json::Value;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -253,13 +254,149 @@ fn expand_refinement_falls_back_to_engine() {
     assert_eq!(contains_codes(&v), ["22298006"]);
 }
 
+/// Write a `codelists/` dir with a `diabetes` list (extensional) and a
+/// `dm-plus` list that composes it via `includes:`. All ids exist in the fixture.
+fn codelist_dir() -> tempfile::TempDir {
+    let d = tempfile::tempdir().unwrap();
+    let header = |id: &str, inc: &str| {
+        format!(
+            "---\nid: {id}\ntitle: {id}\ndescription: t\nterminology: SNOMED CT\n\
+             created: 2026-01-01\nupdated: 2026-01-01\nversion: 2\nstatus: active\n\
+             licence: CC-BY-4.0\ncopyright: x\nappropriate_use: x\nmisuse: x\n{inc}---\n\n# concepts\n"
+        )
+    };
+    std::fs::write(
+        d.path().join("diabetes.codelist"),
+        format!(
+            "{}46635009 Type 1 diabetes\n44054006 Type 2 diabetes\n",
+            header("diabetes", "")
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        d.path().join("dm-plus.codelist"),
+        format!(
+            "{}73211009 STALE STORED TERM\n",
+            header("dm-plus", "includes:\n  - diabetes\n")
+        ),
+    )
+    .unwrap();
+    d
+}
+
+#[test]
+fn valueset_registry_loads_extensional_and_composed() {
+    let dir = codelist_dir();
+    let reg = valuesets::load_registry(dir.path(), "http://x");
+    assert_eq!(reg.len(), 2);
+
+    // Extensional list.
+    let diabetes = reg.get("diabetes").unwrap();
+    let mut ids: Vec<&str> = diabetes.members.iter().map(|(i, _)| i.as_str()).collect();
+    ids.sort();
+    assert_eq!(ids, ["44054006", "46635009"]);
+
+    // Composed list: own member + the included list's members.
+    let dm_plus = reg.get("dm-plus").unwrap();
+    let mut ids: Vec<&str> = dm_plus.members.iter().map(|(i, _)| i.as_str()).collect();
+    ids.sort();
+    assert_eq!(ids, ["44054006", "46635009", "73211009"]);
+
+    // URL resolution by canonical url and by trailing-id.
+    assert!(reg.resolve_url("http://x/ValueSet/diabetes").is_some());
+    assert!(reg.resolve_url("anything/dm-plus").is_some());
+    assert!(reg.resolve_url("nope").is_none());
+}
+
+#[test]
+fn valueset_expand_members_reconciles_display() {
+    let (_d, db) = build_db();
+    let dir = codelist_dir();
+    let reg = valuesets::load_registry(dir.path(), "http://x");
+    let members = reg.get("dm-plus").unwrap().members.clone();
+
+    let v = ops::expand_members(&conn(&db), &members, 100, 0, false).unwrap();
+    assert_eq!(v["expansion"]["total"], 3);
+    // Display is reconciled against the live DB, not the stale stored term.
+    let entry = v["expansion"]["contains"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["code"] == "73211009")
+        .unwrap();
+    assert_ne!(entry["display"], "STALE STORED TERM");
+    assert!(entry["display"]
+        .as_str()
+        .unwrap()
+        .to_lowercase()
+        .contains("diabet"));
+
+    // Pagination caps the page.
+    let p = ops::expand_members(&conn(&db), &members, 2, 0, false).unwrap();
+    assert_eq!(p["expansion"]["total"], 3);
+    assert_eq!(contains_codes(&p).len(), 2);
+}
+
+#[test]
+fn valueset_validate_code_membership() {
+    let (_d, db) = build_db();
+    let dir = codelist_dir();
+    let reg = valuesets::load_registry(dir.path(), "http://x");
+    let set: HashSet<String> = reg
+        .get("diabetes")
+        .unwrap()
+        .members
+        .iter()
+        .map(|(i, _)| i.clone())
+        .collect();
+    let c = conn(&db);
+
+    let yes =
+        ops::validate_code_in_set(&c, &set, "46635009", "http://x/ValueSet/diabetes").unwrap();
+    assert_eq!(param_bool(&yes, "result"), Some(true));
+    let no = ops::validate_code_in_set(&c, &set, "22298006", "http://x/ValueSet/diabetes").unwrap();
+    assert_eq!(param_bool(&no, "result"), Some(false));
+}
+
+#[test]
+fn http_valueset_round_trip() {
+    let (_d, db) = build_db();
+    let dir = codelist_dir();
+    let cpath = dir.path().to_path_buf();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        serve_listener(db, "/", Some(cpath), listener).unwrap();
+    });
+    let base = format!("http://127.0.0.1:{port}");
+
+    let bundle: Value = serde_json::from_str(&get_with_retry(&format!("{base}/ValueSet"))).unwrap();
+    assert_eq!(bundle["resourceType"], "Bundle");
+    assert_eq!(bundle["total"], 2);
+
+    let vs: Value =
+        serde_json::from_str(&get_with_retry(&format!("{base}/ValueSet/dm-plus"))).unwrap();
+    assert_eq!(vs["resourceType"], "ValueSet");
+    assert_eq!(
+        vs["compose"]["include"][0]["concept"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+
+    let exp: Value =
+        serde_json::from_str(&get_with_retry(&format!("{base}/ValueSet/dm-plus/$expand"))).unwrap();
+    assert_eq!(exp["expansion"]["total"], 3);
+}
+
 #[test]
 fn http_metadata_and_lookup_round_trip() {
     let (_d, db) = build_db();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
-        serve_listener(db, "/", listener).unwrap();
+        serve_listener(db, "/", None, listener).unwrap();
     });
     let base = format!("http://127.0.0.1:{port}");
 

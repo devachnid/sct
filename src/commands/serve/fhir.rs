@@ -132,3 +132,17 @@ pub fn value_set_expansion(
         },
     })
 }
+
+/// A FHIR `Bundle` of type `searchset` wrapping pre-built resources.
+pub fn bundle_searchset(resources: Vec<Value>) -> Value {
+    let entry: Vec<Value> = resources
+        .into_iter()
+        .map(|r| json!({ "resource": r }))
+        .collect();
+    json!({
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "total": entry.len(),
+        "entry": entry,
+    })
+}

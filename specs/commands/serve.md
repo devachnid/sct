@@ -5,13 +5,15 @@ artefact produced by `sct sqlite`. The goal is a standards-compliant, drop-in re
 hosted FHIR terminology services (Ontoserver, Snowstorm, NHS Terminology Server) in development,
 testing, and organisational production use.
 
-> **Status: Phase 1 shipped** (feature-gated `serve`). `/metadata`, `CodeSystem/$lookup`,
-> `$validate-code`, `$subsumes`, and `ValueSet/$expand` are implemented in `src/commands/serve/`
-> with hand-rolled FHIR JSON. **The "biggest gap" below - ECL - is closed:** `$expand` now runs the
-> full [`sct` ECL engine](../ecl.md) (`crate::ecl`), so hierarchy, refset `^`, boolean, and
-> attribute refinement all work, not just simple subtype expansion. User docs:
+> **Status: Phase 1 shipped + stored ValueSets** (feature-gated `serve`). `/metadata`,
+> `CodeSystem/$lookup` / `$validate-code` / `$subsumes`, and `ValueSet/$expand` are implemented in
+> `src/commands/serve/` with hand-rolled FHIR JSON. **The "biggest gap" below - ECL - is closed:**
+> `$expand` runs the full [`sct` ECL engine](../ecl.md) (`crate::ecl`), so hierarchy, refset `^`,
+> boolean, and attribute refinement all work. **Stored/named ValueSets are also shipped (§4 below):**
+> `--codelists <dir>` serves `.codelist` files (composition resolved) as ValueSets via
+> `GET /ValueSet`, `GET /ValueSet/{id}`, `/$expand`, and `ValueSet/$validate-code`. User docs:
 > [`docs/commands/serve.md`](../../docs/commands/serve.md). The sections below are the original
-> design; §1 and the phase plan are annotated where reality has moved on.
+> design; annotations note where reality has moved on.
 
 ---
 

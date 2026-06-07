@@ -133,25 +133,17 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
   content, multi-version routing, or NCTS syndication (the genuinely large Ontoserver gaps,
   deferred deliberately). They map onto the phases below but are the prioritised cut:
 
-  1. **Serve `.codelist` files as stored/named FHIR ValueSets.** A `.codelist` is already an
-     extensional ValueSet in disguise: its front-matter carries `id`, `title`, `description`,
-     `version`, and a `status` whose `draft`/`active`/`retired` values are exactly the FHIR
-     ValueSet status vocabulary, and its body is an explicit `code + display` member list.
-     `sct serve --codelists <dir>` scans `*.codelist` at startup and exposes each as a
-     ValueSet: `GET /ValueSet` (search/list), `GET /ValueSet/{id}`, and `$expand` / resolution
-     by `id` or canonical URL. Security model is **"public by placement"** - only files in the
-     served directory are exposed; keep private lists elsewhere. Open design points:
-     canonical-URL scheme (a `--valueset-base` prefix + `id`, or an optional `url:` front-matter
-     field); whether to serve `status: draft` lists by default; reconciling the stored display
-     term against the live DB's current preferred term (prefer live, fall back to stored for
-     retired concepts); stringifying the integer `version`; handling member SCTIDs absent from
-     the loaded edition. Extensional lists are trivial; once composable / ECL-backed codelists
-     land (see the codelist composition item above) they become *intensional* ValueSets that
-     `$expand` evaluates at request time - which the ECL engine already does.
-  2. **`ValueSet/$validate-code`.** For a served `.codelist` this is a set-membership lookup
-     (is `code` in the member list, plus optional display match). For an implicit value set
-     (`?url=...fhir_vs=ecl/<<73211009`) it reuses the ECL engine to test membership.
-     Complements the already-shipped `CodeSystem/$validate-code`.
+  1. ✅ **shipped** - **Serve `.codelist` files as stored/named FHIR ValueSets.**
+     `sct serve --codelists <dir>` (default `./codelists`) scans `*.codelist` at startup,
+     resolves composition, and exposes each as a ValueSet: `GET /ValueSet` (searchset Bundle),
+     `GET /ValueSet/{id}` (full resource with `compose`), `GET /ValueSet/{id}/$expand`, and
+     `$expand?url=<canonical>`. Canonical URL is `{server-base}/ValueSet/{id}`; expansion display
+     is reconciled against the live DB (stored term as fallback). Security is "public by
+     placement". Drafts are served (status reflected). Remaining nice-to-haves: optional `url:`
+     front-matter override, `--exclude-draft`.
+  2. ✅ **shipped** - **`ValueSet/$validate-code`** for a stored `.codelist` (set membership +
+     live display) and for an implicit ECL value set (`?url=...fhir_vs=ecl/...`, via the ECL
+     engine). Complements `CodeSystem/$validate-code`.
   3. **`ConceptMap/$translate`** (also Phase 3 below) - CTV3 / Read v2 from the existing
      `concept_maps` table; ICD-10 / OPCS-4 once `--refsets all` lands.
   4. **`$expand` parameter completeness + FHIR batch Bundles** - `activeOnly`, `displayLanguage`,

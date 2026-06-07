@@ -7,10 +7,11 @@
 
 pub mod fhir;
 pub mod ops;
+pub mod valuesets;
 
 use anyhow::{Context, Result};
 use axum::{
-    extract::{RawQuery, State},
+    extract::{Path, RawQuery, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
@@ -22,6 +23,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use fhir::FhirError;
+use valuesets::ValueSetRegistry;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -42,6 +44,11 @@ pub struct Args {
     #[arg(long, default_value = "/")]
     pub fhir_base: String,
 
+    /// Directory of `.codelist` files to serve as named FHIR ValueSets
+    /// (default `./codelists`, or `$SCT_CODELISTS` / `[codelists] dir`).
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
+
     /// Refuse write operations (always true; the server is read-only).
     #[arg(long, default_value_t = true)]
     pub read_only: bool,
@@ -51,6 +58,7 @@ pub struct Args {
 struct AppState {
     db: Arc<PathBuf>,
     impl_url: Arc<String>,
+    registry: Arc<ValueSetRegistry>,
 }
 
 pub fn run(args: Args) -> Result<()> {
@@ -70,19 +78,41 @@ pub fn run(args: Args) -> Result<()> {
         "sct serve: FHIR R4 terminology server on http://{addr}{base}\n  database: {}\n  try: curl 'http://{addr}{base}/metadata'",
         db.display()
     );
-    serve_listener(db, &args.fhir_base, listener)
+    let codelists = crate::paths::codelist_registry(args.codelists.as_deref());
+    serve_listener(db, &args.fhir_base, Some(codelists), listener)
 }
 
 /// Serve the FHIR router on an already-bound std listener, blocking. Shared by
 /// `run` and by integration tests (which bind an ephemeral port first).
+/// `codelists` is the directory of `.codelist` files to expose as ValueSets
+/// (`None` to serve none).
 #[doc(hidden)]
-pub fn serve_listener(db: PathBuf, fhir_base: &str, listener: std::net::TcpListener) -> Result<()> {
+pub fn serve_listener(
+    db: PathBuf,
+    fhir_base: &str,
+    codelists: Option<PathBuf>,
+    listener: std::net::TcpListener,
+) -> Result<()> {
     let base = normalise_base(fhir_base);
     let addr = listener.local_addr().context("listener address")?;
     let impl_url = format!("http://{addr}{base}");
+    let registry = match &codelists {
+        Some(dir) => valuesets::load_registry(dir, &impl_url),
+        None => ValueSetRegistry::default(),
+    };
+    if !registry.is_empty() {
+        if let Some(dir) = &codelists {
+            eprintln!(
+                "  serving {} ValueSet(s) from {}",
+                registry.len(),
+                dir.display()
+            );
+        }
+    }
     let state = AppState {
         db: Arc::new(db),
         impl_url: Arc::new(impl_url),
+        registry: Arc::new(registry),
     };
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -120,6 +150,13 @@ fn build_router(state: AppState, base: &str) -> Router {
         )
         .route("/CodeSystem/$subsumes", get(subsumes).post(subsumes))
         .route("/ValueSet/$expand", get(expand).post(expand))
+        .route(
+            "/ValueSet/$validate-code",
+            get(vs_validate_code).post(vs_validate_code),
+        )
+        .route("/ValueSet", get(valueset_search))
+        .route("/ValueSet/:id", get(valueset_read))
+        .route("/ValueSet/:id/$expand", get(valueset_expand_id))
         .with_state(state);
     if base.is_empty() {
         app
@@ -196,17 +233,21 @@ async fn expand(State(st): State<AppState>, headers: HeaderMap, RawQuery(q): Raw
         return r;
     }
     let params = parse_query(q.as_deref().unwrap_or(""));
+    let (count, offset, include_designations) = pagination(&params);
+
+    // A `url` naming a stored `.codelist` ValueSet expands its member set.
+    if let Some(url) = param(&params, "url") {
+        if let Some(vs) = st.registry.resolve_url(url) {
+            let members = vs.members.clone();
+            return run_db(&st, move |c| {
+                ops::expand_members(c, &members, count, offset, include_designations)
+            })
+            .await;
+        }
+    }
+
     let ecl = param(&params, "url").and_then(parse_implicit_ecl);
     let filter = param(&params, "filter").map(str::to_string);
-    let count = param(&params, "count")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(100usize);
-    let offset = param(&params, "offset")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0usize);
-    let include_designations = param(&params, "includeDesignations")
-        .map(|s| s.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
     run_db(&st, move |c| {
         ops::expand(
             c,
@@ -218,6 +259,105 @@ async fn expand(State(st): State<AppState>, headers: HeaderMap, RawQuery(q): Raw
         )
     })
     .await
+}
+
+/// `GET /ValueSet` - a searchset Bundle of the registered ValueSets (metadata
+/// only), optionally filtered by `?url=` or `?_id=`.
+async fn valueset_search(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    RawQuery(q): RawQuery,
+) -> Response {
+    if let Some(r) = reject_xml(&headers) {
+        return r;
+    }
+    let params = parse_query(q.as_deref().unwrap_or(""));
+    let url = param(&params, "url");
+    let id = param(&params, "_id").or_else(|| param(&params, "id"));
+    let resources: Vec<serde_json::Value> = st
+        .registry
+        .iter()
+        .filter(|vs| url.is_none_or(|u| vs.canonical_url == u))
+        .filter(|vs| id.is_none_or(|i| vs.front_matter.id == i))
+        .map(|vs| vs.summary_resource())
+        .collect();
+    fhir_ok(fhir::bundle_searchset(resources))
+}
+
+/// `GET /ValueSet/{id}` - the full ValueSet resource (with `compose`).
+async fn valueset_read(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if let Some(r) = reject_xml(&headers) {
+        return r;
+    }
+    match st.registry.get(&id) {
+        Some(vs) => fhir_ok(vs.to_resource()),
+        None => fhir_err(FhirError::not_found(format!("ValueSet '{id}' not found"))),
+    }
+}
+
+/// `GET /ValueSet/{id}/$expand` - expand a stored ValueSet by id.
+async fn valueset_expand_id(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    RawQuery(q): RawQuery,
+) -> Response {
+    if let Some(r) = reject_xml(&headers) {
+        return r;
+    }
+    let Some(vs) = st.registry.get(&id) else {
+        return fhir_err(FhirError::not_found(format!("ValueSet '{id}' not found")));
+    };
+    let members = vs.members.clone();
+    let params = parse_query(q.as_deref().unwrap_or(""));
+    let (count, offset, include_designations) = pagination(&params);
+    run_db(&st, move |c| {
+        ops::expand_members(c, &members, count, offset, include_designations)
+    })
+    .await
+}
+
+/// `GET|POST /ValueSet/$validate-code` - is `code` in the ValueSet named by
+/// `url` (a stored `.codelist` or an implicit ECL value set)?
+async fn vs_validate_code(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    RawQuery(q): RawQuery,
+) -> Response {
+    if let Some(r) = reject_xml(&headers) {
+        return r;
+    }
+    let params = parse_query(q.as_deref().unwrap_or(""));
+    let Some(code) = param(&params, "code").map(str::to_string) else {
+        return fhir_err(FhirError::invalid(
+            "`code` parameter is required".to_string(),
+        ));
+    };
+    let Some(url) = param(&params, "url").map(str::to_string) else {
+        return fhir_err(FhirError::invalid(
+            "`url` parameter is required (the ValueSet to validate against)".to_string(),
+        ));
+    };
+
+    if let Some(vs) = st.registry.resolve_url(&url) {
+        let members: std::collections::HashSet<String> =
+            vs.members.iter().map(|(id, _)| id.clone()).collect();
+        let vs_url = vs.canonical_url.clone();
+        return run_db(&st, move |c| {
+            ops::validate_code_in_set(c, &members, &code, &vs_url)
+        })
+        .await;
+    }
+    if let Some(ecl) = parse_implicit_ecl(&url) {
+        return run_db(&st, move |c| ops::validate_code_in_ecl(c, &ecl, &code)).await;
+    }
+    fhir_err(FhirError::not_found(format!(
+        "ValueSet '{url}' not found and not an implicit ECL value set"
+    )))
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -308,6 +448,20 @@ fn param<'a>(params: &'a [(String, String)], key: &str) -> Option<&'a str> {
         .iter()
         .find(|(k, _)| k == key)
         .map(|(_, v)| v.as_str())
+}
+
+/// Parse the common `count` / `offset` / `includeDesignations` expansion params.
+fn pagination(params: &[(String, String)]) -> (usize, usize, bool) {
+    let count = param(params, "count")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(100usize);
+    let offset = param(params, "offset")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0usize);
+    let include_designations = param(params, "includeDesignations")
+        .map(|s| s.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    (count, offset, include_designations)
 }
 
 fn params_all(params: &[(String, String)], key: &str) -> Vec<String> {

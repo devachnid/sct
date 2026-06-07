@@ -551,3 +551,85 @@ fn expand_simple(
     let contains = build_contains(conn, &page_ids, include_designations)?;
     Ok(value_set_expansion(total, offset, count, contains))
 }
+
+// ---------------------------------------------------------------------------
+// Stored ValueSets (backed by `.codelist` files)
+// ---------------------------------------------------------------------------
+
+/// Expand a fixed member list (a stored `.codelist` ValueSet) with in-memory
+/// pagination. Each page entry's display is reconciled against the live DB,
+/// falling back to the stored term for concepts absent from this edition.
+pub fn expand_members(
+    conn: &Connection,
+    members: &[(String, String)],
+    count: usize,
+    offset: usize,
+    include_designations: bool,
+) -> Result<Value, FhirError> {
+    let count = count.min(1000);
+    let total = members.len();
+    let start = offset.min(total);
+    let end = (offset + count).min(total);
+
+    let mut stmt = conn
+        .prepare_cached("SELECT preferred_term, fsn, synonyms FROM concepts WHERE id = ?1")
+        .map_err(ex)?;
+    let mut contains = Vec::with_capacity(end - start);
+    for (id, stored) in &members[start..end] {
+        let row = stmt.query_row([id], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        });
+        match row {
+            Ok((pt, fsn, syn)) => {
+                contains.push(contains_entry(id, &pt, &fsn, &syn, include_designations))
+            }
+            // Member not in this edition (e.g. retired): keep it, stored display.
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                contains.push(json!({ "system": SNOMED_SYSTEM, "code": id, "display": stored }))
+            }
+            Err(e) => return Err(ex(e)),
+        }
+    }
+    Ok(value_set_expansion(total, offset, count, contains))
+}
+
+/// `ValueSet/$validate-code` against a stored member set: set membership plus
+/// the live display term when present.
+pub fn validate_code_in_set(
+    conn: &Connection,
+    members: &HashSet<String>,
+    code: &str,
+    vs_url: &str,
+) -> Result<Value, FhirError> {
+    let present = members.contains(code);
+    let mut params = vec![json!({ "name": "result", "valueBoolean": present })];
+    if present {
+        if let Some(c) = fetch_concept(conn, code)? {
+            params.push(json!({ "name": "display", "valueString": c.pt }));
+        }
+    } else {
+        params.push(json!({ "name": "message",
+            "valueString": format!("Code '{code}' is not in ValueSet {vs_url}") }));
+    }
+    Ok(parameters(params))
+}
+
+/// `ValueSet/$validate-code` against an implicit ECL value set: does `code`
+/// satisfy the expression?
+pub fn validate_code_in_ecl(conn: &Connection, ecl: &str, code: &str) -> Result<Value, FhirError> {
+    let present = eval_ecl(conn, ecl)?.iter().any(|m| m == code);
+    let mut params = vec![json!({ "name": "result", "valueBoolean": present })];
+    if present {
+        if let Some(c) = fetch_concept(conn, code)? {
+            params.push(json!({ "name": "display", "valueString": c.pt }));
+        }
+    } else {
+        params.push(json!({ "name": "message",
+            "valueString": format!("Code '{code}' does not satisfy ECL: {ecl}") }));
+    }
+    Ok(parameters(params))
+}
