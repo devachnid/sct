@@ -4,6 +4,20 @@ Outstanding work and next steps. Completed work is removed; see git log for hist
 
 ---
 
+
+### TODO
+
+In no particular order
+
+* [ ] obtain Windows signing key https://ngrok.com/blog/so-you-want-to-sign-for-windows
+* [ ] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). This is a big piece of work but would be a great way to demonstrate the value of the FST approach, and to identify areas for further optimisation.
+* [ ] dockerfile && dockerhub build (for the server)
+* [ ] improve distribution - should be a .dmg and .exe with code signing, and ideally also .deb and .rpm packages for Linux users.
+* [ ] Installation docs improvements: Remove "See the [Installation section of the README](https://github.com/pacharanero/sct#installation) for all supported install methods (shell installer, Homebrew, Scoop, `cargo install`, `cargo binstall`, and building from source)" and replace with Zensical Content Tabs section as per this example https://zensical.org/docs/get-started/#install-with-pip in the actual docs themselves. Make it as pretty as possible and use icons and interesting Zensical features.
+* [ ] mermaid diagrams for the architecture and data flow, to visually explain how the different components fit together and how data moves through the system. This would replace the ascii diagrams in the README and make it easier for users to understand the overall design and how the different pieces interact. FST can more easily be explained this way. We should use real SNOMED examples in the diagrams to make them more concrete and relatable.
+ly explain how the different components fit together and how data moves through the system. This would replace the ascii diagrams in the README and make it easier for users to understand the overall design and how the different pieces interact. FST can more easily be explained this way. We should use real SNOMED examples in the diagrams to make them more concrete and relatable.
+* [ ] SNOMED primer - undestanding SNOMED basics (concepts, descriptions, relationships, refsets, ECL, etc.) is a barrier to entry for new users. A concise primer that explains these core concepts in plain language, with examples, is needed. It may need to take different approaches for technical vs clinical audiences. It should be in a section of the docs.
+
 ## In progress / near-term
 
 ### Distribution
@@ -64,20 +78,16 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
       source artefacts.
 - [ ] `sct codelist search <file> <query>` - interactive FTS5 search → include/exclude
 - [ ] `sct codelist import --from <source>` - OCL, CSV, RF2, FHIR import
-- [ ] **Composable codelists** - let a `.codelist` include/reference other `.codelist`
-      files, so lists can be built from reusable building blocks (e.g. a "diabetes"
-      list that pulls in "type-1-diabetes" and "type-2-diabetes" sub-lists). This gives
-      a flat-file, version-controllable, *transparent* way to compose terminology sets -
-      doing for codelists what refsets and ECL do, but legibly in plain text rather than
-      opaquely. Open design questions: include syntax (a front-matter `includes:` list,
-      or an `@include <path-or-url>` body directive?); local-path vs URL/OCL references;
-      how to resolve and flatten transitively (and detect cycles); whether the resolved
-      members are materialised inline on `add`/`export` or kept as live references and
-      expanded on demand; how `diff`/`stats`/`validate` report composed vs direct members;
-      and interaction with ECL (an included list is just another concept source, so the
-      two should compose). Pairs naturally with the ECL work - both are ways to *specify
-      intent* rather than enumerate concepts; ECL is terse and powerful, composition is
-      transparent and reviewable.
+- [x] **Composable codelists** ✅ **shipped** - a `.codelist` composes others via an
+      `includes:` front-matter list. References use a Docker-registry model: a bare id
+      resolves to `<registry>/<id>.codelist` (registry defaults to `./codelists`,
+      overridable via `--codelists` / `SCT_CODELISTS` / `[codelists] dir`), a path is
+      relative to the including file, and an `http(s)://` URL is fetched and cached. Members
+      are resolved live (own + included, recursively, parent exclusions win) by `stats`,
+      `validate`, `export`, `diff`, and `sct serve`; `sct codelist include` edits the
+      reference list and `sct codelist resolve` flattens to a standalone snapshot. Cycles
+      and missing includes are detected. See [`docs/commands/codelist.md`](commands/codelist.md).
+      Remaining: multi-terminology composition (format v2) and OCL references.
 
 ### Interactive "search as you type"
 
@@ -118,9 +128,40 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
   **and full ECL** (via the ECL engine - well beyond the spec's original "simple ECL" scope),
   `--fhir-base` prefix, `OperationOutcome` errors. Remaining: FHIR batch Bundle.
 
-  **Phase 2 - remaining hierarchy/ValueSet bits** (`ValueSet/$validate-code`; `CodeSystem`
-  resource read; pagination polish - `$expand` ECL/`<<`/`<!`/`>>`/`>!`/boolean already done
-  in Phase 1)
+  **Near-term priorities (from the June 2026 Ontoserver gap review).** These four cover the
+  bulk of what real FHIR terminology clients actually call, without taking on multi-terminology
+  content, multi-version routing, or NCTS syndication (the genuinely large Ontoserver gaps,
+  deferred deliberately). They map onto the phases below but are the prioritised cut:
+
+  1. **Serve `.codelist` files as stored/named FHIR ValueSets.** A `.codelist` is already an
+     extensional ValueSet in disguise: its front-matter carries `id`, `title`, `description`,
+     `version`, and a `status` whose `draft`/`active`/`retired` values are exactly the FHIR
+     ValueSet status vocabulary, and its body is an explicit `code + display` member list.
+     `sct serve --codelists <dir>` scans `*.codelist` at startup and exposes each as a
+     ValueSet: `GET /ValueSet` (search/list), `GET /ValueSet/{id}`, and `$expand` / resolution
+     by `id` or canonical URL. Security model is **"public by placement"** - only files in the
+     served directory are exposed; keep private lists elsewhere. Open design points:
+     canonical-URL scheme (a `--valueset-base` prefix + `id`, or an optional `url:` front-matter
+     field); whether to serve `status: draft` lists by default; reconciling the stored display
+     term against the live DB's current preferred term (prefer live, fall back to stored for
+     retired concepts); stringifying the integer `version`; handling member SCTIDs absent from
+     the loaded edition. Extensional lists are trivial; once composable / ECL-backed codelists
+     land (see the codelist composition item above) they become *intensional* ValueSets that
+     `$expand` evaluates at request time - which the ECL engine already does.
+  2. **`ValueSet/$validate-code`.** For a served `.codelist` this is a set-membership lookup
+     (is `code` in the member list, plus optional display match). For an implicit value set
+     (`?url=...fhir_vs=ecl/<<73211009`) it reuses the ECL engine to test membership.
+     Complements the already-shipped `CodeSystem/$validate-code`.
+  3. **`ConceptMap/$translate`** (also Phase 3 below) - CTV3 / Read v2 from the existing
+     `concept_maps` table; ICD-10 / OPCS-4 once `--refsets all` lands.
+  4. **`$expand` parameter completeness + FHIR batch Bundles** - `activeOnly`, `displayLanguage`,
+     specific `designation` / `property` filters, version params (`system-version` /
+     `valueSetVersion`); `POST /` transaction/batch Bundle handler; `CodeSystem` resource read;
+     `TerminologyCapabilities` (`/metadata?mode=terminology`).
+
+  **Phase 2 - remaining hierarchy/ValueSet bits** (stored `.codelist` ValueSets and
+  `ValueSet/$validate-code` per the priorities above; `CodeSystem` resource read; pagination
+  polish - `$expand` ECL/`<<`/`<!`/`>>`/`>!`/boolean already done in Phase 1)
 
   **Phase 3 - Refsets + ConceptMap** (`^` ECL member-of operator now unblocked - Simple
   refsets load into the `refset_members` table via `sct ndjson --refsets simple` + `sct sqlite`;
@@ -318,3 +359,5 @@ being the next concrete pieces of work.
       first interface that would make a medical student *play* with the ontology, and
       the traversal patterns discovered during play are genuinely useful codelist seeds.
       Ship as a subcommand; minimal dependencies; pure terminal UX.
+
+

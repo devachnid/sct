@@ -116,6 +116,26 @@ pub fn expand_tilde(path: &str) -> PathBuf {
     }
 }
 
+/// Resolve the codelist registry directory that bare-id `includes:` entries -
+/// and `sct serve --codelists` - look in. Resolution order: explicit `flag` →
+/// `$SCT_CODELISTS` → `[codelists] dir` config → `./codelists`.
+pub fn codelist_registry(flag: Option<&Path>) -> PathBuf {
+    if let Some(p) = flag {
+        return p.to_path_buf();
+    }
+    if let Some(p) = env_path_nonempty("SCT_CODELISTS") {
+        return p;
+    }
+    if let Some(dir) = load_config()
+        .codelists
+        .and_then(|c| c.dir)
+        .filter(|s| !s.trim().is_empty())
+    {
+        return expand_tilde(&dir);
+    }
+    PathBuf::from("codelists")
+}
+
 // ---------------------------------------------------------------------------
 // Config file schema (single source of truth)
 // ---------------------------------------------------------------------------
@@ -126,6 +146,7 @@ pub struct Config {
     pub paths: Option<PathsConfig>,
     pub trud: Option<TrudConfig>,
     pub format: Option<FormatConfig>,
+    pub codelists: Option<CodelistsConfig>,
 }
 
 /// `[paths]` section - default DB and embeddings overrides used when the
@@ -135,6 +156,14 @@ pub struct Config {
 pub struct PathsConfig {
     pub db: Option<String>,
     pub embeddings: Option<String>,
+}
+
+/// `[codelists]` section - the registry directory bare-id `includes:` entries
+/// (and `sct serve --codelists`) resolve against. See [`codelist_registry`].
+#[derive(Deserialize, Default, Debug, Clone)]
+#[serde(default)]
+pub struct CodelistsConfig {
+    pub dir: Option<String>,
 }
 
 /// `[trud]` section - see `specs/commands/trud.md`.

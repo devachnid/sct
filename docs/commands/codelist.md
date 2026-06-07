@@ -83,6 +83,50 @@ warnings:
 
 ---
 
+## Composing codelists (`includes:`)
+
+A codelist can build on others by listing them in an `includes:` front-matter key. This lets you assemble a large list from reusable building blocks - e.g. a `diabetes` list that pulls in `type-1-diabetes` and `type-2-diabetes` - transparently and in plain text, rather than opaquely via a refset or ECL query.
+
+```yaml
+includes:
+  - type-1-diabetes              # bare id  -> <registry>/type-1-diabetes.codelist
+  - ../shared/renal.codelist     # path     -> relative to this file
+  - https://example.org/ckd.codelist   # url -> fetched and cached
+```
+
+References are resolved like Docker image names - a default registry with escape hatches for other sources:
+
+| Reference | Resolves to |
+|---|---|
+| **Bare id** (`type-1-diabetes`) | `<registry>/type-1-diabetes.codelist`. The registry defaults to `./codelists`, overridable with `--codelists <dir>`, the `SCT_CODELISTS` env var, or `[codelists] dir` in the config file. |
+| **Path** (contains `/`, ends in `.codelist`, or starts with `.` `~` `/`) | A file path relative to the including file (or absolute). |
+| **URL** (`http(s)://`) | Fetched and cached under `$SCT_DATA_HOME/cache/codelists/`. Re-fetch with `--refresh`. |
+
+Semantics:
+
+- **Live, not flattened.** `includes:` stays in the file; `stats`, `validate`, `export`, `diff`, and `sct serve` compute the *effective member set* (own concepts + included concepts, recursively) on demand, so it always reflects the current source lists. Use `sct codelist resolve` to freeze a flattened snapshot.
+- **Exclusions win.** An `# <id>` excluded line in the parent removes that concept even if an included list contributes it.
+- **Cycles are detected** and reported as an error; `validate` fails if any include is missing or circular.
+
+### `sct codelist include <file> <ref...>`
+
+Add (or, with `--remove`, drop) `includes:` references. Each reference is validated to resolve before being written.
+
+```bash
+sct codelist include codelists/diabetes.codelist type-1-diabetes type-2-diabetes
+sct codelist include codelists/diabetes.codelist type-2-diabetes --remove
+```
+
+### `sct codelist resolve <file>`
+
+Flatten a composed codelist into a standalone snapshot - every effective member written inline, `includes:` dropped. Writes to stdout by default, or to `--output <file>`.
+
+```bash
+sct codelist resolve codelists/diabetes.codelist -o codelists/diabetes-flat.codelist
+```
+
+---
+
 ## Subcommands
 
 ### `sct codelist new <file>`

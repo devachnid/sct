@@ -18,6 +18,7 @@ use chrono::Local;
 use clap::{Parser, Subcommand};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -47,6 +48,10 @@ pub enum Verb {
     Diff(DiffArgs),
     /// Export a codelist to CSV, Markdown, or other formats.
     Export(ExportArgs),
+    /// Add or remove `includes:` references to compose other codelists.
+    Include(IncludeArgs),
+    /// Flatten a composed codelist into a standalone snapshot (all members inline).
+    Resolve(ResolveArgs),
     /// Interactive FTS5 search → include/exclude concepts (requires --db).
     Search(SearchArgs),
     /// Import a codelist from OpenCodelists, CSV, or FHIR.
@@ -113,6 +118,13 @@ pub struct ValidateArgs {
     /// discovery order when this flag is omitted.
     #[arg(long)]
     pub db: Option<PathBuf>,
+    /// Registry directory bare-id `includes:` entries resolve against
+    /// (default `./codelists`, or `$SCT_CODELISTS` / `[codelists] dir`).
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
+    /// Re-fetch URL includes instead of using the local cache.
+    #[arg(long)]
+    pub refresh: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -123,6 +135,9 @@ pub struct StatsArgs {
     /// discovery order when this flag is omitted.
     #[arg(long)]
     pub db: Option<PathBuf>,
+    /// Registry directory bare-id `includes:` entries resolve against.
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -131,6 +146,9 @@ pub struct DiffArgs {
     pub file_a: PathBuf,
     /// Second .codelist file.
     pub file_b: PathBuf,
+    /// Registry directory bare-id `includes:` entries resolve against.
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -151,6 +169,38 @@ pub struct ExportArgs {
     /// SNOMED CT SQLite database (required when `--include-maps` is set).
     #[arg(long)]
     pub db: Option<PathBuf>,
+    /// Registry directory bare-id `includes:` entries resolve against.
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+pub struct IncludeArgs {
+    /// Path to the .codelist file to add includes to.
+    pub file: PathBuf,
+    /// Codelist references to include: a bare id, a relative path, or a URL.
+    pub refs: Vec<String>,
+    /// Remove the given references instead of adding them.
+    #[arg(long)]
+    pub remove: bool,
+    /// Registry directory bare-id references resolve against (for validation).
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+pub struct ResolveArgs {
+    /// Path to the .codelist file to flatten.
+    pub file: PathBuf,
+    /// Write the flattened codelist here (default: stdout).
+    #[arg(long, short)]
+    pub output: Option<PathBuf>,
+    /// Registry directory bare-id `includes:` entries resolve against.
+    #[arg(long)]
+    pub codelists: Option<PathBuf>,
+    /// Re-fetch URL includes instead of using the local cache.
+    #[arg(long)]
+    pub refresh: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -185,6 +235,8 @@ pub fn run(args: Args) -> Result<()> {
         Verb::Stats(a) => cmd_stats(a),
         Verb::Diff(a) => cmd_diff(a),
         Verb::Export(a) => cmd_export(a),
+        Verb::Include(a) => cmd_include(a),
+        Verb::Resolve(a) => cmd_resolve(a),
         Verb::Search(_) => bail!(
             "`sct codelist search` is not yet implemented.\n\
              Use `sct lexical --db <db> --query <query>` for FTS5 search,\n\
@@ -213,6 +265,11 @@ pub struct FrontMatter {
     pub copyright: String,
     pub appropriate_use: String,
     pub misuse: String,
+    /// Other codelists whose members are composed into this one. Each entry is a
+    /// bare id (resolved to `<registry>/<id>.codelist`), a path relative to this
+    /// file, or an `http(s)://` URL. See [`resolve_effective_members`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snomed_release: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -422,7 +479,8 @@ fn split_id_term(s: &str) -> Option<(String, String)> {
     }
 }
 
-pub fn write_codelist(cl: &CodelistFile, path: &Path) -> Result<()> {
+/// Render a codelist to its on-disk text form (front-matter + body).
+pub fn render_codelist(cl: &CodelistFile) -> Result<String> {
     let yaml =
         serde_yaml_ng::to_string(&cl.front_matter).context("serialising YAML front-matter")?;
     let mut out = format!("---\n{}---\n", yaml);
@@ -433,6 +491,11 @@ pub fn write_codelist(cl: &CodelistFile, path: &Path) -> Result<()> {
             out.push('\n');
         }
     }
+    Ok(out)
+}
+
+pub fn write_codelist(cl: &CodelistFile, path: &Path) -> Result<()> {
+    let out = render_codelist(cl)?;
     std::fs::write(path, out).with_context(|| format!("writing {}", path.display()))
 }
 
@@ -460,6 +523,205 @@ fn render_body_line(line: &ConceptLine) -> String {
 
 pub fn today() -> String {
     Local::now().format("%Y-%m-%d").to_string()
+}
+
+// ---------------------------------------------------------------------------
+// Composition (includes)
+// ---------------------------------------------------------------------------
+
+/// How an `includes:` entry addresses another codelist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IncludeRef {
+    /// Bare token, e.g. `type-1-diabetes` -> `<registry>/type-1-diabetes.codelist`.
+    Id(String),
+    /// A path with a `/`, a `.codelist` suffix, or a `.`/`~`/`/` prefix,
+    /// resolved relative to the including file's directory.
+    Path(String),
+    /// An `http(s)://` URL fetched as codelist text.
+    Url(String),
+}
+
+/// Classify an `includes:` entry per the Docker-registry model: URL, path, or
+/// bare id (the default).
+pub fn parse_include_ref(raw: &str) -> IncludeRef {
+    let r = raw.trim();
+    if r.starts_with("http://") || r.starts_with("https://") {
+        IncludeRef::Url(r.to_string())
+    } else if r.contains('/')
+        || r.ends_with(".codelist")
+        || r.starts_with('.')
+        || r.starts_with('~')
+    {
+        IncludeRef::Path(r.to_string())
+    } else {
+        IncludeRef::Id(r.to_string())
+    }
+}
+
+/// Resolve an include reference to a concrete `.codelist` file path. `Url`
+/// references are not handled here (resolved by the caller); this returns the
+/// local path for `Id` and `Path` forms.
+pub fn resolve_include_path(
+    r: &IncludeRef,
+    including_file_dir: &Path,
+    registry: &Path,
+) -> Result<PathBuf> {
+    match r {
+        IncludeRef::Id(id) => Ok(registry.join(format!("{id}.codelist"))),
+        IncludeRef::Path(p) => {
+            let expanded = crate::paths::expand_tilde(p);
+            if expanded.is_absolute() {
+                Ok(expanded)
+            } else {
+                Ok(including_file_dir.join(expanded))
+            }
+        }
+        IncludeRef::Url(u) => bail!("URL includes are not yet supported: {u}"),
+    }
+}
+
+/// Where a resolved member came from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MemberSource {
+    /// An `Active` line in this file.
+    Direct,
+    /// Contributed by an included codelist (carries the `includes:` ref label).
+    Included(String),
+}
+
+/// A concept in the effective member set, with provenance.
+#[derive(Debug, Clone)]
+pub struct EffectiveMember {
+    pub id: String,
+    pub term: String,
+    pub source: MemberSource,
+}
+
+/// Compute the effective active member set of a codelist: its own `Active`
+/// concepts plus, recursively, the effective members of every `includes:`
+/// entry, minus this file's own `Excluded` concepts (a parent exclusion
+/// overrides an inherited inclusion). `PendingReview` lines are never members.
+///
+/// `including_file_dir` is the directory of `cl`'s own file (for relative path
+/// refs); `registry` is the directory bare-id refs resolve against. `visited`
+/// carries the set of already-entered canonical file paths for cycle detection;
+/// pass a fresh `HashSet` at the top level. Order is preserved: included members
+/// first (in `includes:` then body order), then this file's own direct members
+/// in body order - so a list with no `includes:` yields exactly its body order.
+pub fn resolve_effective_members(
+    cl: &CodelistFile,
+    including_file_dir: &Path,
+    registry: &Path,
+    refresh: bool,
+    visited: &mut HashSet<PathBuf>,
+) -> Result<Vec<EffectiveMember>> {
+    // id -> member, insertion-ordered. `insert` on an existing key updates the
+    // value in place (keeping position), so own `Active` lines override an
+    // inherited member's term/provenance while staying where they first landed.
+    let mut members: indexmap::IndexMap<String, EffectiveMember> = indexmap::IndexMap::new();
+
+    if let Some(includes) = &cl.front_matter.includes {
+        for raw in includes {
+            let r = parse_include_ref(raw);
+            // URL refs are fetched into the local cache and then treated exactly
+            // like a path include (the cache file path is the cycle key).
+            let path = match &r {
+                IncludeRef::Url(u) => fetch_url_codelist(u, refresh)
+                    .with_context(|| format!("fetching include {raw:?}"))?,
+                _ => resolve_include_path(&r, including_file_dir, registry)
+                    .with_context(|| format!("resolving include {raw:?}"))?,
+            };
+            let canonical = std::fs::canonicalize(&path)
+                .with_context(|| format!("include {raw:?} -> {} not found", path.display()))?;
+            if !visited.insert(canonical.clone()) {
+                bail!(
+                    "include cycle detected at {raw:?} ({})",
+                    canonical.display()
+                );
+            }
+            let child = read_codelist(&canonical)?;
+            let child_dir = canonical
+                .parent()
+                .unwrap_or(including_file_dir)
+                .to_path_buf();
+            let child_members =
+                resolve_effective_members(&child, &child_dir, registry, refresh, visited)?;
+            visited.remove(&canonical);
+            for m in child_members {
+                members.entry(m.id.clone()).or_insert(EffectiveMember {
+                    id: m.id,
+                    term: m.term,
+                    source: MemberSource::Included(raw.clone()),
+                });
+            }
+        }
+    }
+
+    // Own direct actives (override included provenance/term).
+    for line in &cl.body {
+        if let ConceptLine::Active { id, term, .. } = line {
+            members.insert(
+                id.clone(),
+                EffectiveMember {
+                    id: id.clone(),
+                    term: term.clone(),
+                    source: MemberSource::Direct,
+                },
+            );
+        }
+    }
+
+    // Own exclusions remove from the union (parent wins).
+    for line in &cl.body {
+        if let ConceptLine::Excluded { id, .. } = line {
+            members.shift_remove(id);
+        }
+    }
+
+    Ok(members.into_values().collect())
+}
+
+/// Convenience: resolve a file's effective members, deriving the including
+/// directory from the file path and using `registry` for bare-id refs. When
+/// `refresh` is set, URL includes are re-fetched rather than read from cache.
+pub fn effective_members_of(
+    cl: &CodelistFile,
+    file: &Path,
+    registry: &Path,
+    refresh: bool,
+) -> Result<Vec<EffectiveMember>> {
+    let dir = file.parent().unwrap_or(Path::new(".")).to_path_buf();
+    // Seed visited with this file so a self-include is caught as a cycle.
+    let mut visited = HashSet::new();
+    if let Ok(c) = std::fs::canonicalize(file) {
+        visited.insert(c);
+    }
+    resolve_effective_members(cl, &dir, registry, refresh, &mut visited)
+}
+
+/// Fetch a remote `.codelist` into the local cache and return its path. Uses the
+/// cached copy unless `refresh` is set or it is absent. The cache lives under
+/// `$SCT_DATA_HOME/cache/codelists/` keyed by a hash of the URL.
+fn fetch_url_codelist(url: &str, refresh: bool) -> Result<PathBuf> {
+    let cache_dir = crate::paths::data_home().join("cache").join("codelists");
+    std::fs::create_dir_all(&cache_dir)
+        .with_context(|| format!("creating cache dir {}", cache_dir.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(url.as_bytes());
+    let cached = cache_dir.join(format!("{:x}.codelist", hasher.finalize()));
+    if refresh || !cached.exists() {
+        let body = ureq::get(url)
+            .call()
+            .with_context(|| format!("fetching {url}"))?
+            .into_body()
+            .read_to_string()
+            .with_context(|| format!("reading body of {url}"))?;
+        // Validate it parses as a codelist before caching.
+        parse_codelist(&body).with_context(|| format!("parsing remote codelist {url}"))?;
+        std::fs::write(&cached, body)
+            .with_context(|| format!("caching {url} to {}", cached.display()))?;
+    }
+    Ok(cached)
 }
 
 // ---------------------------------------------------------------------------
@@ -558,6 +820,7 @@ fn cmd_new(args: NewArgs) -> Result<()> {
                 .to_string(),
         appropriate_use: "Describe appropriate use here.".to_string(),
         misuse: "Describe misuse here.".to_string(),
+        includes: None,
         snomed_release: None,
         authors,
         organisation: None,
@@ -790,6 +1053,18 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
         }
     }
 
+    // Validate that any `includes:` resolve (missing file, cycle, parse error).
+    // The included lists' own concepts are validated by validating those files;
+    // here we just ensure composition is sound and report the effective count.
+    let registry = crate::paths::codelist_registry(args.codelists.as_deref());
+    let effective = match effective_members_of(&cl, &args.file, &registry, args.refresh) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            errors.push(format!("includes do not resolve: {e:#}"));
+            None
+        }
+    };
+
     // Check active concepts against the database.
     for line in &cl.body {
         match line {
@@ -822,7 +1097,10 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
         eprintln!("ERROR {e}");
     }
 
-    let active_count = cl.body.iter().filter(|l| l.is_active()).count();
+    let active_count = effective
+        .as_ref()
+        .map(|m| m.len())
+        .unwrap_or_else(|| cl.body.iter().filter(|l| l.is_active()).count());
     println!(
         "\n{}: {} active concepts, {} warning(s), {} error(s)",
         args.file.display(),
@@ -850,11 +1128,15 @@ fn cmd_stats(args: StatsArgs) -> Result<()> {
     println!("Status:      {}", fm.status);
     println!("Updated:     {}", fm.updated);
 
-    let active: Vec<&str> = cl
-        .body
+    // Effective active set (own + included, minus exclusions).
+    let registry = crate::paths::codelist_registry(args.codelists.as_deref());
+    let members = effective_members_of(&cl, &args.file, &registry, false)?;
+    let active: Vec<&str> = members.iter().map(|m| m.id.as_str()).collect();
+    let direct = members
         .iter()
-        .filter_map(|l| if l.is_active() { l.sctid() } else { None })
-        .collect();
+        .filter(|m| m.source == MemberSource::Direct)
+        .count();
+    let inherited = members.len() - direct;
     let excluded: Vec<&str> = cl
         .body
         .iter()
@@ -878,8 +1160,26 @@ fn cmd_stats(args: StatsArgs) -> Result<()> {
         })
         .collect();
 
+    if let Some(includes) = &fm.includes {
+        if !includes.is_empty() {
+            println!("\nIncludes ({}):", includes.len());
+            for inc in includes {
+                println!("  - {inc}");
+            }
+        }
+    }
+
     println!("\nConcept counts:");
-    println!("  Active:         {}", active.len());
+    if inherited > 0 {
+        println!(
+            "  Active:         {} ({} direct + {} inherited)",
+            active.len(),
+            direct,
+            inherited
+        );
+    } else {
+        println!("  Active:         {}", active.len());
+    }
     println!("  Excluded:       {}", excluded.len());
     println!("  Pending review: {}", pending.len());
 
@@ -939,30 +1239,20 @@ fn cmd_stats(args: StatsArgs) -> Result<()> {
 fn cmd_diff(args: DiffArgs) -> Result<()> {
     let a = read_codelist(&args.file_a)?;
     let b = read_codelist(&args.file_b)?;
+    let registry = crate::paths::codelist_registry(args.codelists.as_deref());
 
-    let a_active: HashMap<String, String> = a
-        .body
-        .iter()
-        .filter_map(|l| {
-            if let ConceptLine::Active { id, term, .. } = l {
-                Some((id.clone(), term.clone()))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let b_active: HashMap<String, String> = b
-        .body
-        .iter()
-        .filter_map(|l| {
-            if let ConceptLine::Active { id, term, .. } = l {
-                Some((id.clone(), term.clone()))
-            } else {
-                None
-            }
-        })
-        .collect();
+    // Compare effective (composed) member sets so a diff reflects what each
+    // list actually resolves to, including any `includes:`.
+    let a_active: HashMap<String, String> =
+        effective_members_of(&a, &args.file_a, &registry, false)?
+            .into_iter()
+            .map(|m| (m.id, m.term))
+            .collect();
+    let b_active: HashMap<String, String> =
+        effective_members_of(&b, &args.file_b, &registry, false)?
+            .into_iter()
+            .map(|m| (m.id, m.term))
+            .collect();
 
     let b_excluded: HashSet<String> = b
         .body
@@ -1050,16 +1340,13 @@ fn cmd_diff(args: DiffArgs) -> Result<()> {
 
 fn cmd_export(args: ExportArgs) -> Result<()> {
     let cl = read_codelist(&args.file)?;
-    let active: Vec<(&str, &str)> = cl
-        .body
+    let registry = crate::paths::codelist_registry(args.codelists.as_deref());
+    // Effective members flatten any `includes:`; for a plain list this is just
+    // the file's own active concepts in body order.
+    let members = effective_members_of(&cl, &args.file, &registry, false)?;
+    let active: Vec<(&str, &str)> = members
         .iter()
-        .filter_map(|l| {
-            if let ConceptLine::Active { id, term, .. } = l {
-                Some((id.as_str(), term.as_str()))
-            } else {
-                None
-            }
-        })
+        .map(|m| (m.id.as_str(), m.term.as_str()))
         .collect();
 
     let terminologies: Vec<String> = args
@@ -1104,6 +1391,116 @@ fn cmd_export(args: ExportArgs) -> Result<()> {
             println!("Exported {} concept(s) to {}", active.len(), path.display());
         }
         None => print!("{}", output),
+    }
+    Ok(())
+}
+
+fn cmd_include(args: IncludeArgs) -> Result<()> {
+    if args.refs.is_empty() {
+        bail!("provide at least one codelist reference to include or remove");
+    }
+    let mut cl = read_codelist(&args.file)?;
+    let registry = crate::paths::codelist_registry(args.codelists.as_deref());
+    let dir = args
+        .file
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
+        .to_path_buf();
+
+    let mut includes = cl.front_matter.includes.take().unwrap_or_default();
+
+    if args.remove {
+        let before = includes.len();
+        includes.retain(|i| !args.refs.iter().any(|r| r.trim() == i.trim()));
+        println!(
+            "Removed {} include(s) from {}",
+            before - includes.len(),
+            args.file.display()
+        );
+    } else {
+        for raw in &args.refs {
+            let raw = raw.trim().to_string();
+            if includes.iter().any(|i| i.trim() == raw) {
+                eprintln!("note: {raw:?} is already included; skipping");
+                continue;
+            }
+            match parse_include_ref(&raw) {
+                IncludeRef::Url(u) => {
+                    eprintln!("note: URL includes are not yet resolvable ({u}); recorded anyway");
+                }
+                r => {
+                    let path = resolve_include_path(&r, &dir, &registry)?;
+                    if !path.exists() {
+                        bail!("include {raw:?} -> {} does not exist", path.display());
+                    }
+                }
+            }
+            includes.push(raw);
+        }
+        println!(
+            "{} now composes {} included list(s)",
+            args.file.display(),
+            includes.len()
+        );
+    }
+
+    cl.front_matter.includes = if includes.is_empty() {
+        None
+    } else {
+        Some(includes)
+    };
+    cl.front_matter.updated = today();
+    write_codelist(&cl, &args.file)
+}
+
+fn cmd_resolve(args: ResolveArgs) -> Result<()> {
+    let cl = read_codelist(&args.file)?;
+    let registry = crate::paths::codelist_registry(args.codelists.as_deref());
+    let members = effective_members_of(&cl, &args.file, &registry, args.refresh)?;
+    let include_count = cl.front_matter.includes.as_ref().map_or(0, |v| v.len());
+
+    // Flatten into a standalone codelist: drop `includes`, inline every member.
+    let mut fm = cl.front_matter;
+    fm.includes = None;
+    fm.updated = today();
+
+    let mut body = vec![
+        ConceptLine::Comment(format!(
+            "# Resolved snapshot of {}: {} concept(s){}",
+            args.file.display(),
+            members.len(),
+            if include_count > 0 {
+                format!(" flattened from {include_count} include(s)")
+            } else {
+                String::new()
+            }
+        )),
+        ConceptLine::Blank,
+        ConceptLine::Comment("# concepts".to_string()),
+    ];
+    for m in &members {
+        body.push(ConceptLine::Active {
+            id: m.id.clone(),
+            term: m.term.clone(),
+            comment: None,
+        });
+    }
+    let resolved = CodelistFile {
+        front_matter: fm,
+        body,
+    };
+
+    match args.output {
+        Some(path) => {
+            write_codelist(&resolved, &path)?;
+            println!(
+                "Resolved {} concept(s) to {}",
+                members.len(),
+                path.display()
+            );
+        }
+        None => print!("{}", render_codelist(&resolved)?),
     }
     Ok(())
 }
@@ -1694,6 +2091,7 @@ misuse: Not for clinical decision support.
             copyright: String::new(),
             appropriate_use: String::new(),
             misuse: String::new(),
+            includes: None,
             snomed_release: None,
             authors: None,
             organisation: None,

@@ -1119,6 +1119,7 @@ fn tool_codelist_new(args: &Value) -> Result<String> {
         copyright: "Copyright holder. SNOMED CT content © IHTSDO.".to_string(),
         appropriate_use: "Describe appropriate use here.".to_string(),
         misuse: "Describe misuse here.".to_string(),
+        includes: None,
         snomed_release: None,
         authors: args["author"].as_str().map(|name| {
             vec![crate::commands::codelist::Author {
