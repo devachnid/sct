@@ -6,15 +6,108 @@ Install `sct`, download a SNOMED CT release, and build the core artefacts.
 
 ## Installation
 
-See the [Installation section of the README](https://github.com/pacharanero/sct#installation) for all supported install methods (shell installer, Homebrew, Scoop, `cargo install`, `cargo binstall`, and building from source).
+Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Apple Silicon, Intel), and **Windows** (x86_64) on every release, each with a SHA-256 checksum you can verify against the `SHA256SUMS` file on the [Releases page](https://github.com/pacharanero/sct/releases). Pick your platform:
 
-Verify installation:
+=== ":material-apple: macOS"
+
+    **Homebrew** (recommended)
+
+    ```bash
+    brew tap pacharanero/sct
+    brew install sct
+    ```
+
+    **Shell installer** - auto-detects your chip, verifies the checksum, installs to `~/.local/bin`:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/pacharanero/sct/main/install.sh | sh
+    ```
+
+    **Disk image** - download the `.dmg` for your Mac, open it, and drag `sct` onto a folder on your `PATH`:
+
+    [:material-download: Apple Silicon (.dmg)](https://github.com/pacharanero/sct/releases/latest/download/sct-macos-aarch64.dmg){ .md-button }
+    [:material-download: Intel (.dmg)](https://github.com/pacharanero/sct/releases/latest/download/sct-macos-x86_64.dmg){ .md-button }
+
+    !!! warning "Unsigned for now"
+        The `.dmg` is not yet notarized. On first run, **right-click `sct` → Open**, or clear the quarantine flag: `xattr -d com.apple.quarantine ./sct`.
+
+=== ":material-linux: Linux"
+
+    **Debian / Ubuntu** (`.deb`)
+
+    ```bash
+    curl -fLO https://github.com/pacharanero/sct/releases/latest/download/sct-linux-x86_64.deb
+    sudo apt install ./sct-linux-x86_64.deb        # aarch64: sct-linux-aarch64.deb
+    ```
+
+    **Fedora / RHEL / openSUSE** (`.rpm`)
+
+    ```bash
+    curl -fLO https://github.com/pacharanero/sct/releases/latest/download/sct-linux-x86_64.rpm
+    sudo dnf install ./sct-linux-x86_64.rpm        # aarch64: sct-linux-aarch64.rpm
+    ```
+
+    **Homebrew**
+
+    ```bash
+    brew tap pacharanero/sct
+    brew install sct
+    ```
+
+    **Shell installer** - auto-detects your architecture, verifies the checksum, installs to `~/.local/bin`:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/pacharanero/sct/main/install.sh | sh
+    ```
+
+=== ":material-microsoft-windows: Windows"
+
+    **Scoop** (recommended)
+
+    ```powershell
+    scoop bucket add sct https://github.com/pacharanero/scoop-sct
+    scoop install sct
+    ```
+
+    **PowerShell installer** - downloads, verifies the checksum, installs to `%LOCALAPPDATA%\sct\bin`:
+
+    ```powershell
+    iwr -useb https://raw.githubusercontent.com/pacharanero/sct/main/install.ps1 | iex
+    ```
+
+    **Standalone executable** - download [`sct-windows-x86_64.exe`](https://github.com/pacharanero/sct/releases/latest/download/sct-windows-x86_64.exe), drop it in a folder on your `PATH`, and run `sct` from a terminal.
+
+    !!! warning "Unsigned for now"
+        The `.exe` is not yet Authenticode-signed. SmartScreen may warn on first run - choose **More info → Run anyway**.
+
+=== ":material-language-rust: Cargo (any OS)"
+
+    With a [Rust toolchain](https://rustup.rs) (stable 1.70+):
+
+    ```bash
+    cargo install sct-rs          # compile from crates.io
+    ```
+
+    Or grab a prebuilt binary without compiling, via [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall):
+
+    ```bash
+    cargo binstall sct-rs
+    ```
+
+    Build from a clone with optional features (`serve`, `tui`, `gui`, or `full`):
+
+    ```bash
+    git clone https://github.com/pacharanero/sct && cd sct
+    cargo install --path . --features full
+    ```
+
+Verify the install:
 
 ```bash
 sct --version
 ```
 
-> Optionally, you can generate [shell completions](../commands/completions.md) for your shell at this point.
+> Optionally, generate [shell completions](../commands/completions.md) for your shell at this point.
 
 ---
 
