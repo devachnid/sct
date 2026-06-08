@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct mcp` - Local MCP server over stdio backed by a SNOMED CT SQLite database.
 //!
 //! Transport: JSON-RPC 2.0 with Content-Length framing (same as LSP / MCP stdio spec).

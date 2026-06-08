@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 site_name: sct
 site_url: https://pacharanero.github.io/sct
 site_description: A fast, local-first SNOMED CT toolkit

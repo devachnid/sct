@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # bench.sh - sct benchmark suite entry point
 #
 # Compares sct (local SQLite) against a FHIR R4 terminology server across

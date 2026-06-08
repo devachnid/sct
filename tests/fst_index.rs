@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Integration tests for the FST index: build a `snomed.fst` from a synthetic
 //! NDJSON fixture and round-trip exact / prefix / fuzzy / word queries through
 //! it. No real SNOMED release is touched (see `specs/fst.md` §8).

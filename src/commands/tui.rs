@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct tui` - Keyboard-driven terminal UI for SNOMED CT exploration.
 //!
 //! Layout: three panels - hierarchy list (top-left), search/results (bottom-left),

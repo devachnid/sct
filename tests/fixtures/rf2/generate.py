@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Generate a tiny, fully-synthetic SNOMED CT RF2 Snapshot for end-to-end tests.
 
 This is NOT real SNOMED CT content. The structural ids (root, attribute types,

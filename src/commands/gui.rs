@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct gui` - Browser-based UI for SNOMED CT exploration.
 //!
 //! Starts a local Axum HTTP server bound to 127.0.0.1 only, serves an

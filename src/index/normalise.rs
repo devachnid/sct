@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Term normalisation and semantic-tag handling for the FST index.
 //!
 //! Normalisation is deliberately *lossless* with respect to accents and

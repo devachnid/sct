@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct lookup` - Look up a SNOMED CT concept by SCTID or CTV3 code.
 //!
 //! Accepts a bare SCTID (numeric) and returns full concept details.

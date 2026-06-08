@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct paths` - Print the directories and files sct uses by default.
 //!
 //! Diagnostic surface for the path-resolution chain defined in

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Stored/named FHIR ValueSets backed by `.codelist` files. At startup the
 //! server scans a registry directory, resolves each list's effective member set
 //! (composition included), and serves them as ValueSet resources. See

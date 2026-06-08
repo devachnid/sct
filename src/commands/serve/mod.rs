@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct serve` - a FHIR R4 terminology server over the SQLite artefact.
 //!
 //! Phase 1: `/metadata` (CapabilityStatement), `CodeSystem/$lookup`,

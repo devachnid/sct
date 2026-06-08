@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # operations/ancestors.sh - full ancestor chain from leaf to root
 #
 # Representative fixture: 44054006 (Type 2 diabetes mellitus, depth ~8)

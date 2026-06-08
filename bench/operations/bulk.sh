@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # operations/bulk.sh - resolve all fixture concepts in one request/query
 #
 # Local:  Single SELECT ... WHERE id IN (...) across all fixture IDs

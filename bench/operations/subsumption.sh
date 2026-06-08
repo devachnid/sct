@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # operations/subsumption.sh - is concept A subsumed by concept B?
 #
 # Local:  Recursive CTE ancestor check - presence of B in A's ancestor set

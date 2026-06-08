@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct completions` - Print shell completion scripts to stdout.
 //!
 //! Supports bash, zsh, fish, powershell, and elvish.

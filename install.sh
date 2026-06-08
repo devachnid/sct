@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # sct installer - downloads the latest prebuilt binary from GitHub Releases,
 # verifies its SHA-256 checksum, and installs it to ~/.local/bin by default.
 #

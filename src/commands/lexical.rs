@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct lexical` - Full-text keyword search over a SNOMED CT SQLite database.
 //!
 //! Uses the FTS5 virtual table built by `sct sqlite`. Supports any FTS5 query

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct codelist` - Build, validate, and manage clinical code lists.
 //!
 //! Also accessible as `sct refset` and `sct valueset`.

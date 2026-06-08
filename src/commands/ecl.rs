@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct ecl expand` - evaluate a SNOMED CT ECL expression against the database
 //! and emit the matching concept SCTIDs.
 //!

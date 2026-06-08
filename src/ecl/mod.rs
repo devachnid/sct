@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! SNOMED CT Expression Constraint Language (ECL).
 //!
 //! A parser and evaluator for the supported ECL subset (`specs/ecl.md`). ECL is

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # operations/children.sh - direct children of a concept
 #
 # Representative fixture: 73211009 (Diabetes mellitus - ~20 direct children)

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct tct` - Build a transitive closure table over the IS-A hierarchy.
 //!
 //! Computes all (ancestor, descendant, depth) triples from the `concept_isa`

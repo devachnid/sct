@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct semantic` - Semantic similarity search over a SNOMED CT Arrow IPC embeddings file.
 //!
 //! Embeds the query text via Ollama, then performs cosine similarity against

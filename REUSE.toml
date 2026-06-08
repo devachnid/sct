@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# REUSE bulk annotations for files that cannot carry an inline SPDX header
+# (documentation, generated lockfiles, JSON/HTML assets, and test fixtures).
+# The project's own work is AGPL-3.0-or-later, the same as the source code.
+#
+# Note: example codelists and the synthetic RF2 fixtures may contain SNOMED CT
+# identifiers and terms; SNOMED CT content remains copyright SNOMED International
+# and subject to its own licence (documented in-file and in the README). These
+# annotations cover the project-authored file structure and content.
+
+version = 1
+
+[[annotations]]
+path = [
+    "**/*.md",
+    "**/*.txt",
+    "**/*.json",
+    "**/*.html",
+    "**/*.codelist",
+    "Cargo.lock",
+    "LICENSE",
+    ".gitignore",
+    "**/.gitignore",
+    "**/.gitkeep",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Marcus Baw and Baw Medical Ltd"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Recursive-descent parser for the supported ECL subset. See `specs/ecl.md` §5.
 //!
 //! Precedence, loosest to tightest: `OR`, `AND`, `MINUS`, then a refined focus

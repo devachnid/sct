@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct serve` FHIR R4 tests over the synthetic RF2 fixture. Exercises the
 //! operation logic directly (FHIR semantics) plus one live HTTP round-trip.
 //! Gated on `--features serve`.

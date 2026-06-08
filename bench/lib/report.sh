@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # lib/report.sh - render benchmark results as table, json, csv, or markdown.
 #
 # Reads from BENCH_RESULTS_TSV (tab-separated: op|label|lms|lsd|rms|rsd|notes)

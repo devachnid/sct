@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Read side of the FST index: open a `snomed.fst` artefact and query it.
 //!
 //! The whole file is mmap'd once. The two FSTs borrow sub-ranges of that mmap

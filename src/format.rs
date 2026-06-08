@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Configurable concept-listing format used by `sct refset members`,
 //! `sct lexical`, and any other subcommand that prints a list of concepts.
 //!

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! FHIR terminology operations as pure functions over a `rusqlite::Connection`,
 //! returning `serde_json::Value` FHIR resources (or [`FhirError`]). The HTTP
 //! layer in `mod.rs` is a thin wrapper around these. See `specs/commands/serve.md`.

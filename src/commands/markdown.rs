@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `sct markdown` - Export a SNOMED CT NDJSON artefact to Markdown files.
 //!
 //! Two output modes are available:
