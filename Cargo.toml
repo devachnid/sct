@@ -43,6 +43,40 @@ pkg-url = "{ repo }/releases/download/v{ version }/sct-macos-x86_64.tar.gz"
 pkg-url = "{ repo }/releases/download/v{ version }/sct-windows-x86_64.zip"
 pkg-fmt = "zip"
 
+# Debian/Ubuntu .deb packaging (cargo-deb). Built from the static musl binary,
+# so there are no runtime dependencies (`depends = ""`). `license` and the crate
+# description are inherited from [package]. Asset paths use `target/release/`;
+# cargo-deb rewrites them for the `--target` triple.
+[package.metadata.deb]
+name = "sct"
+maintainer = "Marcus Baw <marcus@bawmedical.co.uk>"
+copyright = "2026 Marcus Baw and Baw Medical Ltd"
+license-file = ["LICENSE", "0"]
+extended-description = """\
+Local-first SNOMED CT toolchain. Convert an RF2 release into a canonical NDJSON \
+artefact and derive SQLite (+FTS5), Parquet, Markdown, and Arrow embeddings from \
+it. Includes lexical and FST search, an ECL engine, clinical code lists, an MCP \
+server, and a FHIR R4 terminology server."""
+section = "science"
+priority = "optional"
+depends = ""
+assets = [
+    ["target/release/sct", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/sct/README.md", "644"],
+]
+
+# Fedora/RHEL/openSUSE .rpm packaging (cargo-generate-rpm). `auto-req = "no"`
+# because the static musl binary has no dynamic library requirements. `summary`,
+# `license`, and `version` are read from [package]. Requires a prior
+# `cargo build --release --target <triple>`.
+[package.metadata.generate-rpm]
+name = "sct"
+auto-req = "no"
+assets = [
+    { source = "target/release/sct", dest = "/usr/bin/sct", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/sct/README.md", mode = "644" },
+]
+
 [features]
 default = []
 tui = ["dep:ratatui", "dep:crossterm"]

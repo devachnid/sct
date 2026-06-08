@@ -23,22 +23,29 @@ jobs:
             target: x86_64-unknown-linux-musl
             binary: sct
             archive: sct-linux-x86_64.tar.gz
+            deb: sct-linux-x86_64.deb
+            rpm: sct-linux-x86_64.rpm
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             binary: sct
             archive: sct-linux-aarch64.tar.gz
+            deb: sct-linux-aarch64.deb
+            rpm: sct-linux-aarch64.rpm
           - os: macos-latest
             target: aarch64-apple-darwin
             binary: sct
             archive: sct-macos-aarch64.tar.gz
+            dmg: sct-macos-aarch64.dmg
           - os: macos-latest
             target: x86_64-apple-darwin
             binary: sct
             archive: sct-macos-x86_64.tar.gz
+            dmg: sct-macos-x86_64.dmg
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             binary: sct.exe
             archive: sct-windows-x86_64.zip
+            exe: sct-windows-x86_64.exe
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -65,26 +72,54 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package binary (Unix)
+      - name: Package archive (Unix)
         if: runner.os != 'Windows'
         run: |
-          mkdir -p dist
+          mkdir -p dist out
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} dist/
-          tar -czf ${{ matrix.archive }} -C dist ${{ matrix.binary }}
+          tar -czf out/${{ matrix.archive }} -C dist ${{ matrix.binary }}
 
-      - name: Package binary (Windows)
+      - name: Package archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          New-Item -ItemType Directory -Force -Path dist, out | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/"
-          Compress-Archive -Path "dist/${{ matrix.binary }}" -DestinationPath "${{ matrix.archive }}"
+          Compress-Archive -Path "dist/${{ matrix.binary }}" -DestinationPath "out/${{ matrix.archive }}"
 
-      - name: Upload artifact
+      # Linux: .deb (Debian/Ubuntu) and .rpm (Fedora/RHEL/openSUSE). Built from
+      # the already-compiled static musl binary; metadata lives in Cargo.toml.
+      - name: Install packaging tools (Linux)
+        if: matrix.deb != ''
+        run: cargo install --locked cargo-deb@3.7.0 cargo-generate-rpm@0.21.0
+
+      - name: Build .deb and .rpm (Linux)
+        if: matrix.deb != ''
+        run: |
+          cargo deb --no-build --target ${{ matrix.target }} --output out/${{ matrix.deb }}
+          cargo generate-rpm --target ${{ matrix.target }} --output out/${{ matrix.rpm }}
+
+      # macOS: an (unsigned) .dmg disk image holding the binary + README + LICENSE.
+      - name: Build .dmg (macOS)
+        if: matrix.dmg != ''
+        run: |
+          mkdir -p dmgroot
+          cp target/${{ matrix.target }}/release/${{ matrix.binary }} dmgroot/
+          cp README.md LICENSE dmgroot/
+          hdiutil create -volname sct -srcfolder dmgroot -ov -format UDZO out/${{ matrix.dmg }}
+
+      # Windows: the bare (unsigned) .exe alongside the .zip, for direct download.
+      - name: Stage .exe (Windows)
+        if: matrix.exe != ''
+        shell: pwsh
+        run: Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" "out/${{ matrix.exe }}"
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.archive }}
-          path: ${{ matrix.archive }}
+          name: pkg-${{ matrix.target }}
+          path: out/
+          if-no-files-found: error
 
   release:
     name: Create GitHub Release
@@ -106,7 +141,10 @@ jobs:
       - name: Generate SHA-256 checksums
         working-directory: artifacts
         run: |
-          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 \
+          find . -type f \( \
+              -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' \
+              -o -name '*.rpm' -o -name '*.dmg' -o -name '*.exe' \
+            \) -print0 \
             | xargs -0 sha256sum \
             | sed 's|\./[^/]*/||' \
             > ../SHA256SUMS
@@ -121,6 +159,10 @@ jobs:
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.dmg
+            artifacts/**/*.exe
             SHA256SUMS
           generate_release_notes: true
 
