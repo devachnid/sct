@@ -239,7 +239,7 @@ jobs:
             desc "Local-first SNOMED CT toolchain: RF2 → NDJSON, SQLite, Parquet, embeddings, MCP server"
             homepage "https://github.com/pacharanero/sct"
             version "${{ steps.vars.outputs.version }}"
-            license "MIT"
+            license "AGPL-3.0-or-later"
 
             on_macos do
               if Hardware::CPU.arm?
@@ -290,7 +290,7 @@ jobs:
               "version": "${{ steps.vars.outputs.version }}",
               "description": "Local-first SNOMED CT toolchain: RF2 to NDJSON, SQLite, Parquet, embeddings, MCP server",
               "homepage": "https://github.com/pacharanero/sct",
-              "license": "MIT",
+              "license": "AGPL-3.0-or-later",
               "architecture": {
                   "64bit": {
                       "url": "https://github.com/pacharanero/sct/releases/download/v${{ steps.vars.outputs.version }}/sct-windows-x86_64.zip",
