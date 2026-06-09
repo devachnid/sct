@@ -116,6 +116,16 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 ---
 
 ## Future / larger scope
+
+> **Cross-terminology mapping + DMWB replacement.** The History files, Concept
+> maps, Extended/Association refset, `--refsets all`, and `ConceptMap/$translate`
+> items below are unified into one design:
+> [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) - making
+> `sct` a successor to the NHS Data Migration Workbench's terminology/mapping
+> core (ICD-10 / OPCS-4 / CTV3 / Read v2 maps + SNOMED history + `sct transcode`),
+> acquired via `sct trud --edition dmwb` (item 98) and from the RF2 `sct` already
+> downloads. A June 2026 POC proved the data loads cleanly.
+
 - [ ] **History files** - parse RF2 history substitution tables to map inactivated concept IDs
       forward to their replacements; expose via `snomed_resolve` MCP tool
 - [~] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
