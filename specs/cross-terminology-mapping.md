@@ -293,7 +293,12 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   inactive concepts, absent from the active stream). Forwarding *queries* (using
   the table) come with `sct transcode`/`sct crosswalk` in Phase 2.
   Tests: `tests/end_to_end.rs::concept_history_loads_from_associations`.
-2. **`sct transcode` + `sct crosswalk` + history forwarding** over the new tables.
+- **2. `sct transcode`** ✅ **shipped** - maps a stream of codes between
+  `snomed`/`read2`/`ctv3`/`icd10`/`opcs4`, pivoting through SNOMED CT, with
+  `--forward-history` for inactive concepts. Composable stdio (TSV/`--json`),
+  fails fast if the DB lacks the maps. Tests: `tests/transcode.rs`. Remaining in
+  this phase: `sct crosswalk <code>` (show all equivalents at once - the
+  tri-terminology BROWSE view as text).
 3. **DMWB acquisition** (Channel B): `sct trud --edition dmwb` + `sct dmwb import`
    via `jetdb` → Read v2 maps + Code Usage. **Gated on the jetdb validation (§2.3).**
 4. **`sct serve` `ConceptMap/$translate`** (+ DMWB Excel add-in compatibility).

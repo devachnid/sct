@@ -59,6 +59,9 @@ enum Command {
     /// Build a transitive closure table over the IS-A hierarchy in an existing SQLite database.
     Tct(commands::tct::Args),
 
+    /// Map a stream of codes from one terminology to another (SNOMED/Read v2/CTV3/ICD-10/OPCS-4).
+    Transcode(commands::transcode::Args),
+
     /// Download SNOMED CT RF2 releases via the NHS TRUD API.
     Trud(commands::trud::Args),
 
@@ -123,6 +126,7 @@ fn main() -> Result<()> {
         Command::Codelist(args) => commands::codelist::run(args),
         Command::Refset(args) => commands::refset::run(args),
         Command::Tct(args) => commands::tct::run(args),
+        Command::Transcode(args) => commands::transcode::run(args),
         Command::Trud(args) => commands::trud::run(args),
         Command::Paths(args) => commands::paths::run(args),
         Command::Lookup(args) => commands::lookup::run(args),

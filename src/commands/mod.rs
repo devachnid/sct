@@ -19,6 +19,7 @@ pub mod refset;
 pub mod semantic;
 pub mod sqlite;
 pub mod tct;
+pub mod transcode;
 pub mod trud;
 
 #[cfg(feature = "tui")]
