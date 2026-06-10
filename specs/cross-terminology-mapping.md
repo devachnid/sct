@@ -307,7 +307,12 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   accepting FHIR system URIs or bare names, both directions, with the SNOMED
   display where available. Advertised in the CapabilityStatement. The DMWB Excel
   add-in (which speaks FHIR) can point at this. Tests: `tests/serve.rs::concept_map_translate`.
-5. **`sct codelist` cross-terminology translate** (multi-terminology v2).
+- **5. `sct codelist` cross-terminology export** ✅ **shipped** - `sct codelist
+  export --include-maps ctv3,read2,icd10,opcs4` appends a column per terminology,
+  cross-walking a SNOMED codelist to legacy + classification codes in one export
+  (ICD-10/OPCS-4 from `crossmaps`, CTV3/Read v2 from `concept_maps`, merged).
+  Tests: `tests/transcode.rs::codelist_include_maps_spans_concept_maps_and_crossmaps`.
+  Remaining: full intensional multi-terminology codelists (format v2).
 
 ## 10. Non-goals
 

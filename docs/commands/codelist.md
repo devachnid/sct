@@ -251,6 +251,9 @@ Reports added, removed, moved-to-excluded, and preferred-term-changed concepts.
 sct codelist export codelists/asthma.codelist --format csv
 sct codelist export codelists/asthma.codelist --format opencodelists-csv
 sct codelist export codelists/asthma.codelist --format markdown --output asthma.md
+
+# Append cross-terminology columns (CTV3/Read v2 on any DB; ICD-10/OPCS-4 need --refsets all)
+sct codelist export codelists/asthma.codelist --format csv --include-maps ctv3,icd10 --db snomed.db
 ```
 
 | Format | Description |
@@ -258,6 +261,8 @@ sct codelist export codelists/asthma.codelist --format markdown --output asthma.
 | `csv` | `sctid,preferred_term` - plain CSV |
 | `opencodelists-csv` | `code,term` - OpenCodelists-compatible upload format |
 | `markdown` | Markdown table with front-matter metadata header |
+
+`--include-maps <terminologies>` (csv/markdown only) appends a column per terminology - `ctv3`, `read2`, `icd10`, `opcs4` - so a SNOMED codelist can be cross-walked to legacy and classification codes in one export. ICD-10 / OPCS-4 require a database built with [`sct ndjson --refsets all`](ndjson.md).
 
 ---
 

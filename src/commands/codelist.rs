@@ -164,9 +164,10 @@ pub struct ExportArgs {
     /// Write to file instead of stdout.
     #[arg(long, short)]
     pub output: Option<PathBuf>,
-    /// Comma-separated list of crosswalk terminologies to append as extra columns
-    /// (e.g. `ctv3`, `ctv3,read2`). Requires `--db`. Multiple codes per SCTID in
-    /// one terminology are joined with `|`. Not supported for `opencodelists-csv`.
+    /// Comma-separated list of crosswalk terminologies to append as extra columns:
+    /// `ctv3`, `read2` (any DB), and `icd10`, `opcs4` (need `sct ndjson --refsets all`).
+    /// Requires `--db`. Multiple codes per SCTID in one terminology are joined with
+    /// `|`. Not supported for `opencodelists-csv`.
     #[arg(long, value_delimiter = ',')]
     pub include_maps: Vec<String>,
     /// SNOMED CT SQLite database (required when `--include-maps` is set).
@@ -1618,47 +1619,106 @@ pub fn lookup_crosswalks(
         return Ok(maps);
     }
 
-    let available: HashSet<String> = {
+    let has_crossmaps = table_exists(conn, "crossmaps");
+
+    // Available terminologies span both tables: concept_maps (ctv3/read2) and
+    // crossmaps (icd10/opcs4).
+    let mut available: HashSet<String> = {
         let mut stmt = conn.prepare("SELECT DISTINCT lower(terminology) FROM concept_maps")?;
         let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
         rows.collect::<std::result::Result<_, _>>()?
     };
-
+    if has_crossmaps {
+        let mut stmt = conn.prepare("SELECT DISTINCT lower(target_system) FROM crossmaps")?;
+        for r in stmt.query_map([], |row| row.get::<_, String>(0))? {
+            available.insert(r?);
+        }
+    }
     for t in terminologies {
         if !available.contains(t) {
             eprintln!(
-                "warning: terminology '{t}' not present in concept_maps; column will be empty. \
-                 Available: {}",
+                "warning: terminology '{t}' has no maps in this database; column will be empty. \
+                 Available: {} (ICD-10/OPCS-4 need `sct ndjson --refsets all`)",
                 available.iter().cloned().collect::<Vec<_>>().join(", ")
             );
         }
     }
 
-    let placeholders = std::iter::repeat_n("?", sctids.len())
+    let id_ph = std::iter::repeat_n("?", sctids.len())
         .collect::<Vec<_>>()
         .join(",");
-    let term_placeholders = std::iter::repeat_n("?", terminologies.len())
-        .collect::<Vec<_>>()
-        .join(",");
-    let sql = format!(
-        "SELECT concept_id, lower(terminology), code
-         FROM concept_maps
-         WHERE concept_id IN ({placeholders})
-           AND lower(terminology) IN ({term_placeholders})
-         ORDER BY concept_id, lower(terminology), code"
-    );
 
-    let mut params_vec: Vec<&dyn rusqlite::ToSql> =
-        Vec::with_capacity(sctids.len() + terminologies.len());
+    // concept_maps holds the legacy reverse maps (ctv3, read2).
+    let legacy: Vec<&String> = terminologies
+        .iter()
+        .filter(|t| matches!(t.as_str(), "ctv3" | "read2"))
+        .collect();
+    if !legacy.is_empty() {
+        fill_maps(
+            conn,
+            &mut maps,
+            sctids,
+            &legacy,
+            &format!(
+                "SELECT concept_id, lower(terminology), code FROM concept_maps
+                 WHERE concept_id IN ({id_ph}) AND lower(terminology) IN ({})",
+                placeholders(legacy.len())
+            ),
+        )?;
+    }
+
+    // crossmaps holds the forward classification maps (icd10, opcs4).
+    let classification: Vec<&String> = terminologies
+        .iter()
+        .filter(|t| matches!(t.as_str(), "icd10" | "opcs4"))
+        .collect();
+    if has_crossmaps && !classification.is_empty() {
+        fill_maps(
+            conn,
+            &mut maps,
+            sctids,
+            &classification,
+            &format!(
+                "SELECT source_code, lower(target_system), target_code FROM crossmaps
+                 WHERE source_code IN ({id_ph}) AND lower(target_system) IN ({})",
+                placeholders(classification.len())
+            ),
+        )?;
+    }
+    Ok(maps)
+}
+
+fn placeholders(n: usize) -> String {
+    std::iter::repeat_n("?", n).collect::<Vec<_>>().join(",")
+}
+
+fn table_exists(conn: &Connection, name: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?1",
+        [name],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
+/// Run a `SELECT sctid, terminology, code` query (params = sctids then terms)
+/// and accumulate the rows into `maps`.
+fn fill_maps(
+    conn: &Connection,
+    maps: &mut CrosswalkMaps,
+    sctids: &[&str],
+    terms: &[&String],
+    sql: &str,
+) -> Result<()> {
+    let mut p: Vec<&dyn rusqlite::ToSql> = Vec::with_capacity(sctids.len() + terms.len());
     for id in sctids {
-        params_vec.push(id);
+        p.push(id);
     }
-    for t in terminologies {
-        params_vec.push(t);
+    for t in terms {
+        p.push(*t);
     }
-
-    let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(params_vec.as_slice(), |row| {
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map(p.as_slice(), |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
@@ -1674,7 +1734,7 @@ pub fn lookup_crosswalks(
             .or_default()
             .push(code);
     }
-    Ok(maps)
+    Ok(())
 }
 
 fn csv_escape(s: &str) -> String {

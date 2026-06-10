@@ -88,6 +88,22 @@ fn unmapped_code_yields_nothing() {
 }
 
 #[test]
+fn codelist_include_maps_spans_concept_maps_and_crossmaps() {
+    use sct_rs::commands::codelist::lookup_crosswalks;
+    let (_d, c) = build();
+    let maps = lookup_crosswalks(
+        &c,
+        &["22298006", "73211009"],
+        &["icd10".to_string(), "ctv3".to_string()],
+    )
+    .unwrap();
+    // ICD-10 from crossmaps, CTV3 from concept_maps - merged in one call.
+    assert_eq!(maps.codes_for("22298006", "icd10"), "I219");
+    assert_eq!(maps.codes_for("73211009", "icd10"), "E149");
+    assert_eq!(maps.codes_for("22298006", "ctv3"), "X200");
+}
+
+#[test]
 fn crosswalk_shows_all_equivalents() {
     let (_d, c) = build();
     // From a SNOMED concept: its CTV3 + ICD-10 equivalents, all at once.
