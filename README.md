@@ -184,6 +184,7 @@ For all further information see the full documentation by either exploring the [
 * [sct semantic](docs/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama)
 * `sct lookup <code>` - look up a concept by SCTID, or reverse-resolve a CTV3 code
 * [sct transcode](docs/commands/transcode.md) - map a stream of codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4 (needs `sct ndjson --refsets all`)
+* [sct crosswalk](docs/commands/crosswalk.md) - show all cross-terminology equivalents of a single code at once
 * `sct codelist` - build, validate, and publish clinical code lists; `add --ecl "<<73211009"` populates from an ECL query
 * `sct info <file>` - inspect any `.ndjson`, `.db`, or `.arrow` artefact and print a summary
 * `sct diff --old <file> --new <file>` - compare two NDJSON releases and report what changed

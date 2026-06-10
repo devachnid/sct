@@ -5,6 +5,7 @@
 //! (so ICD-10/OPCS-4 crossmaps + concept history are present).
 
 use rusqlite::Connection;
+use sct_rs::commands::crosswalk::equivalents;
 use sct_rs::commands::ndjson::{self, RefsetMode};
 use sct_rs::commands::sqlite;
 use sct_rs::commands::transcode::transcode_one;
@@ -84,4 +85,24 @@ fn history_forwarding_of_inactive_pivot() {
 fn unmapped_code_yields_nothing() {
     let (_d, c) = build();
     assert!(targets(&c, "icd10", "Z999", "snomed", false).is_empty());
+}
+
+#[test]
+fn crosswalk_shows_all_equivalents() {
+    let (_d, c) = build();
+    // From a SNOMED concept: its CTV3 + ICD-10 equivalents, all at once.
+    let cw = equivalents(&c, "snomed", "22298006").unwrap();
+    assert_eq!(cw.snomed, "22298006");
+    assert_eq!(cw.display, "Myocardial infarction");
+    let by: std::collections::HashMap<_, _> = cw.equivalents.iter().cloned().collect();
+    assert_eq!(by["ctv3"], vec!["X200".to_string()]);
+    assert_eq!(by["icd10"], vec!["I219".to_string()]);
+    assert!(by["opcs4"].is_empty());
+
+    // From a legacy CTV3 code: resolves to SNOMED and shows ICD-10.
+    let cw = equivalents(&c, "ctv3", "X200").unwrap();
+    assert_eq!(cw.snomed, "22298006");
+    let by: std::collections::HashMap<_, _> = cw.equivalents.iter().cloned().collect();
+    assert_eq!(by["icd10"], vec!["I219".to_string()]);
+    assert!(by.contains_key("snomed")); // snomed is included when from != snomed
 }

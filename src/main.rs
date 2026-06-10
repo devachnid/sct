@@ -62,6 +62,9 @@ enum Command {
     /// Map a stream of codes from one terminology to another (SNOMED/Read v2/CTV3/ICD-10/OPCS-4).
     Transcode(commands::transcode::Args),
 
+    /// Show all cross-terminology equivalents of a single code (SNOMED/Read v2/CTV3/ICD-10/OPCS-4).
+    Crosswalk(commands::crosswalk::Args),
+
     /// Download SNOMED CT RF2 releases via the NHS TRUD API.
     Trud(commands::trud::Args),
 
@@ -127,6 +130,7 @@ fn main() -> Result<()> {
         Command::Refset(args) => commands::refset::run(args),
         Command::Tct(args) => commands::tct::run(args),
         Command::Transcode(args) => commands::transcode::run(args),
+        Command::Crosswalk(args) => commands::crosswalk::run(args),
         Command::Trud(args) => commands::trud::run(args),
         Command::Paths(args) => commands::paths::run(args),
         Command::Lookup(args) => commands::lookup::run(args),

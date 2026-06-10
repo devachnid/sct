@@ -3,6 +3,7 @@
 
 pub mod codelist;
 pub mod completions;
+pub mod crosswalk;
 pub mod diff;
 pub mod ecl;
 pub mod embed;

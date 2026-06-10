@@ -173,11 +173,12 @@ fn to_snomed(conn: &Connection, from: &str, code: &str) -> Result<Vec<String>> {
             "SELECT concept_id FROM concept_maps WHERE code = ?1 AND terminology = ?2",
             params![code, from],
         ),
-        "icd10" | "opcs4" => collect(
+        "icd10" | "opcs4" if table_exists(conn, "crossmaps") => collect(
             conn,
             "SELECT DISTINCT source_code FROM crossmaps WHERE target_system = ?1 AND target_code = ?2",
             params![from, code],
         ),
+        "icd10" | "opcs4" => Ok(vec![]), // no crossmaps table -> no maps
         _ => bail!("unknown source terminology {from:?}"),
     }
 }
@@ -191,11 +192,12 @@ fn from_snomed(conn: &Connection, concept: &str, to: &str) -> Result<Vec<String>
             "SELECT code FROM concept_maps WHERE concept_id = ?1 AND terminology = ?2",
             params![concept, to],
         ),
-        "icd10" | "opcs4" => collect(
+        "icd10" | "opcs4" if table_exists(conn, "crossmaps") => collect(
             conn,
             "SELECT DISTINCT target_code FROM crossmaps WHERE source_code = ?1 AND target_system = ?2",
             params![concept, to],
         ),
+        "icd10" | "opcs4" => Ok(vec![]), // no crossmaps table -> no maps
         _ => bail!("unknown target terminology {to:?}"),
     }
 }

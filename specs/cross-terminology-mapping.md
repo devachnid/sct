@@ -296,9 +296,10 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
 - **2. `sct transcode`** ✅ **shipped** - maps a stream of codes between
   `snomed`/`read2`/`ctv3`/`icd10`/`opcs4`, pivoting through SNOMED CT, with
   `--forward-history` for inactive concepts. Composable stdio (TSV/`--json`),
-  fails fast if the DB lacks the maps. Tests: `tests/transcode.rs`. Remaining in
-  this phase: `sct crosswalk <code>` (show all equivalents at once - the
-  tri-terminology BROWSE view as text).
+  fails fast if the DB lacks the maps. Plus `sct crosswalk <code>` ✅ - shows all
+  cross-terminology equivalents of one code at once (the tri-terminology BROWSE
+  view as text; degrades gracefully on a DB without ICD/OPCS maps).
+  Tests: `tests/transcode.rs`.
 3. **DMWB acquisition** (Channel B): `sct trud --edition dmwb` + `sct dmwb import`
    via `jetdb` → Read v2 maps + Code Usage. **Gated on the jetdb validation (§2.3).**
 4. **`sct serve` `ConceptMap/$translate`** (+ DMWB Excel add-in compatibility).
