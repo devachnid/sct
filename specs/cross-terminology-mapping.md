@@ -302,7 +302,11 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   Tests: `tests/transcode.rs`.
 3. **DMWB acquisition** (Channel B): `sct trud --edition dmwb` + `sct dmwb import`
    via `jetdb` → Read v2 maps + Code Usage. **Gated on the jetdb validation (§2.3).**
-4. **`sct serve` `ConceptMap/$translate`** (+ DMWB Excel add-in compatibility).
+- **4. `sct serve` `ConceptMap/$translate`** ✅ **shipped** - FHIR R4 `$translate`
+  over the crossmap engine (`GET|POST /ConceptMap/$translate?system=&code=&targetsystem=`),
+  accepting FHIR system URIs or bare names, both directions, with the SNOMED
+  display where available. Advertised in the CapabilityStatement. The DMWB Excel
+  add-in (which speaks FHIR) can point at this. Tests: `tests/serve.rs::concept_map_translate`.
 5. **`sct codelist` cross-terminology translate** (multi-terminology v2).
 
 ## 10. Non-goals

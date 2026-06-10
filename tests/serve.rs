@@ -24,6 +24,30 @@ fn build_db() -> (tempfile::TempDir, PathBuf) {
     build_db_with(false)
 }
 
+/// Build the fixture DB with `--refsets all`, so the ICD-10/OPCS-4 crossmaps and
+/// concept history load (for `ConceptMap/$translate`).
+fn build_db_all() -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let ndjson = dir.path().join("syn.ndjson");
+    let db = dir.path().join("syn.db");
+    ndjson::run(ndjson::Args {
+        rf2_dirs: vec![fixture_dir()],
+        locale: "en-GB".to_string(),
+        output: Some(ndjson.clone()),
+        include_inactive: false,
+        refsets: RefsetMode::All,
+    })
+    .unwrap();
+    sqlite::run(sqlite::Args {
+        input: ndjson,
+        output: db.clone(),
+        transitive_closure: false,
+        include_self: false,
+    })
+    .unwrap();
+    (dir, db)
+}
+
 /// Build the fixture DB, optionally with the transitive-closure table so the
 /// `$expand` fast path exercises its TCT SQL form.
 fn build_db_with(tct: bool) -> (tempfile::TempDir, PathBuf) {
@@ -391,6 +415,62 @@ fn http_valueset_round_trip() {
     let exp: Value =
         serde_json::from_str(&get_with_retry(&format!("{base}/ValueSet/dm-plus/$expand"))).unwrap();
     assert_eq!(exp["expansion"]["total"], 3);
+}
+
+#[test]
+fn concept_map_translate() {
+    let (_d, db) = build_db_all();
+    let c = conn(&db);
+
+    // SNOMED MI -> ICD-10 I21.9 (by FHIR system URIs).
+    let v = ops::translate(
+        &c,
+        "http://snomed.info/sct",
+        "22298006",
+        "http://hl7.org/fhir/sid/icd-10",
+    )
+    .unwrap();
+    assert_eq!(param_bool(&v, "result"), Some(true));
+    let matches: Vec<&Value> = v["parameter"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|p| p["name"] == "match")
+        .collect();
+    assert_eq!(matches.len(), 1);
+    let coding = matches[0]["part"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["name"] == "concept")
+        .unwrap()["valueCoding"]
+        .clone();
+    assert_eq!(coding["code"], "I219");
+    assert_eq!(coding["system"], "http://hl7.org/fhir/sid/icd-10");
+
+    // Bare names + reverse (ICD-10 -> SNOMED) carries the SNOMED display.
+    let r = ops::translate(&c, "icd10", "I219", "snomed").unwrap();
+    let cd = r["parameter"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["name"] == "match")
+        .unwrap()["part"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["name"] == "concept")
+        .unwrap()["valueCoding"]
+        .clone();
+    assert_eq!(cd["code"], "22298006");
+    assert_eq!(cd["display"], "Myocardial infarction");
+
+    // No map -> result=false (asthma has no ICD-10 map in the fixture).
+    let none = ops::translate(&c, "snomed", "195967001", "icd10").unwrap();
+    assert_eq!(param_bool(&none, "result"), Some(false));
+
+    // Unsupported system -> error (400).
+    assert!(ops::translate(&c, "http://example.org/nope", "X", "snomed").is_err());
 }
 
 #[test]

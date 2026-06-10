@@ -48,6 +48,7 @@ Responses are `application/fhir+json`. An `Accept` header that requests XML excl
 | `GET /ValueSet` | Searchset Bundle of the stored `.codelist` ValueSets |
 | `GET /ValueSet/{id}` | The stored ValueSet resource (with `compose`) |
 | `GET /ValueSet/{id}/$expand` | Expand a stored ValueSet by id |
+| `ConceptMap/$translate` | Map a code across terminologies (SNOMED CT ↔ ICD-10 / OPCS-4 / CTV3 / Read v2) |
 
 GET and POST are both accepted; parameters are read from the query string.
 
@@ -89,6 +90,20 @@ curl 'http://localhost:8080/ValueSet/$validate-code?url=http://localhost:8080/Va
 ```
 
 The canonical URL of a served list is `{server-base}/ValueSet/{id}`. `$validate-code` also works against an implicit ECL value set (`?url=http://snomed.info/sct?fhir_vs=ecl/...`).
+
+### Cross-terminology translation (`ConceptMap/$translate`)
+
+Map a code between SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 using the same maps as [`sct transcode`](transcode.md). Needs a database built with [`sct ndjson --refsets all`](ndjson.md) for the ICD-10 / OPCS-4 maps.
+
+```bash
+# SNOMED CT -> ICD-10
+curl 'http://localhost:8080/ConceptMap/$translate?system=http://snomed.info/sct&code=22298006&targetsystem=http://hl7.org/fhir/sid/icd-10'
+
+# Bare names also accepted; reverse works too (ICD-10 -> SNOMED CT)
+curl 'http://localhost:8080/ConceptMap/$translate?system=icd10&code=I219&targetsystem=snomed'
+```
+
+Returns a `Parameters` resource with `result` (boolean) and a `match` part per mapping. This is a drop-in target for the existing **DMWB Excel add-in**, which can point at a FHIR server - giving analysts the familiar worksheet workflow on a fast, offline backend.
 
 ### Examples
 

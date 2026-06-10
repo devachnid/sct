@@ -9,6 +9,35 @@ use serde_json::{json, Value};
 /// SNOMED CT code system URI.
 pub const SNOMED_SYSTEM: &str = "http://snomed.info/sct";
 
+/// Map a FHIR code-system URI (or a bare `sct` internal name) to the internal
+/// terminology key used by the crossmap engine. `None` for unsupported systems.
+pub fn system_to_internal(system: &str) -> Option<&'static str> {
+    match system {
+        SNOMED_SYSTEM | "snomed" => Some("snomed"),
+        "http://hl7.org/fhir/sid/icd-10" | "http://hl7.org/fhir/sid/icd-10-uk" | "icd10" => {
+            Some("icd10")
+        }
+        "https://fhir.hl7.org.uk/Id/opcs-4" | "http://hl7.org/fhir/sid/ex-opcs4" | "opcs4" => {
+            Some("opcs4")
+        }
+        "http://read.info/ctv3" | "ctv3" => Some("ctv3"),
+        "http://read.info/readv2" | "read2" => Some("read2"),
+        _ => None,
+    }
+}
+
+/// The canonical FHIR code-system URI for an internal terminology key.
+pub fn internal_to_system(internal: &str) -> &str {
+    match internal {
+        "snomed" => SNOMED_SYSTEM,
+        "icd10" => "http://hl7.org/fhir/sid/icd-10",
+        "opcs4" => "https://fhir.hl7.org.uk/Id/opcs-4",
+        "ctv3" => "http://read.info/ctv3",
+        "read2" => "http://read.info/readv2",
+        other => other,
+    }
+}
+
 /// An error that maps to an HTTP status plus a FHIR `OperationOutcome`.
 #[derive(Debug)]
 pub struct FhirError {
@@ -110,6 +139,13 @@ pub fn capability_statement(software_version: &str, impl_url: &str) -> Value {
                     "type": "ValueSet",
                     "operation": [
                         { "name": "expand", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-expand" },
+                        { "name": "validate-code", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code" },
+                    ],
+                },
+                {
+                    "type": "ConceptMap",
+                    "operation": [
+                        { "name": "translate", "definition": "http://hl7.org/fhir/OperationDefinition/ConceptMap-translate" },
                     ],
                 },
             ],

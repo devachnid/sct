@@ -160,6 +160,7 @@ fn build_router(state: AppState, base: &str) -> Router {
         .route("/ValueSet", get(valueset_search))
         .route("/ValueSet/:id", get(valueset_read))
         .route("/ValueSet/:id/$expand", get(valueset_expand_id))
+        .route("/ConceptMap/$translate", get(translate).post(translate))
         .with_state(state);
     if base.is_empty() {
         app
@@ -322,6 +323,38 @@ async fn valueset_expand_id(
         ops::expand_members(c, &members, count, offset, include_designations)
     })
     .await
+}
+
+/// `GET|POST /ConceptMap/$translate` - map `code` in `system` to `targetsystem`
+/// using the cross-terminology maps (SNOMED CT / ICD-10 / OPCS-4 / CTV3 / Read v2).
+async fn translate(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    RawQuery(q): RawQuery,
+) -> Response {
+    if let Some(r) = reject_xml(&headers) {
+        return r;
+    }
+    let params = parse_query(q.as_deref().unwrap_or(""));
+    let Some(code) = param(&params, "code").map(str::to_string) else {
+        return fhir_err(FhirError::invalid(
+            "`code` parameter is required".to_string(),
+        ));
+    };
+    let Some(system) = param(&params, "system").map(str::to_string) else {
+        return fhir_err(FhirError::invalid(
+            "`system` parameter is required".to_string(),
+        ));
+    };
+    let Some(target) = param(&params, "targetsystem")
+        .or(param(&params, "target"))
+        .map(str::to_string)
+    else {
+        return fhir_err(FhirError::invalid(
+            "`targetsystem` parameter is required".to_string(),
+        ));
+    };
+    run_db(&st, move |c| ops::translate(c, &system, &code, &target)).await
 }
 
 /// `GET|POST /ValueSet/$validate-code` - is `code` in the ValueSet named by

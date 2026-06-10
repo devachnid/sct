@@ -10,7 +10,8 @@ use serde_json::{json, Value};
 use std::collections::HashSet;
 
 use super::fhir::{
-    designation, parameters, property_concept, value_set_expansion, FhirError, SNOMED_SYSTEM,
+    designation, internal_to_system, parameters, property_concept, system_to_internal,
+    value_set_expansion, FhirError, SNOMED_SYSTEM,
 };
 use crate::ecl::ast::{Expr, Op};
 
@@ -633,6 +634,46 @@ pub fn validate_code_in_ecl(conn: &Connection, ecl: &str, code: &str) -> Result<
     } else {
         params.push(json!({ "name": "message",
             "valueString": format!("Code '{code}' does not satisfy ECL: {ecl}") }));
+    }
+    Ok(parameters(params))
+}
+
+// ---------------------------------------------------------------------------
+// ConceptMap/$translate (cross-terminology maps)
+// ---------------------------------------------------------------------------
+
+/// `ConceptMap/$translate` - map `code` in `source_system` to `target_system`
+/// using the crossmap engine (the same maps as `sct transcode`). Supports
+/// SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 (by FHIR system URI or bare
+/// name). Returns a `Parameters` resource with `result` + `match` entries.
+pub fn translate(
+    conn: &Connection,
+    source_system: &str,
+    code: &str,
+    target_system: &str,
+) -> Result<Value, FhirError> {
+    let from = system_to_internal(source_system).ok_or_else(|| {
+        FhirError::invalid(format!("unsupported source system {source_system:?}"))
+    })?;
+    let to = system_to_internal(target_system).ok_or_else(|| {
+        FhirError::invalid(format!("unsupported target system {target_system:?}"))
+    })?;
+    let mapped = crate::commands::transcode::transcode_one(conn, from, code, to, false)
+        .map_err(|e| FhirError::exception(e.to_string()))?;
+    let target_url = internal_to_system(to);
+
+    let mut params = vec![json!({ "name": "result", "valueBoolean": !mapped.is_empty() })];
+    for m in &mapped {
+        // We only have display strings for SNOMED targets (from `concepts`).
+        let coding = if to == "snomed" {
+            json!({ "system": target_url, "code": m.target, "display": m.display })
+        } else {
+            json!({ "system": target_url, "code": m.target })
+        };
+        params.push(json!({ "name": "match", "part": [
+            { "name": "equivalence", "valueCode": "relatedto" },
+            { "name": "concept", "valueCoding": coding },
+        ]}));
     }
     Ok(parameters(params))
 }
