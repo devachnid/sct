@@ -285,11 +285,14 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   International refset SCTIDs). Default `--refsets simple` omits them (they are
   large). Tests: `tests/end_to_end.rs` (`extended_maps_load_into_crossmaps`,
   `simple_mode_omits_crossmaps`).
-- **1b. RF2-native history + inactive forwarding** (in progress): the Association
-  parser + `rf2::association_name` are in place and `Rf2Dataset::history` is
-  populated under `--refsets all`; remaining work is the NDJSON→SQLite carriage
-  (a sidecar history stream → a `concept_history` table) since history is keyed
-  by inactive source concepts absent from the active stream.
+- **1b. RF2-native history + inactive forwarding** ✅ **shipped**. The Association
+  refsets are parsed under `--refsets all` and written to a sidecar
+  `<stem>.history.ndjson` (one association per line), which `sct sqlite` loads
+  into a `concept_history` table (`source_id`, `association`, `target_id`). The
+  sidecar keeps the concept NDJSON stream pure (history sources are usually
+  inactive concepts, absent from the active stream). Forwarding *queries* (using
+  the table) come with `sct transcode`/`sct crosswalk` in Phase 2.
+  Tests: `tests/end_to_end.rs::concept_history_loads_from_associations`.
 2. **`sct transcode` + `sct crosswalk` + history forwarding** over the new tables.
 3. **DMWB acquisition** (Channel B): `sct trud --edition dmwb` + `sct dmwb import`
    via `jetdb` → Read v2 maps + Code Usage. **Gated on the jetdb validation (§2.3).**

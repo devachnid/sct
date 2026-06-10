@@ -223,7 +223,9 @@ pub fn run(args: Args) -> Result<()> {
          CREATE INDEX IF NOT EXISTS idx_refset_members_by_concept
              ON refset_members(referenced_component_id);
          CREATE INDEX IF NOT EXISTS idx_crossmaps_src ON crossmaps(source_system, source_code);
-         CREATE INDEX IF NOT EXISTS idx_crossmaps_tgt ON crossmaps(target_system, target_code);",
+         CREATE INDEX IF NOT EXISTS idx_crossmaps_tgt ON crossmaps(target_system, target_code);
+         CREATE INDEX IF NOT EXISTS idx_history_source ON concept_history(source_id);
+         CREATE INDEX IF NOT EXISTS idx_history_target ON concept_history(target_id);",
     )?;
 
     pb.set_message("Building FTS index...");
@@ -237,6 +239,12 @@ pub fn run(args: Args) -> Result<()> {
         provenance::write_sqlite(&conn, p)?;
     }
 
+    // --- Concept history sidecar (`<input-stem>.history.ndjson`, if present) ---
+    let history_n = load_history_sidecar(&conn, &args.input)?;
+    if history_n > 0 {
+        eprintln!("Loaded {history_n} concept-history rows");
+    }
+
     pb.finish_with_message(format!("Done. {} concepts → {}", n, args.output.display()));
 
     if args.transitive_closure {
@@ -244,6 +252,38 @@ pub fn run(args: Args) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Load the optional `<stem>.history.ndjson` sidecar next to `input` into the
+/// `concept_history` table. Returns the number of rows loaded (0 if absent).
+fn load_history_sidecar(conn: &Connection, input: &std::path::Path) -> Result<usize> {
+    let sidecar = crate::commands::ndjson::history_sidecar_path(input);
+    if !sidecar.exists() {
+        return Ok(0);
+    }
+    let f = std::fs::File::open(&sidecar)
+        .with_context(|| format!("opening history sidecar {}", sidecar.display()))?;
+    let reader = std::io::BufReader::new(f);
+    let tx = conn.unchecked_transaction()?;
+    let mut n = 0usize;
+    {
+        let mut stmt = tx.prepare(
+            "INSERT OR IGNORE INTO concept_history (source_id, association, target_id)
+             VALUES (?1, ?2, ?3)",
+        )?;
+        for line in reader.lines() {
+            let line = line.context("reading history sidecar")?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            let rec: crate::schema::HistoryRecord =
+                serde_json::from_str(&line).context("parsing history record")?;
+            stmt.execute(params![rec.source, rec.association, rec.target])?;
+            n += 1;
+        }
+    }
+    tx.commit()?;
+    Ok(n)
 }
 
 fn create_schema(conn: &Connection) -> Result<()> {
@@ -315,6 +355,18 @@ fn create_schema(conn: &Connection) -> Result<()> {
             map_advice     TEXT,
             correlation    TEXT,
             PRIMARY KEY (source_system, source_code, target_system, target_code, map_refset, map_group)
+        );
+
+        -- Concept history: maps an inactivated concept to its replacement(s),
+        -- from the RF2 Association refsets (loaded with `--refsets all`, via the
+        -- `<stem>.history.ndjson` sidecar). Lets old records referencing retired
+        -- SCTIDs be forwarded. `source_id` is usually inactive and absent from
+        -- `concepts`. See specs/cross-terminology-mapping.md.
+        CREATE TABLE IF NOT EXISTS concept_history (
+            source_id    TEXT NOT NULL,   -- the inactivated concept
+            association  TEXT NOT NULL,   -- 'replaced_by' | 'same_as' | ...
+            target_id    TEXT NOT NULL,   -- the replacement / related concept
+            PRIMARY KEY (source_id, association, target_id)
         );
 
         -- Release provenance as a flat key/value store. Written once at

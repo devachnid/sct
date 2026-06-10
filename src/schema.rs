@@ -70,6 +70,22 @@ pub struct CrossMapEntry {
     pub correlation: String,
 }
 
+/// One historical association (concept history), written to the sidecar
+/// `<stem>.history.ndjson` artefact and loaded into the SQLite `concept_history`
+/// table. Kept separate from `ConceptRecord` because the `source` is usually an
+/// *inactive* concept, absent from the active concept stream. See
+/// `specs/cross-terminology-mapping.md`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryRecord {
+    /// The (usually inactive) source concept SCTID.
+    pub source: String,
+    /// Association type: `replaced_by` | `same_as` | `possibly_equivalent_to` |
+    /// `moved_to` | `was_a` | … (see `rf2::association_name`).
+    pub association: String,
+    /// The related / replacement concept SCTID.
+    pub target: String,
+}
+
 /// The per-concept JSON record written to the NDJSON artefact.
 ///
 /// One record per line, sorted by `id` (ascending numeric SCTID).

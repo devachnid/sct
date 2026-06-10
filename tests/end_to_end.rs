@@ -140,13 +140,44 @@ fn extended_maps_load_into_crossmaps() {
 
 #[test]
 fn simple_mode_omits_crossmaps() {
-    // Default `--refsets simple` must NOT load the heavy ExtendedMap data.
+    // Default `--refsets simple` must NOT load the heavy ExtendedMap / history data.
     let (_d, _ndjson, db) = build("en-GB");
     let conn = Connection::open(&db).unwrap();
-    let n: i64 = conn
+    let maps: i64 = conn
         .query_row("SELECT COUNT(*) FROM crossmaps", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(n, 0);
+    assert_eq!(maps, 0);
+    let hist: i64 = conn
+        .query_row("SELECT COUNT(*) FROM concept_history", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(hist, 0);
+}
+
+#[test]
+fn concept_history_loads_from_associations() {
+    let (_d, ndjson, db) = build_all("en-GB");
+
+    // The history sidecar is written next to the NDJSON.
+    let sidecar = ndjson.with_file_name("syn.history.ndjson");
+    assert!(sidecar.exists(), "history sidecar should be written");
+
+    // Inactive 9468002 forwards to Asthma (same_as) and MI (replaced_by).
+    let conn = Connection::open(&db).unwrap();
+    let mut rows: Vec<(String, String)> = conn
+        .prepare("SELECT association, target_id FROM concept_history WHERE source_id='9468002'")
+        .unwrap()
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .unwrap()
+        .map(|r| r.unwrap())
+        .collect();
+    rows.sort();
+    assert_eq!(
+        rows,
+        vec![
+            ("replaced_by".to_string(), "22298006".to_string()),
+            ("same_as".to_string(), "195967001".to_string()),
+        ]
+    );
 }
 
 #[test]

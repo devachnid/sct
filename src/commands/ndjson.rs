@@ -175,8 +175,42 @@ pub fn run(args: Args) -> Result<()> {
     }
     writer.flush()?;
 
+    // --- History sidecar (concept history; populated under `--refsets all`) ---
+    // Written alongside the NDJSON as `<stem>.history.ndjson`, one association
+    // per line. Skipped for stdout output (no stable sidecar path).
+    if let Some(path) = &output_path {
+        if !dataset.history.is_empty() {
+            let sidecar = history_sidecar_path(path);
+            let f = std::fs::File::create(&sidecar)
+                .with_context(|| format!("creating history sidecar {}", sidecar.display()))?;
+            let mut hw = BufWriter::new(f);
+            for (source, association, target) in &dataset.history {
+                let rec = crate::schema::HistoryRecord {
+                    source: source.clone(),
+                    association: association.clone(),
+                    target: target.clone(),
+                };
+                writeln!(hw, "{}", serde_json::to_string(&rec)?)?;
+            }
+            hw.flush()?;
+            eprintln!(
+                "Wrote {} history rows to {}",
+                dataset.history.len(),
+                sidecar.display()
+            );
+        }
+    }
+
     eprintln!("Done.");
     Ok(())
+}
+
+/// Derive the history sidecar path from an NDJSON path:
+/// `foo.ndjson` → `foo.history.ndjson`.
+pub fn history_sidecar_path(ndjson: &Path) -> PathBuf {
+    let s = ndjson.to_string_lossy();
+    let base = s.strip_suffix(".ndjson").unwrap_or(&s);
+    PathBuf::from(format!("{base}.history.ndjson"))
 }
 
 /// Derive a slug from a directory path for use as a default output filename.

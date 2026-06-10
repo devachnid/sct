@@ -133,6 +133,26 @@ sqlite3 snomed.db \
   "SELECT source_code FROM crossmaps WHERE target_system='opcs4' AND target_code='H011'"
 ```
 
+### `concept_history` table
+
+Inactive-concept forwarding, parsed from the RF2 **Association** reference sets
+(loaded with `--refsets all`, via a `<stem>.history.ndjson` sidecar written next
+to the NDJSON). Maps a retired concept to its replacement(s).
+
+```sql
+CREATE TABLE concept_history (
+    source_id   TEXT NOT NULL,   -- the inactivated concept
+    association TEXT NOT NULL,   -- 'replaced_by' | 'same_as' | 'possibly_equivalent_to' | ...
+    target_id   TEXT NOT NULL    -- the replacement / related concept
+);
+```
+
+```bash
+# Forward a retired SCTID to its replacement(s)
+sqlite3 snomed.db \
+  "SELECT association, target_id FROM concept_history WHERE source_id='199228006'"
+```
+
 ---
 
 ## Example queries
