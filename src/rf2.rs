@@ -92,6 +92,39 @@ pub struct SimpleRefsetRow {
     pub referenced_component_id: String,
 }
 
+/// A row from a SNOMED CT → ICD-10 / OPCS-4 ExtendedMap reference set file
+/// (`der2_i*Refset_ExtendedMap*Snapshot*.txt`). The target classification is
+/// identified by `refset_id` (see [`extended_map_system`]).
+///
+/// Columns (TSV): id effectiveTime active moduleId refsetId referencedComponentId
+/// mapGroup mapPriority mapRule mapAdvice mapTarget correlationId mapBlock
+#[derive(Debug)]
+pub struct ExtendedMapRow {
+    pub active: bool,
+    pub refset_id: String,
+    pub referenced_component_id: String, // SNOMED CT source SCTID
+    pub map_group: u32,
+    pub map_priority: u32,
+    pub map_rule: String,
+    pub map_advice: String,
+    pub map_target: String, // ICD-10 / OPCS-4 code
+    pub correlation_id: String,
+}
+
+/// A row from a historical Association reference set file
+/// (`der2_cRefset_Association*Snapshot*.txt`). Maps an inactivated concept to a
+/// related/replacement concept; `refset_id` is the association type (see
+/// [`association_name`]).
+///
+/// Columns (TSV): id effectiveTime active moduleId refsetId referencedComponentId targetComponentId
+#[derive(Debug)]
+pub struct AssociationRow {
+    pub active: bool,
+    pub refset_id: String,               // association type
+    pub referenced_component_id: String, // the (usually inactive) source concept
+    pub target_component_id: String,     // the related/replacement concept
+}
+
 // ---------------------------------------------------------------------------
 // SNOMED CT type_id constants
 // ---------------------------------------------------------------------------
@@ -101,6 +134,37 @@ pub const IS_A: &str = "116680003";
 pub const PREFERRED: &str = "900000000000548007";
 /// Refset ID for the SNOMED CT → CTV3 simple map reference set.
 pub const REFSET_CTV3_SIMPLE_MAP: &str = "900000000000497000";
+
+/// Classify a SNOMED CT ExtendedMap refset SCTID into its target classification
+/// (`icd10` | `opcs4`). Seeded with the known UK + International maps; a row
+/// whose refset is not listed here is skipped (and counted) by the loader.
+/// Refinable as new map refsets appear. See `specs/cross-terminology-mapping.md`.
+pub fn extended_map_system(refset_id: &str) -> Option<&'static str> {
+    match refset_id {
+        "1126441000000105" => Some("opcs4"), // UK SNOMED CT → OPCS-4
+        // UK SNOMED CT → ICD-10 maps (5th edition + supplements).
+        "999002271000000101" | "1382401000000109" | "1891651000000103" => Some("icd10"),
+        "447562003" => Some("icd10"), // International SNOMED CT → ICD-10
+        _ => None,
+    }
+}
+
+/// Human-readable name for a historical Association refset SCTID, used as the
+/// `association` value in `concept_history`. Unknown ids fall back to the raw id.
+pub fn association_name(refset_id: &str) -> &str {
+    match refset_id {
+        "900000000000526001" => "replaced_by",
+        "900000000000527005" => "same_as",
+        "900000000000523009" => "possibly_equivalent_to",
+        "900000000000524003" => "moved_to",
+        "900000000000525002" => "moved_from",
+        "900000000000528000" => "was_a",
+        "900000000000530003" => "alternative",
+        "900000000000531004" => "refers_to",
+        "734138000" => "partially_equivalent_to",
+        other => other,
+    }
+}
 
 // Language reference set SCTIDs - the dialect selectors honoured by `--locale`.
 // See `builder::language_refset_priority`.
@@ -130,6 +194,12 @@ pub struct Rf2Files {
     /// Membership-only refsets (e.g. SCR exclusion, GP summary), where each row
     /// asserts that a concept belongs to the given refset with no extra payload.
     pub refset_files: Vec<PathBuf>,
+    /// ExtendedMap refset files (`der2_i*Refset_ExtendedMap*Snapshot*.txt`) -
+    /// SNOMED CT → ICD-10 / OPCS-4 maps. Loaded with `--refsets all`.
+    pub extended_map_files: Vec<PathBuf>,
+    /// Historical Association refset files (`der2_cRefset_Association*Snapshot*.txt`) -
+    /// inactive-concept forwarding. Loaded with `--refsets all`.
+    pub association_files: Vec<PathBuf>,
 }
 
 /// Walk the RF2 directory tree and collect snapshot TSV paths by type.
@@ -179,6 +249,17 @@ pub fn discover_rf2_files(rf2_dir: &Path) -> Result<Rf2Files> {
             && name.ends_with(".txt")
         {
             files.refset_files.push(path.to_path_buf());
+        } else if name.contains("Refset_ExtendedMap")
+            && name.contains("Snapshot")
+            && name.ends_with(".txt")
+        {
+            // der2_iisssciRefset_ExtendedMap… / der2_iisssccRefset_ExtendedMap…
+            files.extended_map_files.push(path.to_path_buf());
+        } else if name.starts_with("der2_cRefset_Association")
+            && name.contains("Snapshot")
+            && name.ends_with(".txt")
+        {
+            files.association_files.push(path.to_path_buf());
         }
     }
 
@@ -188,6 +269,8 @@ pub fn discover_rf2_files(rf2_dir: &Path) -> Result<Rf2Files> {
     files.lang_refset_files.sort();
     files.simple_map_files.sort();
     files.refset_files.sort();
+    files.extended_map_files.sort();
+    files.association_files.sort();
 
     Ok(files)
 }
@@ -331,6 +414,56 @@ pub fn parse_simple_map(path: &Path) -> Result<Vec<SimpleMapRow>> {
     Ok(rows)
 }
 
+/// Parse a SNOMED CT ExtendedMap reference set file (ICD-10 / OPCS-4 maps).
+///
+/// Columns: id effectiveTime active moduleId refsetId referencedComponentId
+/// mapGroup mapPriority mapRule mapAdvice mapTarget correlationId mapBlock
+pub fn parse_extended_map(path: &Path) -> Result<Vec<ExtendedMapRow>> {
+    let mut rdr = tsv_reader(path)?;
+    let mut rows = Vec::new();
+    for result in rdr.records() {
+        let record = result.with_context(|| format!("reading {}", path.display()))?;
+        let map_target = record.get(10).unwrap_or("").trim().to_string();
+        if map_target.is_empty() {
+            continue;
+        }
+        rows.push(ExtendedMapRow {
+            active: record.get(2).unwrap_or("0") == "1",
+            refset_id: record.get(4).unwrap_or("").to_string(),
+            referenced_component_id: record.get(5).unwrap_or("").to_string(),
+            map_group: record.get(6).and_then(|s| s.parse().ok()).unwrap_or(0),
+            map_priority: record.get(7).and_then(|s| s.parse().ok()).unwrap_or(0),
+            map_rule: record.get(8).unwrap_or("").to_string(),
+            map_advice: record.get(9).unwrap_or("").to_string(),
+            map_target,
+            correlation_id: record.get(11).unwrap_or("").to_string(),
+        });
+    }
+    Ok(rows)
+}
+
+/// Parse a historical Association reference set file (concept history).
+///
+/// Columns: id effectiveTime active moduleId refsetId referencedComponentId targetComponentId
+pub fn parse_association(path: &Path) -> Result<Vec<AssociationRow>> {
+    let mut rdr = tsv_reader(path)?;
+    let mut rows = Vec::new();
+    for result in rdr.records() {
+        let record = result.with_context(|| format!("reading {}", path.display()))?;
+        let target = record.get(6).unwrap_or("").trim().to_string();
+        if target.is_empty() {
+            continue;
+        }
+        rows.push(AssociationRow {
+            active: record.get(2).unwrap_or("0") == "1",
+            refset_id: record.get(4).unwrap_or("").to_string(),
+            referenced_component_id: record.get(5).unwrap_or("").to_string(),
+            target_component_id: target,
+        });
+    }
+    Ok(rows)
+}
+
 // ---------------------------------------------------------------------------
 // Aggregated in-memory datastore
 // ---------------------------------------------------------------------------
@@ -364,6 +497,14 @@ pub struct Rf2Dataset {
     /// Only concept-level memberships are retained; rows whose referencedComponentId
     /// is not a known active concept are dropped.
     pub refset_members: HashMap<String, Vec<String>>,
+    /// concept_id (SCTID) -> SNOMED CT → ICD-10/OPCS-4 ExtendedMap rows.
+    /// Only populated when ExtendedMap files were supplied (`--refsets all`).
+    pub extended_maps: HashMap<String, Vec<ExtendedMapRow>>,
+    /// Historical associations (inactive-concept forwarding) from Association
+    /// refsets. Only populated under `--refsets all`. Keyed by source SCTID is
+    /// not possible (sources may be inactive and absent from `concepts`), so this
+    /// is a flat list of `(source_id, association, target_id)`.
+    pub history: Vec<(String, String, String)>,
 }
 
 impl Rf2Dataset {
@@ -376,6 +517,8 @@ impl Rf2Dataset {
         let mut ctv3_maps: HashMap<String, Vec<String>> = HashMap::new();
         let read2_maps: HashMap<String, Vec<String>> = HashMap::new();
         let mut refset_members: HashMap<String, Vec<String>> = HashMap::new();
+        let mut extended_maps: HashMap<String, Vec<ExtendedMapRow>> = HashMap::new();
+        let mut history: Vec<(String, String, String)> = Vec::new();
 
         // --- Concepts ---
         for path in &files.concept_files {
@@ -484,6 +627,50 @@ impl Rf2Dataset {
             refset_members.len()
         );
 
+        // --- ExtendedMap (SNOMED CT -> ICD-10 / OPCS-4); `--refsets all` only ---
+        let mut skipped_map_rows = 0usize;
+        for path in &files.extended_map_files {
+            eprintln!("  Loading extended maps from {}", path.display());
+            for row in parse_extended_map(path)? {
+                if !row.active {
+                    continue;
+                }
+                if extended_map_system(&row.refset_id).is_none() {
+                    skipped_map_rows += 1;
+                    continue;
+                }
+                extended_maps
+                    .entry(row.referenced_component_id.clone())
+                    .or_default()
+                    .push(row);
+            }
+        }
+        if !files.extended_map_files.is_empty() {
+            eprintln!(
+                "  {} concepts with ICD-10/OPCS-4 maps ({} rows from unrecognised map refsets skipped)",
+                extended_maps.len(),
+                skipped_map_rows
+            );
+        }
+
+        // --- Historical associations (inactive forwarding); `--refsets all` only ---
+        for path in &files.association_files {
+            eprintln!("  Loading associations from {}", path.display());
+            for row in parse_association(path)? {
+                if !row.active {
+                    continue;
+                }
+                history.push((
+                    row.referenced_component_id,
+                    association_name(&row.refset_id).to_string(),
+                    row.target_component_id,
+                ));
+            }
+        }
+        if !files.association_files.is_empty() {
+            eprintln!("  {} historical associations", history.len());
+        }
+
         Ok(Rf2Dataset {
             concepts,
             descriptions,
@@ -493,6 +680,8 @@ impl Rf2Dataset {
             ctv3_maps,
             read2_maps,
             refset_members,
+            extended_maps,
+            history,
         })
     }
 }

@@ -51,6 +51,7 @@ fn rec(
                 group: 0,
             })
             .collect(),
+        crossmaps: vec![],
         schema_version: SCHEMA_VERSION,
     }
 }

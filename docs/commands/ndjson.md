@@ -20,7 +20,7 @@ sct ndjson --rf2 <DIR|ZIP> [--rf2 <DIR|ZIP>...] [OPTIONS]
 | `--locale <LOCALE>` | `en-GB` | BCP-47 locale for preferred term selection. |
 | `--output <FILE>` | *(derived from RF2 dir name)* | Output NDJSON path. Use `-o -` for stdout. |
 | `--include-inactive` | off | Include inactive concepts (omitted by default). |
-| `--refsets <MODE>` | `simple` | Which reference sets to load. `simple` loads concept-level Simple refsets (SCR exclusion, care connect, etc.); `none` skips them; `all` is reserved for complex/map/association refsets (not yet implemented). |
+| `--refsets <MODE>` | `simple` | Which reference sets to load. `simple` loads concept-level Simple refsets (SCR exclusion, care connect, etc.); `none` skips them; `all` additionally loads the **ExtendedMap** refsets (SNOMED CT → ICD-10 / OPCS-4) and the **Association** refsets (concept history) for cross-terminology mapping. `all` is larger and slower. See [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md). |
 
 ---
 

@@ -163,6 +163,8 @@ fn dataset_load_minimal() {
         lang_refset_files: vec![lang_f.path().to_path_buf()],
         simple_map_files: vec![],
         refset_files: vec![],
+        extended_map_files: vec![],
+        association_files: vec![],
     };
 
     let ds = Rf2Dataset::load(&files).unwrap();

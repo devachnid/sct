@@ -111,6 +111,13 @@ pub fn run(args: Args) -> Result<()> {
             "INSERT OR IGNORE INTO refset_members (refset_id, referenced_component_id) VALUES (?1, ?2)",
         )?;
 
+        let mut insert_crossmap = tx.prepare(
+            "INSERT OR IGNORE INTO crossmaps
+             (source_system, source_code, target_system, target_code, map_refset,
+              map_group, map_priority, map_rule, map_advice, correlation)
+             VALUES ('snomed', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        )?;
+
         for line in reader.lines() {
             let line = line.context("reading input")?;
             if line.trim().is_empty() {
@@ -175,6 +182,20 @@ pub fn run(args: Args) -> Result<()> {
                 insert_refset_member.execute(params![refset_id, record.id])?;
             }
 
+            for m in &record.crossmaps {
+                insert_crossmap.execute(params![
+                    record.id,
+                    m.system,
+                    m.code,
+                    m.refset,
+                    m.group as i64,
+                    m.priority as i64,
+                    m.rule,
+                    m.advice,
+                    m.correlation,
+                ])?;
+            }
+
             n += 1;
             if n.is_multiple_of(50_000) {
                 pb.set_message(format!("{} concepts loaded...", n));
@@ -186,6 +207,7 @@ pub fn run(args: Args) -> Result<()> {
         drop(insert_rel);
         drop(insert_map);
         drop(insert_refset_member);
+        drop(insert_crossmap);
         tx.commit().context("committing transaction")?;
     }
 
@@ -199,7 +221,9 @@ pub fn run(args: Args) -> Result<()> {
          CREATE INDEX IF NOT EXISTS idx_rel_type_dest ON concept_relationships(type_id, destination_id);
          CREATE INDEX IF NOT EXISTS idx_concept_maps_concept ON concept_maps(concept_id);
          CREATE INDEX IF NOT EXISTS idx_refset_members_by_concept
-             ON refset_members(referenced_component_id);",
+             ON refset_members(referenced_component_id);
+         CREATE INDEX IF NOT EXISTS idx_crossmaps_src ON crossmaps(source_system, source_code);
+         CREATE INDEX IF NOT EXISTS idx_crossmaps_tgt ON crossmaps(target_system, target_code);",
     )?;
 
     pb.set_message("Building FTS index...");
@@ -273,6 +297,24 @@ fn create_schema(conn: &Connection) -> Result<()> {
             refset_id                TEXT NOT NULL,
             referenced_component_id  TEXT NOT NULL,
             PRIMARY KEY (refset_id, referenced_component_id)
+        );
+
+        -- SNOMED CT → external classification maps (ICD-10, OPCS-4) from the RF2
+        -- ExtendedMap refsets (loaded with `--refsets all`). One row per map
+        -- target, preserving map group / priority / rule / advice. See
+        -- specs/cross-terminology-mapping.md.
+        CREATE TABLE IF NOT EXISTS crossmaps (
+            source_system  TEXT NOT NULL,   -- 'snomed'
+            source_code    TEXT NOT NULL,   -- SNOMED SCTID
+            target_system  TEXT NOT NULL,   -- 'icd10' | 'opcs4'
+            target_code    TEXT NOT NULL,
+            map_refset     TEXT NOT NULL,   -- source SNOMED map refset SCTID (provenance)
+            map_group      INTEGER,
+            map_priority   INTEGER,
+            map_rule       TEXT,
+            map_advice     TEXT,
+            correlation    TEXT,
+            PRIMARY KEY (source_system, source_code, target_system, target_code, map_refset, map_group)
         );
 
         -- Release provenance as a flat key/value store. Written once at

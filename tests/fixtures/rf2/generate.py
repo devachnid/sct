@@ -101,6 +101,29 @@ REFSET_MEMBERS = ["46635009", "44054006"]
 # CTV3 simple map: (concept, ctv3 code)
 CTV3_MAPS = [("22298006", "X200"), ("73211009", "C10..")]
 
+# Extended map (SNOMED CT -> ICD-10 / OPCS-4): real UK map refset SCTIDs so the
+# loader's extended_map_system() classifies them. Columns per row:
+#   (refsetId, concept, mapGroup, mapPriority, mapRule, mapAdvice, mapTarget)
+ICD10_MAP = "999002271000000101"       # UK SNOMED CT -> ICD-10
+OPCS4_MAP = "1126441000000105"         # UK SNOMED CT -> OPCS-4
+CORRELATION = "447561005"              # correlation: 'not specified'
+EXTENDED_MAPS = [
+    (ICD10_MAP, "22298006", 1, 1, "", "ALWAYS I21.9", "I219"),
+    (ICD10_MAP, "73211009", 1, 1, "", "ALWAYS E14.9", "E149"),
+    (ICD10_MAP, "46635009", 1, 1, "", "ALWAYS E10.9", "E109"),
+    (ICD10_MAP, "44054006", 1, 1, "", "ALWAYS E11.9", "E119"),
+    (OPCS4_MAP, "80146002", 1, 1, "", "", "H011"),
+]
+
+# Historical associations (inactive-concept forwarding):
+#   (associationType refsetId, inactiveSource, target)
+SAME_AS = "900000000000527005"
+REPLACED_BY = "900000000000526001"
+ASSOCIATIONS = [
+    (SAME_AS, "9468002", "195967001"),     # inactive disorder SAME AS Asthma
+    (REPLACED_BY, "9468002", "22298006"),  # also REPLACED BY MI (multi-association)
+]
+
 
 def fsn_to_pt(fsn):
     """Strip the trailing ' (tag)' to get a preferred-term string."""
@@ -244,6 +267,29 @@ def main():
         os.path.join(content_dir, "der2_Refset_SimpleSnapshot_SYN_20260101.txt"),
         ["id", "effectiveTime", "active", "moduleId", "refsetId", "referencedComponentId"],
         refset_out,
+    )
+
+    # --- Extended map (SNOMED CT -> ICD-10 / OPCS-4) ---
+    em_out = []
+    for i, (rset, cid, grp, pri, rule, advice, target) in enumerate(EXTENDED_MAPS):
+        em_out.append((f"em{i+1}", ET, 1, MODULE, rset, cid, grp, pri,
+                       rule, advice, target, CORRELATION, 1))
+    write_tsv(
+        os.path.join(map_dir, "der2_iisssciRefset_ExtendedMapSnapshot_SYN_20260101.txt"),
+        ["id", "effectiveTime", "active", "moduleId", "refsetId", "referencedComponentId",
+         "mapGroup", "mapPriority", "mapRule", "mapAdvice", "mapTarget", "correlationId", "mapBlock"],
+        em_out,
+    )
+
+    # --- Historical associations (concept history) ---
+    assoc_out = []
+    for i, (rset, src, tgt) in enumerate(ASSOCIATIONS):
+        assoc_out.append((f"a{i+1}", ET, 1, MODULE, rset, src, tgt))
+    write_tsv(
+        os.path.join(content_dir, "der2_cRefset_AssociationSnapshot_SYN_20260101.txt"),
+        ["id", "effectiveTime", "active", "moduleId", "refsetId",
+         "referencedComponentId", "targetComponentId"],
+        assoc_out,
     )
 
     print(f"Wrote synthetic RF2 snapshot under {root}")

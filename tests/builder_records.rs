@@ -72,6 +72,8 @@ fn minimal_dataset() -> Rf2Dataset {
         ctv3_maps: HashMap::new(),
         read2_maps: HashMap::new(),
         refset_members: HashMap::new(),
+        extended_maps: HashMap::new(),
+        history: vec![],
     }
 }
 
@@ -183,6 +185,8 @@ fn locale_selects_dialect_preferred_term() {
         ctv3_maps: HashMap::new(),
         read2_maps: HashMap::new(),
         refset_members: HashMap::new(),
+        extended_maps: HashMap::new(),
+        history: vec![],
     };
 
     let gb = build_records(&ds, "en-GB", false).unwrap();

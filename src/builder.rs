@@ -10,7 +10,7 @@ use crate::rf2::{
     Acceptability, Rf2Dataset, LANG_GB_ENGLISH, LANG_UK_CLINICAL, LANG_UK_DRUG, LANG_US_ENGLISH,
     TYPE_FSN, TYPE_SYNONYM,
 };
-use crate::schema::{ConceptRecord, ConceptRef, SCHEMA_VERSION};
+use crate::schema::{ConceptRecord, ConceptRef, CrossMapEntry, SCHEMA_VERSION};
 
 // ---------------------------------------------------------------------------
 // Known top-level SNOMED CT hierarchy concept IDs (children of the root)
@@ -349,6 +349,32 @@ pub fn build_records(
         refsets.sort();
         refsets.dedup();
 
+        // --- SNOMED CT -> ICD-10 / OPCS-4 cross-maps (ExtendedMap) ---
+        let mut crossmaps: Vec<CrossMapEntry> = dataset
+            .extended_maps
+            .get(concept_id)
+            .map(|rows| {
+                rows.iter()
+                    .filter_map(|r| {
+                        crate::rf2::extended_map_system(&r.refset_id).map(|sys| CrossMapEntry {
+                            system: sys.to_string(),
+                            code: r.map_target.clone(),
+                            refset: r.refset_id.clone(),
+                            group: r.map_group,
+                            priority: r.map_priority,
+                            rule: r.map_rule.clone(),
+                            advice: r.map_advice.clone(),
+                            correlation: r.correlation_id.clone(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        crossmaps.sort_by(|a, b| {
+            (&a.system, &a.code, a.group, a.priority)
+                .cmp(&(&b.system, &b.code, b.group, b.priority))
+        });
+
         records.push(ConceptRecord {
             id: concept_id.to_string(),
             fsn,
@@ -366,6 +392,7 @@ pub fn build_records(
             read2_codes,
             refsets,
             relationships,
+            crossmaps,
             schema_version: SCHEMA_VERSION,
         });
     }

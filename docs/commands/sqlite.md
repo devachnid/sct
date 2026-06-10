@@ -101,6 +101,38 @@ CREATE TABLE concept_maps (
 );
 ```
 
+### `crossmaps` table
+
+SNOMED CT → ICD-10 / OPCS-4 maps, parsed from the RF2 **ExtendedMap** reference
+sets. Only populated when the NDJSON was built with `sct ndjson --refsets all`.
+Each row is one map target, preserving the map group / priority / rule / advice.
+See [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md).
+
+```sql
+CREATE TABLE crossmaps (
+    source_system  TEXT NOT NULL,   -- 'snomed'
+    source_code    TEXT NOT NULL,   -- SNOMED SCTID
+    target_system  TEXT NOT NULL,   -- 'icd10' | 'opcs4'
+    target_code    TEXT NOT NULL,
+    map_refset     TEXT NOT NULL,   -- source SNOMED map refset SCTID
+    map_group      INTEGER,
+    map_priority   INTEGER,
+    map_rule       TEXT,
+    map_advice     TEXT,
+    correlation    TEXT
+);
+```
+
+```bash
+# Forward: SNOMED -> ICD-10 (Myocardial infarction)
+sqlite3 snomed.db \
+  "SELECT target_code FROM crossmaps WHERE source_code='22298006' AND target_system='icd10'"
+
+# Reverse: which SNOMED concepts map to OPCS-4 H01.1?
+sqlite3 snomed.db \
+  "SELECT source_code FROM crossmaps WHERE target_system='opcs4' AND target_code='H011'"
+```
+
 ---
 
 ## Example queries

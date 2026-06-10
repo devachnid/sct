@@ -17,7 +17,9 @@ use serde::{Deserialize, Serialize};
 ///
 /// v4: adds `relationships` (typed attribute triples, SCTID-keyed) to support
 /// ECL attribute refinement. Additive - older records parse with an empty list.
-pub const SCHEMA_VERSION: u32 = 4;
+/// v5: adds `crossmaps` (SNOMED CT → ICD-10 / OPCS-4 ExtendedMap targets).
+/// Additive - older records parse with an empty list.
+pub const SCHEMA_VERSION: u32 = 5;
 
 /// A lightweight reference to another concept (used in parents and attributes).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +40,34 @@ pub struct Relationship {
     pub destination_id: String,
     /// RF2 relationship group number (0 = ungrouped).
     pub group: u32,
+}
+
+/// A SNOMED CT → external classification map target (ICD-10, OPCS-4), parsed
+/// from the RF2 ExtendedMap reference sets. Preserves the map group / priority /
+/// rule / advice so the full map context survives into the SQLite `crossmaps`
+/// table. See `specs/cross-terminology-mapping.md`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CrossMapEntry {
+    /// Target classification system: `icd10` | `opcs4`.
+    pub system: String,
+    /// Target code (e.g. ICD-10 `I219`, OPCS-4 `Q288`).
+    pub code: String,
+    /// Source SNOMED map refset SCTID (provenance; distinguishes multiple maps
+    /// targeting the same system).
+    pub refset: String,
+    /// RF2 map group (alternatives within a group).
+    pub group: u32,
+    /// Priority within the group.
+    pub priority: u32,
+    /// Map rule (e.g. age/sex condition), often empty.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub rule: String,
+    /// Human-readable map advice.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub advice: String,
+    /// Correlation SCTID (exact / broad / narrow / inexact).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub correlation: String,
 }
 
 /// The per-concept JSON record written to the NDJSON artefact.
@@ -74,6 +104,10 @@ pub struct ConceptRecord {
     /// and group for ECL. Empty on records from schema v3 and earlier.
     #[serde(default)]
     pub relationships: Vec<Relationship>,
+    /// SNOMED CT → ICD-10 / OPCS-4 map targets (from RF2 ExtendedMap refsets).
+    /// Populated with `--refsets all`. Empty on records from schema v4 and earlier.
+    #[serde(default)]
+    pub crossmaps: Vec<CrossMapEntry>,
     pub schema_version: u32,
 }
 
@@ -103,6 +137,16 @@ mod tests {
                 destination_id: "74281007".into(),
                 group: 1,
             }],
+            crossmaps: vec![CrossMapEntry {
+                system: "icd10".into(),
+                code: "I219".into(),
+                refset: "999002271000000101".into(),
+                group: 1,
+                priority: 1,
+                rule: String::new(),
+                advice: "ALWAYS I21.9".into(),
+                correlation: String::new(),
+            }],
             schema_version: SCHEMA_VERSION,
         }
     }
@@ -116,6 +160,9 @@ mod tests {
         assert_eq!(back.relationships[0].type_id, "363698007");
         assert_eq!(back.relationships[0].destination_id, "74281007");
         assert_eq!(back.relationships[0].group, 1);
+        assert_eq!(back.crossmaps.len(), 1);
+        assert_eq!(back.crossmaps[0].system, "icd10");
+        assert_eq!(back.crossmaps[0].code, "I219");
         assert_eq!(back.schema_version, SCHEMA_VERSION);
     }
 

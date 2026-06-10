@@ -20,7 +20,9 @@ pub enum RefsetMode {
     /// Load concept-level simple refsets (default).
     #[default]
     Simple,
-    /// Load all refset types - not yet implemented.
+    /// Load all refset families, additionally including the ExtendedMap refsets
+    /// (SNOMED CT → ICD-10 / OPCS-4) and the Association refsets (concept
+    /// history). Larger and slower; needed for cross-terminology mapping.
     All,
 }
 
@@ -46,17 +48,14 @@ pub struct Args {
     pub include_inactive: bool,
 
     /// Which reference sets to include. `simple` (default) loads concept-level
-    /// Simple refsets such as SCR exclusion; `none` skips them; `all` is reserved
-    /// for future support of complex / map / association refsets.
+    /// Simple refsets such as SCR exclusion; `none` skips them; `all` additionally
+    /// loads the ExtendedMap (ICD-10/OPCS-4) and Association (history) refsets for
+    /// cross-terminology mapping. See `specs/cross-terminology-mapping.md`.
     #[arg(long, value_enum, default_value_t = RefsetMode::default())]
     pub refsets: RefsetMode,
 }
 
 pub fn run(args: Args) -> Result<()> {
-    if matches!(args.refsets, RefsetMode::All) {
-        anyhow::bail!("--refsets all is not yet implemented. Use 'simple' (default) or 'none'.");
-    }
-
     // --- Resolve each --rf2 path, extracting ZIPs to temp dirs as needed ---
     // _temp_dirs keeps the TempDir values alive until we finish writing output.
     let mut _temp_dirs: Vec<tempfile::TempDir> = Vec::new();
@@ -83,10 +82,25 @@ pub fn run(args: Args) -> Result<()> {
         all_files.lang_refset_files.extend(found.lang_refset_files);
         all_files.simple_map_files.extend(found.simple_map_files);
         all_files.refset_files.extend(found.refset_files);
+        all_files
+            .extended_map_files
+            .extend(found.extended_map_files);
+        all_files.association_files.extend(found.association_files);
     }
 
-    if matches!(args.refsets, RefsetMode::None) {
-        all_files.refset_files.clear();
+    // Refset mode gates the heavier refset families. ExtendedMap (ICD-10/OPCS-4)
+    // and Association (history) are large and load only under `--refsets all`.
+    match args.refsets {
+        RefsetMode::None => {
+            all_files.refset_files.clear();
+            all_files.extended_map_files.clear();
+            all_files.association_files.clear();
+        }
+        RefsetMode::Simple => {
+            all_files.extended_map_files.clear();
+            all_files.association_files.clear();
+        }
+        RefsetMode::All => {}
     }
 
     if all_files.concept_files.is_empty() {
@@ -97,13 +111,15 @@ pub fn run(args: Args) -> Result<()> {
     }
 
     eprintln!(
-        "Found: {} concept, {} description, {} relationship, {} lang refset, {} simple map, {} simple refset file(s)",
+        "Found: {} concept, {} description, {} relationship, {} lang refset, {} simple map, {} simple refset, {} extended map, {} association file(s)",
         all_files.concept_files.len(),
         all_files.description_files.len(),
         all_files.relationship_files.len(),
         all_files.lang_refset_files.len(),
         all_files.simple_map_files.len(),
         all_files.refset_files.len(),
+        all_files.extended_map_files.len(),
+        all_files.association_files.len(),
     );
 
     // --- Load dataset ---

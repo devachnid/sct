@@ -50,6 +50,30 @@ fn build(locale: &str) -> (tempfile::TempDir, PathBuf, PathBuf) {
     (dir, ndjson, db)
 }
 
+/// As [`build`] but with `--refsets all`, so the ExtendedMap (ICD-10/OPCS-4) and
+/// Association (history) refsets load.
+fn build_all(locale: &str) -> (tempfile::TempDir, PathBuf, PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let ndjson = dir.path().join("syn.ndjson");
+    let db = dir.path().join("syn.db");
+    ndjson::run(ndjson::Args {
+        rf2_dirs: vec![fixture_dir()],
+        locale: locale.to_string(),
+        output: Some(ndjson.clone()),
+        include_inactive: false,
+        refsets: RefsetMode::All,
+    })
+    .unwrap();
+    sqlite::run(sqlite::Args {
+        input: ndjson.clone(),
+        output: db.clone(),
+        transitive_closure: false,
+        include_self: false,
+    })
+    .unwrap();
+    (dir, ndjson, db)
+}
+
 fn read_records(path: &Path) -> Vec<ConceptRecord> {
     std::fs::read_to_string(path)
         .unwrap()
@@ -68,6 +92,61 @@ fn ecl(db: &Path, expr: &str) -> Vec<String> {
     let mut v = ecl::expand_path(db, expr).unwrap();
     v.sort();
     v
+}
+
+#[test]
+fn extended_maps_load_into_crossmaps() {
+    let (_d, ndjson, db) = build_all("en-GB");
+
+    // NDJSON: MI carries an ICD-10 crossmap with its advice preserved.
+    let records = read_records(&ndjson);
+    let mi = record(&records, "22298006");
+    let icd = mi
+        .crossmaps
+        .iter()
+        .find(|m| m.system == "icd10")
+        .expect("MI has an ICD-10 crossmap");
+    assert_eq!(icd.code, "I219");
+    assert_eq!(icd.advice, "ALWAYS I21.9");
+
+    // DB: forward (SNOMED -> ICD-10 / OPCS-4) and reverse (code -> SNOMED).
+    let conn = Connection::open(&db).unwrap();
+    let fwd: String = conn
+        .query_row(
+            "SELECT target_code FROM crossmaps WHERE source_code='22298006' AND target_system='icd10'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(fwd, "I219");
+    let opcs: String = conn
+        .query_row(
+            "SELECT target_code FROM crossmaps WHERE source_code='80146002' AND target_system='opcs4'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(opcs, "H011");
+    // Reverse: which SNOMED concept maps to ICD-10 E10.9 (Type 1 diabetes)?
+    let snomed: String = conn
+        .query_row(
+            "SELECT source_code FROM crossmaps WHERE target_system='icd10' AND target_code='E109'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(snomed, "46635009");
+}
+
+#[test]
+fn simple_mode_omits_crossmaps() {
+    // Default `--refsets simple` must NOT load the heavy ExtendedMap data.
+    let (_d, _ndjson, db) = build("en-GB");
+    let conn = Connection::open(&db).unwrap();
+    let n: i64 = conn
+        .query_row("SELECT COUNT(*) FROM crossmaps", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(n, 0);
 }
 
 #[test]

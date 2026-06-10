@@ -276,9 +276,20 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
 
 ## 9. Phasing
 
-1. **RF2-native maps + history** (Channel A): ExtendedMap→ICD-10/OPCS-4,
-   Association→history, inactive retention, `RefsetMode::All`. Largest value, zero
-   new dependencies, all from RF2 you already download.
+- **1a. RF2-native ICD-10 / OPCS-4 maps** ✅ **shipped** (NDJSON schema v5).
+  `sct ndjson --refsets all` parses the ExtendedMap refsets into a per-concept
+  `crossmaps` field; `sct sqlite` loads them into the `crossmaps` table
+  (`source_system='snomed'` → `target_system='icd10'|'opcs4'`, with map group /
+  priority / rule / advice and the source map refset). Refset→system
+  classification lives in `rf2::extended_map_system` (seeded with the known UK +
+  International refset SCTIDs). Default `--refsets simple` omits them (they are
+  large). Tests: `tests/end_to_end.rs` (`extended_maps_load_into_crossmaps`,
+  `simple_mode_omits_crossmaps`).
+- **1b. RF2-native history + inactive forwarding** (in progress): the Association
+  parser + `rf2::association_name` are in place and `Rf2Dataset::history` is
+  populated under `--refsets all`; remaining work is the NDJSON→SQLite carriage
+  (a sidecar history stream → a `concept_history` table) since history is keyed
+  by inactive source concepts absent from the active stream.
 2. **`sct transcode` + `sct crosswalk` + history forwarding** over the new tables.
 3. **DMWB acquisition** (Channel B): `sct trud --edition dmwb` + `sct dmwb import`
    via `jetdb` → Read v2 maps + Code Usage. **Gated on the jetdb validation (§2.3).**
