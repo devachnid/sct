@@ -43,6 +43,9 @@ jobs:
       - name: cargo clippy (serve feature)
         run: cargo clippy --features serve --all-targets -- -D warnings
 
+      - name: cargo clippy (dmwb feature)
+        run: cargo clippy --features dmwb --all-targets -- -D warnings
+
       - name: cargo test
         run: cargo test
 

@@ -125,7 +125,9 @@ cargo install --path . --features full   # both
 | (default) | All non-interactive subcommands | - |
 | `tui` | Keyboard-driven terminal UI (`sct tui`) | `ratatui`, `crossterm` |
 | `gui` | Browser-based graph UI (`sct gui`) | `axum`, `tokio`, `open` |
-| `full` | Both of the above | all of the above |
+| `serve` | FHIR R4 terminology server (`sct serve`) | `axum`, `tokio` |
+| `dmwb` | Read NHS Data Migration Workbench `.mdb` files (`sct dmwb`) | `jetdb` |
+| `full` | `tui` + `gui` + `serve` | all of the above |
 
 ### Manual download
 

@@ -300,8 +300,19 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   cross-terminology equivalents of one code at once (the tri-terminology BROWSE
   view as text; degrades gracefully on a DB without ICD/OPCS maps).
   Tests: `tests/transcode.rs`.
-3. **DMWB acquisition** (Channel B): `sct trud --edition dmwb` + `sct dmwb import`
-   via `jetdb` → Read v2 maps + Code Usage. **Gated on the jetdb validation (§2.3).**
+- **3. DMWB acquisition** (Channel B) ⚠️ **validation gate FAILED for jetdb; Read v2
+  import blocked.** Shipped: `sct dmwb tables`/`dump` (feature `dmwb`, pure-Rust
+  `jetdb` 0.3) reads a DMWB `.mdb` and confirmed jetdb decodes the all-Text map
+  tables cleanly (`SCTICDMAP`: `24005006 → H438`). **But** DMWB stores the Read v2
+  code in a **Binary `SCUI` column, which jetdb 0.3 returns as `Null`** - and the
+  Read v2 maps are the *only* DMWB-unique data (ICD-10/OPCS-4/CTV3/history are all
+  already covered by the shipped RF2-native phases above). So the jetdb import of
+  Read v2 is not viable as-is. Paths forward, in order of preference:
+  (a) **TRUD item 9 "NHS Data Migration"** - check whether it ships the Read v2
+  maps as flat files (would be pure-Rust, no `.mdb`); (b) upstream `jetdb` Binary
+  support; (c) a documented `mdbtools mdb-export` pre-step that `sct dmwb import`
+  then ingests from TSV. The `sct trud --edition dmwb` download wiring is deferred
+  until one of these makes the import deliver real value.
 - **4. `sct serve` `ConceptMap/$translate`** ✅ **shipped** - FHIR R4 `$translate`
   over the crossmap engine (`GET|POST /ConceptMap/$translate?system=&code=&targetsystem=`),
   accepting FHIR system URIs or bare names, both directions, with the SNOMED

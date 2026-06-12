@@ -5,6 +5,8 @@ pub mod codelist;
 pub mod completions;
 pub mod crosswalk;
 pub mod diff;
+#[cfg(feature = "dmwb")]
+pub mod dmwb;
 pub mod ecl;
 pub mod embed;
 pub mod fst;

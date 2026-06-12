@@ -77,6 +77,7 @@ nav:
       - sct refset: commands/refset.md
       - sct transcode: commands/transcode.md
       - sct crosswalk: commands/crosswalk.md
+      - sct dmwb: commands/dmwb.md
   - Code lists:
       - sct codelist: commands/codelist.md
   - Connect & serve:

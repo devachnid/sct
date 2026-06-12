@@ -94,6 +94,10 @@ enum Command {
     /// Start a FHIR R4 terminology server over the SQLite database (requires --features serve).
     #[cfg(feature = "serve")]
     Serve(commands::serve::Args),
+
+    /// Read NHS Data Migration Workbench .mdb cross-maps (requires --features dmwb).
+    #[cfg(feature = "dmwb")]
+    Dmwb(commands::dmwb::Args),
 }
 
 /// Restore the default SIGPIPE disposition on Unix so that piping `sct` into
@@ -143,5 +147,7 @@ fn main() -> Result<()> {
         Command::Gui(args) => commands::gui::run(args),
         #[cfg(feature = "serve")]
         Command::Serve(args) => commands::serve::run(args),
+        #[cfg(feature = "dmwb")]
+        Command::Dmwb(args) => commands::dmwb::run(args),
     }
 }
