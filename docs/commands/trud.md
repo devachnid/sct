@@ -205,9 +205,10 @@ Downloads a release
 ```
 sct trud download [--edition <NAME>] [--item <N>]
                   [--latest | --release <VERSION>]
-                  [--output-dir <PATH>]
+                  [--output-dir <PATH>] [--data-dir <PATH>]
                   [--skip-if-current]
                   [--pipeline] [--pipeline-full]
+                  [--include-inactive] [--refsets <MODE>] [--locale <LOCALE>]
 ```
 
 Downloads the release zip to `~/.local/share/sct/releases/` (or `download_dir` from config,
@@ -255,6 +256,14 @@ Runs `sct ndjson` → `sct sqlite` → `sct tct` → `sct embed`. The embed step
 [Ollama](https://ollama.com) to be running locally (`ollama serve`); if it is not reachable,
 that step is skipped with a warning and the rest of the pipeline still completes.
 
+#### Download and build with inactive concepts and all crossmaps
+
+```bash
+sct trud download --pipeline --include-inactive --refsets all
+```
+
+`--include-inactive`, `--refsets` and `--locale` shape the `sct ndjson` step of the pipeline, exactly as if you had run [`sct ndjson`](ndjson.md) by hand - they have no effect without `--pipeline` / `--pipeline-full`. Here, inactive concepts are retained (each keeps its FSN, preferred term and synonyms) and the ICD-10 / OPCS-4 crossmaps plus concept-history sidecar are built. This downloads the latest release and goes straight through to a SQLite database in one command.
+
 #### Skip the download if already current (safe for cron)
 
 ```bash
@@ -292,15 +301,18 @@ sct trud download --output-dir /data/snomed/
 
 ### `sct trud download` flags
 
-| Flag                  | Default                   | Description                                                             |
-| --------------------- | ------------------------- | ----------------------------------------------------------------------- |
-| `--latest`            | on                        | Download the most recent release                                        |
-| `--release <VERSION>` | -                         | Download a specific version (e.g. `41.5.0`)                             |
-| `--output-dir <PATH>` | `$SCT_DATA_HOME/releases` | Where to save the downloaded zip                                        |
-| `--data-dir <PATH>`   | `$SCT_DATA_HOME/data`     | Where to write built artefacts (NDJSON, SQLite, …)                      |
-| `--skip-if-current`   | off                       | Do nothing if the latest zip is already cached with a matching checksum |
-| `--pipeline`          | off                       | Auto-run `sct ndjson` + `sct sqlite` after download                     |
-| `--pipeline-full`     | off                       | As `--pipeline`, plus `sct tct` + `sct embed`                           |
+| Flag                  | Default                   | Description                                                                                 |
+| --------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| `--latest`            | on                        | Download the most recent release                                                            |
+| `--release <VERSION>` | -                         | Download a specific version (e.g. `41.5.0`)                                                 |
+| `--output-dir <PATH>` | `$SCT_DATA_HOME/releases` | Where to save the downloaded zip                                                            |
+| `--data-dir <PATH>`   | `$SCT_DATA_HOME/data`     | Where to write built artefacts (NDJSON, SQLite, …)                                          |
+| `--skip-if-current`   | off                       | Do nothing if the latest zip is already cached with a matching checksum                     |
+| `--pipeline`          | off                       | Auto-run `sct ndjson` + `sct sqlite` after download                                         |
+| `--pipeline-full`     | off                       | As `--pipeline`, plus `sct tct` + `sct embed`                                               |
+| `--include-inactive`  | off                       | Pipeline only: include inactive concepts in the `sct ndjson` step                           |
+| `--refsets <MODE>`    | `simple`                  | Pipeline only: refsets to load - `none`, `simple`, or `all` (adds ICD-10/OPCS-4 + history)  |
+| `--locale <LOCALE>`   | `en-GB`                   | Pipeline only: BCP-47 locale for preferred-term selection                                   |
 
 ---
 

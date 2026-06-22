@@ -167,6 +167,22 @@ pub struct DownloadArgs {
     #[arg(long)]
     pipeline_full: bool,
 
+    /// BCP-47 locale for preferred-term selection in the pipelined `sct ndjson`
+    /// step (e.g. en-GB, en-US). Only used with --pipeline / --pipeline-full.
+    #[arg(long, default_value = "en-GB")]
+    locale: String,
+
+    /// Include inactive concepts in the pipelined `sct ndjson` step. Only takes
+    /// effect with --pipeline / --pipeline-full.
+    #[arg(long, default_value_t = false)]
+    include_inactive: bool,
+
+    /// Which reference sets the pipelined `sct ndjson` step loads: `simple`
+    /// (default), `none`, or `all` (adds ICD-10/OPCS-4 crossmaps and concept
+    /// history). Only takes effect with --pipeline / --pipeline-full.
+    #[arg(long, value_enum, default_value_t = super::ndjson::RefsetMode::default())]
+    refsets: super::ndjson::RefsetMode,
+
     #[command(flatten)]
     key: KeyArgs,
 }
@@ -582,10 +598,10 @@ fn run_pipeline_if_requested(args: &DownloadArgs, zip_path: &Path, data_dir: &Pa
     println!("\n→ Running: sct ndjson");
     super::ndjson::run(super::ndjson::Args {
         rf2_dirs: vec![zip_path.to_path_buf()],
-        locale: "en-GB".into(),
+        locale: args.locale.clone(),
         output: Some(ndjson_path.clone()),
-        include_inactive: false,
-        refsets: super::ndjson::RefsetMode::default(),
+        include_inactive: args.include_inactive,
+        refsets: args.refsets,
     })
     .context("sct ndjson step failed")?;
 
@@ -1354,5 +1370,67 @@ mod tests {
         let config = paths::load_config_from(f.path());
         // Should not panic; silently returns default
         assert!(config.trud.is_none());
+    }
+
+    // --- pipeline flag wiring (download → ndjson) ------------------------------
+    //
+    // `run_pipeline_if_requested` is the chaining step behind --pipeline. This
+    // test confirms the ndjson-shaping flags (--include-inactive here) actually
+    // reach the `sct ndjson` step, by running the pipeline over the committed
+    // synthetic RF2 fixture (a directory, so no zip extraction needed) and
+    // inspecting the NDJSON it writes. Regression guard: the pipeline used to
+    // hard-code include_inactive = false, so the flag could never take effect.
+    #[test]
+    fn pipeline_passes_include_inactive_to_ndjson() {
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/rf2/SnomedCT_SyntheticTest_PRODUCTION_20260101T120000Z");
+
+        // Run only the pipeline step against the fixture, returning the main
+        // NDJSON artefact's contents. `--refsets all` is used so the test also
+        // exercises that flag flowing through (it writes a history sidecar too,
+        // which is why we read the exact main path rather than the first match).
+        let run_with = |include_inactive: bool| -> String {
+            let data_dir = tempfile::tempdir().unwrap();
+            let args = DownloadArgs {
+                edition: "uk_monolith".into(),
+                item: None,
+                release: None,
+                output_dir: None,
+                data_dir: None,
+                skip_if_current: false,
+                pipeline: true,
+                pipeline_full: false,
+                locale: "en-GB".into(),
+                include_inactive,
+                refsets: crate::commands::ndjson::RefsetMode::All,
+                key: KeyArgs {
+                    api_key: None,
+                    api_key_file: None,
+                },
+            };
+            run_pipeline_if_requested(&args, &fixture, data_dir.path()).unwrap();
+
+            let stem = fixture
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap()
+                .to_lowercase();
+            std::fs::read_to_string(data_dir.path().join(format!("{stem}.ndjson"))).unwrap()
+        };
+
+        // Default (flag off): the inactive concept 9468002 is absent.
+        let off = run_with(false);
+        assert!(
+            !off.lines().any(|l| l.contains("\"id\":\"9468002\"")),
+            "inactive concept must not appear without --include-inactive"
+        );
+
+        // Flag on: 9468002 appears, marked inactive.
+        let on = run_with(true);
+        assert!(
+            on.lines()
+                .any(|l| l.contains("\"id\":\"9468002\"") && l.contains("\"active\":false")),
+            "inactive concept must appear (active:false) with --include-inactive"
+        );
     }
 }
