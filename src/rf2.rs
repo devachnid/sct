@@ -477,7 +477,9 @@ pub enum Acceptability {
 
 /// All data loaded from a (possibly multi-directory) RF2 snapshot.
 pub struct Rf2Dataset {
-    /// concept_id -> ConceptRow (active only)
+    /// concept_id -> ConceptRow. Active concepts are always present; inactive
+    /// concepts (`active = false`) are included only when the dataset was loaded
+    /// with `include_inactive` (see [`Rf2Dataset::load`]).
     pub concepts: HashMap<String, ConceptRow>,
     /// concept_id -> Vec<DescriptionRow> (active only)
     pub descriptions: HashMap<String, Vec<DescriptionRow>>,
@@ -508,7 +510,21 @@ pub struct Rf2Dataset {
 }
 
 impl Rf2Dataset {
-    pub fn load(files: &Rf2Files) -> Result<Self> {
+    /// Load and aggregate every discovered RF2 file into the in-memory dataset.
+    ///
+    /// `include_inactive` controls whether inactive *concepts* are retained.
+    /// When `false` (the default), inactive concept rows are dropped here at
+    /// load time, so they never reach [`crate::builder::build_records`] and the
+    /// common active-only path stays lean. When `true`, inactive concepts are
+    /// kept (with `active = false`); their active descriptions, refset
+    /// memberships and cross-maps attach as usual. Inactivating a concept does
+    /// not inactivate its descriptions, so an inactive concept still carries a
+    /// fully-populated FSN, preferred term and synonyms.
+    ///
+    /// The output gate in `build_records` also honours `include_inactive`, so
+    /// callers must pass the same value to both: `build_records` may be stricter
+    /// (drop inactive) but cannot resurrect concepts already dropped here.
+    pub fn load(files: &Rf2Files, include_inactive: bool) -> Result<Self> {
         let mut concepts: HashMap<String, ConceptRow> = HashMap::new();
         let mut descriptions: HashMap<String, Vec<DescriptionRow>> = HashMap::new();
         let mut parents: HashMap<String, Vec<String>> = HashMap::new();
@@ -521,15 +537,31 @@ impl Rf2Dataset {
         let mut history: Vec<(String, String, String)> = Vec::new();
 
         // --- Concepts ---
+        // Active concepts are always retained; inactive concepts only under
+        // `include_inactive`. Dropping them here (rather than only at the
+        // builder's output gate) keeps the default path's memory and downstream
+        // joins limited to the active substrate.
         for path in &files.concept_files {
             eprintln!("  Loading concepts from {}", path.display());
             for row in parse_concepts(path)? {
-                if row.active {
+                if row.active || include_inactive {
                     concepts.insert(row.id.clone(), row);
                 }
             }
         }
-        eprintln!("  {} active concepts", concepts.len());
+        if include_inactive {
+            // Count from the final map so layered editions (last-write-wins on a
+            // repeated id) and any active/inactive restatement are reflected.
+            let active = concepts.values().filter(|c| c.active).count();
+            eprintln!(
+                "  {} concepts ({} active, {} inactive)",
+                concepts.len(),
+                active,
+                concepts.len() - active
+            );
+        } else {
+            eprintln!("  {} active concepts", concepts.len());
+        }
 
         // --- Descriptions ---
         for path in &files.description_files {

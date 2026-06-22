@@ -167,7 +167,7 @@ fn dataset_load_minimal() {
         association_files: vec![],
     };
 
-    let ds = Rf2Dataset::load(&files).unwrap();
+    let ds = Rf2Dataset::load(&files, false).unwrap();
     assert_eq!(ds.concepts.len(), 3);
     assert!(ds.concepts.contains_key("138875005"));
     assert!(ds.concepts.contains_key("404684003"));
@@ -185,6 +185,58 @@ fn dataset_load_minimal() {
     assert!(ds.ctv3_maps.is_empty());
     assert!(ds.read2_maps.is_empty());
     assert!(ds.refset_members.is_empty());
+}
+
+/// Inactive concepts are dropped at load time by default but retained when
+/// `include_inactive = true`. Regression test for `--include-inactive`, which
+/// previously had no effect: inactive concepts were unconditionally filtered in
+/// `Rf2Dataset::load`, so the flag (checked only later in `build_records`) never
+/// had any inactive rows to act on.
+#[test]
+fn dataset_load_inactive_concepts_gated_by_flag() {
+    let concepts_f = tsv_file(
+        "id\teffectiveTime\tactive\tmoduleId\tdefinitionStatusId\n\
+         404684003\t20020131\t1\t900000000000207008\t900000000000074008\n\
+         9468002\t20020131\t0\t900000000000207008\t900000000000074008\n",
+    );
+    // The inactive concept keeps an ACTIVE FSN, as real RF2 does: inactivating a
+    // concept does not inactivate its descriptions.
+    let descs_f = tsv_file(
+        "id\teffectiveTime\tactive\tmoduleId\tconceptId\tlanguageCode\ttypeId\tterm\tcaseSignificanceId\n\
+         1\t20020131\t1\t0\t404684003\ten\t900000000000003001\tClinical finding (finding)\t0\n\
+         2\t20020131\t1\t0\t9468002\ten\t900000000000003001\tInactive example (disorder)\t0\n",
+    );
+
+    let mk_files = |c: &NamedTempFile, d: &NamedTempFile| Rf2Files {
+        concept_files: vec![c.path().to_path_buf()],
+        description_files: vec![d.path().to_path_buf()],
+        relationship_files: vec![],
+        lang_refset_files: vec![],
+        simple_map_files: vec![],
+        refset_files: vec![],
+        extended_map_files: vec![],
+        association_files: vec![],
+    };
+
+    // Default: the inactive concept is dropped at load time.
+    let ds = Rf2Dataset::load(&mk_files(&concepts_f, &descs_f), false).unwrap();
+    assert_eq!(ds.concepts.len(), 1);
+    assert!(ds.concepts.contains_key("404684003"));
+    assert!(!ds.concepts.contains_key("9468002"));
+
+    // include_inactive: the inactive concept is retained with its active flag
+    // preserved, and its active FSN description is available to the builder.
+    let ds = Rf2Dataset::load(&mk_files(&concepts_f, &descs_f), true).unwrap();
+    assert_eq!(ds.concepts.len(), 2);
+    let inactive = ds
+        .concepts
+        .get("9468002")
+        .expect("inactive concept retained under include_inactive");
+    assert!(!inactive.active);
+    assert!(
+        ds.descriptions.contains_key("9468002"),
+        "active FSN of the inactive concept is loaded"
+    );
 }
 
 // --- Simple refset parsing ---

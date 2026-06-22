@@ -124,7 +124,8 @@ pub fn run(args: Args) -> Result<()> {
 
     // --- Load dataset ---
     eprintln!("Loading RF2 data...");
-    let dataset = Rf2Dataset::load(&all_files).context("loading RF2 files")?;
+    let dataset =
+        Rf2Dataset::load(&all_files, args.include_inactive).context("loading RF2 files")?;
 
     // --- Build output records ---
     eprintln!(

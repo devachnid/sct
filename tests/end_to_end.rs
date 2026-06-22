@@ -190,6 +190,39 @@ fn pipeline_filters_inactive_concepts() {
 }
 
 #[test]
+fn include_inactive_emits_inactive_concepts() {
+    // Regression test for `--include-inactive`. The inactive concept 9468002 was
+    // dropped at RF2 load time regardless of the flag; it must now appear, with
+    // `active = false` and its term fully populated from its (still-active) FSN.
+    let dir = tempfile::tempdir().unwrap();
+    let ndjson = dir.path().join("syn.ndjson");
+    ndjson::run(ndjson::Args {
+        rf2_dirs: vec![fixture_dir()],
+        locale: "en-GB".to_string(),
+        output: Some(ndjson.clone()),
+        include_inactive: true,
+        refsets: RefsetMode::Simple,
+    })
+    .unwrap();
+
+    let records = read_records(&ndjson);
+    // All 23 fixture concepts now, exactly one of them inactive.
+    assert_eq!(records.len(), 23);
+    assert_eq!(records.iter().filter(|r| !r.active).count(), 1);
+
+    let inactive = record(&records, "9468002");
+    assert!(!inactive.active);
+    assert_eq!(inactive.fsn, "Inactive example disorder (disorder)");
+    assert_eq!(inactive.preferred_term, "Inactive example disorder");
+
+    // Active concepts are unaffected: every other record is still active.
+    assert!(records
+        .iter()
+        .filter(|r| r.id != "9468002")
+        .all(|r| r.active));
+}
+
+#[test]
 fn dialect_preferred_terms() {
     let (_g, gb_ndjson, _gdb) = build("en-GB");
     assert_eq!(

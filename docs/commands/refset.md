@@ -132,7 +132,7 @@ The same `--format` and `--format-fsn-suffix` flags are accepted by `sct lexical
 
 - Check that `sct ndjson` was run with `--refsets simple` (the default) - if the pipeline used `--refsets none`, no memberships were written.
 - Check that the RF2 release actually contains a `der2_Refset_Simple*Snapshot*.txt` file. The International release does not include UK national refsets; you need the UK Monolith or UK Clinical release for those.
-- A refset whose members are all inactive concepts will have zero rows in `refset_members` - inactive concepts are filtered at RF2 load time.
+- A refset whose members are all inactive concepts will have zero rows in `refset_members` - by default inactive concepts are filtered at RF2 load time. Pass `--include-inactive` to `sct ndjson` to retain inactive concepts (and their active refset memberships).
 
 ## Direct SQL queries
 
