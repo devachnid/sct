@@ -4,6 +4,8 @@ Start a local MCP (Model Context Protocol) server backed by the SNOMED CT SQLite
 
 Single binary, no runtime dependencies, starts in under 5 ms. The SNOMED CT database is always read-only; codelist tools can read and write `.codelist` files.
 
+Design rationale for `snomed_semantic_search` lives in [`specs/commands/mcp.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/mcp.md).
+
 ---
 
 ## Usage

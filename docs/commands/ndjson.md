@@ -122,7 +122,17 @@ One JSON object per line, sorted by concept SCTID. Every line is a standalone JS
     {"type_id": "363698007", "destination_id": "302509004", "group": 0},
     {"type_id": "116676008", "destination_id": "55641003", "group": 0}
   ],
-  "schema_version": 4
+  "crossmaps": [
+    {
+      "system": "icd10",
+      "code": "I219",
+      "refset": "999002271000000101",
+      "group": 1,
+      "priority": 1,
+      "advice": "ALWAYS I21.9"
+    }
+  ],
+  "schema_version": 5
 }
 ```
 
@@ -146,7 +156,8 @@ One JSON object per line, sorted by concept SCTID. Every line is a standalone JS
 | `read2_codes` | string[] | Read v2 codes (UK edition only; empty array otherwise) |
 | `refsets` | string[] | SCTIDs of reference sets this concept belongs to (populated with `--refsets simple`) |
 | `relationships` | `{type_id, destination_id, group}`[] | Typed attribute relationships - SCTID-keyed, with group number (schema v4). The SCTID-preserving counterpart of `attributes`; consumed by ECL attribute refinement |
-| `schema_version` | integer | Artefact schema version (currently `4`) |
+| `crossmaps` | object[] | SNOMED CT → external map targets from RF2 ExtendedMap refsets (schema v5; populated with `--refsets all`) |
+| `schema_version` | integer | Artefact schema version (currently `5`) |
 
 ### Artefact properties
 

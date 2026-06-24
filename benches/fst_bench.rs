@@ -18,7 +18,7 @@
 //! its purpose is to keep the benchmark runnable and to catch latency
 //! regressions in CI-less local runs. The real comparison against SQLite FTS5
 //! (size + latency) is produced from `snomed.ndjson` / `snomed.db` per
-//! `specs/fst.md` §6.
+//! `specs/commands/fst.md` §6.
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;

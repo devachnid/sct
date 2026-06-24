@@ -64,7 +64,7 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 
 ### `sct codelist` - clinical code list management
 
-Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks). See [`docs/commands/codelist.md`](commands/codelist.md). Outstanding:
+Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks). See [`docs/commands/codelist.md`](../docs/commands/codelist.md). Outstanding:
 
 - [ ] `sct codelist export <file> --format fhir-json/rf2` - remaining export formats
 - [ ] **Multi-terminology codelists (format v2)** - future extension once the remaining
@@ -84,7 +84,7 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
       are resolved live (own + included, recursively, parent exclusions win) by `stats`,
       `validate`, `export`, `diff`, and `sct serve`; `sct codelist include` edits the
       reference list and `sct codelist resolve` flattens to a standalone snapshot. Cycles
-      and missing includes are detected. See [`docs/commands/codelist.md`](commands/codelist.md).
+      and missing includes are detected. See [`docs/commands/codelist.md`](../docs/commands/codelist.md).
       Remaining: multi-terminology composition (format v2) and OCL references.
 
 ### Interactive "search as you type"
@@ -93,7 +93,7 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
       update on every keystroke. A genuinely compelling CLI demo (terminology lookup
       feels instant), and the basis for an embeddable search component later.
   - **Pluggable backends.** The same UI over a selectable backend: `--backend fts5`
-        ([`sct lexical`](commands/lexical.md) / SQLite), `--backend fst`
+        ([`sct lexical`](../docs/commands/lexical.md) / SQLite), `--backend fst`
         ([`sct fst`](commands/fst.md) - its sub-millisecond prefix/fuzzy lookup is *ideal*
         for per-keystroke latency), later `semantic`, or a blended ranker. Backends share
         one trait (query string → ranked hits) so adding one is cheap.
@@ -131,7 +131,7 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 - [~] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
       for Ontoserver, Snowstorm, and the NHS FHIR Terminology Server. Full spec in
       [`specs/commands/serve.md`](commands/serve.md); user docs in
-      [`docs/commands/serve.md`](commands/serve.md).
+      [`docs/commands/serve.md`](../docs/commands/serve.md).
 
   **Phase 1 - Core operations** ✅ **shipped** (feature-gated `serve`): `/metadata`,
   `CodeSystem/$lookup` / `$validate-code` / `$subsumes`, `ValueSet/$expand` with text filter

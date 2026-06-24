@@ -50,8 +50,8 @@ between the build stage and all consumer tools.
 Two later additions sit alongside this model rather than inside it: an optional **FST lexical
 index** (`sct fst`, built from the NDJSON) offers a mmap-able, typo-tolerant alternative to the
 Layer 2 FTS5 search; and an **ECL engine** (`src/ecl/`) evaluates SNOMED Expression Constraint
-Language queries against the Layer 2 SQLite database (powering `sct codelist add --ecl`, and
-later `sct serve`). See [`fst.md`](fst.md) and [`ecl.md`](ecl.md).
+Language queries against the Layer 2 SQLite database (powering `sct codelist add --ecl` and
+`sct serve`). See [`specs/commands/fst.md`](commands/fst.md) and [`ecl.md`](ecl.md).
 
 ---
 
@@ -68,14 +68,14 @@ later `sct serve`). See [`fst.md`](fst.md) and [`ecl.md`](ecl.md).
 - `sct mcp` is read-only and stateless; opens SQLite on startup, serves until stdin EOF
 - `sct embed` requires an external Ollama process; all other subcommands are fully offline
 - All subcommands accept `--help`, produce useful errors, and exit cleanly
-- The NDJSON artefact format is a public interface versioned with `schema_version`; currently version `4` (v4 added typed `relationships` for ECL)
+- The NDJSON artefact format is a public interface versioned with `schema_version`; see `src/schema.rs` for the current version and changelog.
 
 ---
 
 ## Documentation maintenance
 
-`docs/walkthrough.md` is the primary user-facing feature tour. It should be kept in sync
-with the implementation. When making changes to this project, update `docs/walkthrough.md`
+`docs/walkthrough/` is the primary user-facing feature tour. It should be kept in sync
+with the implementation. When making changes to this project, update the relevant walkthrough page
 if any of the following change:
 
 - A new command is added or an existing one is removed

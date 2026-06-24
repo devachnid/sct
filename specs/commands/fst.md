@@ -1,6 +1,6 @@
 # FST-backed lexical index for `sct`
 
-**Status:** ✅ Shipped (v0.4.0–0.4.1). This document is the design record; it now describes a built feature. User docs: [`docs/commands/fst.md`](../docs/commands/fst.md). The benchmark results in §10 are real measurements.
+**Status:** ✅ Shipped (v0.4.0–0.4.1). This document is the design record; it now describes a built feature. User docs: [`docs/commands/fst.md`](../../docs/commands/fst.md). The benchmark results in §10 are real measurements.
 **Scope:** Evaluate a finite-state-transducer lexical index, built from `sct`'s canonical NDJSON, as a slimmer and more capable alternative to the existing SQLite FTS5 search path. Uses BurntSushi's [`fst`](https://docs.rs/fst/) crate.
 **Audience:** A coding agent (and Marcus) implementing this in the `sct` repo.
 
@@ -56,7 +56,7 @@ The `fst` crate implements this with a packed on-disk format that is mmap-friend
 
 **Decision: the FST builder consumes NDJSON, not an RF2 snapshot.** In `sct`, NDJSON is the canonical intermediate - `sqlite`, `parquet`, `markdown`, and `embed` are all built *from NDJSON*, never from RF2. RF2 → NDJSON (the `sct ndjson` command, via `rf2.rs` + `builder.rs`) already does the hard joins: active-only filtering, FSN / preferred-term / synonym bucketing, semantic-tag extraction, and edition merging. Reading NDJSON inherits all of that for free; reading RF2 would re-implement it and drift from the pipeline.
 
-Each NDJSON line is one `ConceptRecord` (see `schema.rs`, current `SCHEMA_VERSION = 3`). The fields the FST needs:
+Each NDJSON line is one `ConceptRecord` (see `schema.rs`). The fields the FST needs:
 
 | Field | Use in the FST |
 |---|---|
