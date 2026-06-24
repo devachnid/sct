@@ -252,7 +252,7 @@ sct codelist export codelists/asthma.codelist --format csv
 sct codelist export codelists/asthma.codelist --format opencodelists-csv
 sct codelist export codelists/asthma.codelist --format markdown --output asthma.md
 
-# Append cross-terminology columns (CTV3/Read v2 on any DB; ICD-10/OPCS-4 need --refsets all)
+# Append cross-terminology columns (CTV3 from UK RF2; ICD-10/OPCS-4 need --refsets all)
 sct codelist export codelists/asthma.codelist --format csv --include-maps ctv3,icd10 --db snomed.db
 ```
 
@@ -262,7 +262,7 @@ sct codelist export codelists/asthma.codelist --format csv --include-maps ctv3,i
 | `opencodelists-csv` | `code,term` - OpenCodelists-compatible upload format |
 | `markdown` | Markdown table with front-matter metadata header |
 
-`--include-maps <terminologies>` (csv/markdown only) appends a column per terminology - `ctv3`, `read2`, `icd10`, `opcs4` - so a SNOMED codelist can be cross-walked to legacy and classification codes in one export. ICD-10 / OPCS-4 require a database built with [`sct ndjson --refsets all`](ndjson.md).
+`--include-maps <terminologies>` (csv/markdown only) appends a column per terminology - `ctv3`, `read2`, `icd10`, `opcs4` - so a SNOMED codelist can be cross-walked to legacy and classification codes in one export. ICD-10 / OPCS-4 require a database built with [`sct ndjson --refsets all`](ndjson.md). Read v2 is supported when the database already contains `read2` rows in `concept_maps`; current UK RF2 releases do not load the DMWB-unique Read v2 maps.
 
 ---
 

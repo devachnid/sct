@@ -2,7 +2,7 @@
 
 Show **all** cross-terminology equivalents of a single code at once - the text equivalent of the NHS Data Migration Workbench's tri-terminology BROWSE view. Where [`sct transcode`](transcode.md) maps a stream of codes from one terminology to one other, `sct crosswalk` takes one code and shows its equivalents in every terminology.
 
-Built on the same maps as `sct transcode` (see [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md)). ICD-10 / OPCS-4 columns need a database built with [`sct ndjson --refsets all`](ndjson.md); without it they show `(none)` (CTV3 / Read v2 still work).
+Built on the same maps as `sct transcode` (see [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md)). ICD-10 / OPCS-4 columns need a database built with [`sct ndjson --refsets all`](ndjson.md); without it they show `(none)`. CTV3 works from UK RF2 SimpleMap rows. Read v2 works only when the database already contains `read2` rows in `concept_maps`.
 
 ## Usage
 
@@ -23,7 +23,7 @@ sct crosswalk <CODE> [--from <SYSTEM>] [--json] [--db <FILE>]
 # A SNOMED concept and all its equivalents
 sct crosswalk 22298006
 # 22298006  Myocardial infarction
-#   read2:  G30..
+#   read2:  (none)
 #   ctv3:   X200E
 #   icd10:  I219
 #   opcs4:  (none)

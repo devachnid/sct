@@ -13,7 +13,7 @@ sct ndjson --rf2 release.zip --refsets all --output snomed.ndjson
 sct sqlite --input snomed.ndjson --output snomed.db
 ```
 
-CTV3 / Read v2 maps (`--from ctv3`/`read2 --to snomed`) work on any `snomed.db`; ICD-10 / OPCS-4 and `--forward-history` need `--refsets all`. `sct transcode` fails with a clear message if the database lacks the required maps.
+CTV3 maps work on a UK-derived `snomed.db`; Read v2 works only if your database already contains `read2` rows in `concept_maps`. Current UK RF2 releases do not contain the DMWB-unique Read v2 maps. ICD-10 / OPCS-4 and `--forward-history` need `--refsets all`. `sct transcode` fails with a clear message if the database lacks the required maps.
 
 ## Usage
 
@@ -40,8 +40,8 @@ Output columns (TSV): `input_code`, `target_code`, `snomed_pivot`, `display`. On
 # SNOMED -> ICD-10 for a list of concepts
 printf '22298006\n73211009\n' | sct transcode --from snomed --to icd10
 
-# Legacy GP migration: Read v2 -> SNOMED, forwarding any retired targets
-cat read2_codes.csv | sct transcode --from read2 --to snomed --forward-history
+# Legacy GP migration from CTV3 -> SNOMED, forwarding any retired targets
+cat ctv3_codes.csv | sct transcode --from ctv3 --to snomed --forward-history
 
 # Two-hop: CTV3 -> (SNOMED) -> ICD-10
 echo 'X200E' | sct transcode --from ctv3 --to icd10

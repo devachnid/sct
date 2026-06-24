@@ -4,7 +4,7 @@ Evaluate a SNOMED CT [Expression Constraint Language](https://confluence.ihtsdot
 
 **When to use:** you want the *set* of concepts a query selects - to pipe into another command, build a code list, feed a script, or paste into a SQL `IN (…)`. ECL `<<73211009` means "Diabetes mellitus and all its subtypes".
 
-`sct ecl` is the reusable engine behind [`sct codelist add --ecl`](codelist.md). Because it writes plain SCTIDs to stdout, it composes with everything else (see the [composability principle](../../specs/spec.md)).
+`sct ecl` is the reusable engine behind [`sct codelist add --ecl`](codelist.md). Because it writes plain SCTIDs to stdout, it composes with everything else (see the [composability principle](https://github.com/pacharanero/sct/blob/main/specs/spec.md)).
 
 ---
 
