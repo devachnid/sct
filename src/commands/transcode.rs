@@ -7,8 +7,8 @@
 //! (or `--input`), writes TSV (or `--json`) to stdout, diagnostics to stderr.
 //!
 //! Supported systems: `snomed`, `read2`, `ctv3`, `icd10`, `opcs4`. The maps come
-//! from `sct sqlite` built with `--refsets all` (ICD-10/OPCS-4 via `crossmaps`,
-//! CTV3/Read v2 via `concept_maps`) - see `specs/cross-terminology-mapping.md`.
+//! from the general `crossmaps` table. Older databases can still resolve CTV3 /
+//! Read v2 through the legacy `concept_maps` table.
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
@@ -63,10 +63,9 @@ pub fn run(args: Args) -> Result<()> {
     let conn = crate::commands::open_db_readonly(&db, None)
         .with_context(|| format!("opening database {}", db.display()))?;
 
-    // The crossmaps / concept_history tables only exist in databases built with
-    // `--refsets all`. Fail fast with a clear message rather than a SQL error.
-    let needs_crossmaps =
-        ["icd10", "opcs4"].contains(&from.as_str()) || ["icd10", "opcs4"].contains(&to.as_str());
+    // ICD-10 / OPCS-4 maps only exist in databases built with `--refsets all`.
+    // Fail fast with a clear message rather than a SQL error.
+    let needs_crossmaps = is_classification(&from) || is_classification(&to);
     if needs_crossmaps && !table_exists(&conn, "crossmaps") {
         bail!(
             "this database has no ICD-10/OPCS-4 maps. Rebuild with \
@@ -168,11 +167,18 @@ pub fn transcode_one(
 fn to_snomed(conn: &Connection, from: &str, code: &str) -> Result<Vec<String>> {
     match from {
         "snomed" => Ok(vec![code.to_string()]),
-        "ctv3" | "read2" => collect(
-            conn,
-            "SELECT concept_id FROM concept_maps WHERE code = ?1 AND terminology = ?2",
-            params![code, from],
-        ),
+        "ctv3" | "read2" => {
+            let from_crossmaps = legacy_to_snomed_from_crossmaps(conn, from, code)?;
+            if !from_crossmaps.is_empty() || !table_exists(conn, "concept_maps") {
+                Ok(from_crossmaps)
+            } else {
+                collect(
+                    conn,
+                    "SELECT concept_id FROM concept_maps WHERE code = ?1 AND terminology = ?2",
+                    params![code, from],
+                )
+            }
+        }
         "icd10" | "opcs4" if table_exists(conn, "crossmaps") => collect(
             conn,
             "SELECT DISTINCT source_code FROM crossmaps WHERE target_system = ?1 AND target_code = ?2",
@@ -187,11 +193,18 @@ fn to_snomed(conn: &Connection, from: &str, code: &str) -> Result<Vec<String>> {
 fn from_snomed(conn: &Connection, concept: &str, to: &str) -> Result<Vec<String>> {
     match to {
         "snomed" => Ok(vec![concept.to_string()]),
-        "ctv3" | "read2" => collect(
-            conn,
-            "SELECT code FROM concept_maps WHERE concept_id = ?1 AND terminology = ?2",
-            params![concept, to],
-        ),
+        "ctv3" | "read2" => {
+            let from_crossmaps = legacy_from_snomed_from_crossmaps(conn, concept, to)?;
+            if !from_crossmaps.is_empty() || !table_exists(conn, "concept_maps") {
+                Ok(from_crossmaps)
+            } else {
+                collect(
+                    conn,
+                    "SELECT code FROM concept_maps WHERE concept_id = ?1 AND terminology = ?2",
+                    params![concept, to],
+                )
+            }
+        }
         "icd10" | "opcs4" if table_exists(conn, "crossmaps") => collect(
             conn,
             "SELECT DISTINCT target_code FROM crossmaps WHERE source_code = ?1 AND target_system = ?2",
@@ -200,6 +213,54 @@ fn from_snomed(conn: &Connection, concept: &str, to: &str) -> Result<Vec<String>
         "icd10" | "opcs4" => Ok(vec![]), // no crossmaps table -> no maps
         _ => bail!("unknown target terminology {to:?}"),
     }
+}
+
+fn legacy_to_snomed_from_crossmaps(
+    conn: &Connection,
+    from: &str,
+    code: &str,
+) -> Result<Vec<String>> {
+    if !table_exists(conn, "crossmaps") {
+        return Ok(vec![]);
+    }
+    let active_filter = if column_exists(conn, "crossmaps", "active") {
+        "AND active != 0"
+    } else {
+        ""
+    };
+    collect(
+        conn,
+        &format!(
+            "SELECT DISTINCT target_code FROM crossmaps
+         WHERE source_system = ?1 AND source_code = ?2 AND target_system = 'snomed'
+           {active_filter}"
+        ),
+        params![from, code],
+    )
+}
+
+fn legacy_from_snomed_from_crossmaps(
+    conn: &Connection,
+    concept: &str,
+    to: &str,
+) -> Result<Vec<String>> {
+    if !table_exists(conn, "crossmaps") {
+        return Ok(vec![]);
+    }
+    let active_filter = if column_exists(conn, "crossmaps", "active") {
+        "AND active != 0"
+    } else {
+        ""
+    };
+    collect(
+        conn,
+        &format!(
+            "SELECT DISTINCT source_code FROM crossmaps
+         WHERE target_system = 'snomed' AND target_code = ?1 AND source_system = ?2
+           {active_filter}"
+        ),
+        params![concept, to],
+    )
 }
 
 /// Forward an inactive concept to its replacement(s). Active concepts (and those
@@ -249,6 +310,25 @@ fn table_exists(conn: &Connection, name: &str) -> bool {
     .ok()
     .flatten()
     .is_some()
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
+    let Ok(mut stmt) = conn.prepare(&format!("PRAGMA table_info({table})")) else {
+        return false;
+    };
+    let Ok(rows) = stmt.query_map([], |row| row.get::<_, String>(1)) else {
+        return false;
+    };
+    for row in rows {
+        if row.ok().as_deref() == Some(column) {
+            return true;
+        }
+    }
+    false
+}
+
+fn is_classification(system: &str) -> bool {
+    matches!(system, "icd10" | "opcs4")
 }
 
 fn collect(conn: &Connection, sql: &str, p: &[&dyn rusqlite::ToSql]) -> Result<Vec<String>> {

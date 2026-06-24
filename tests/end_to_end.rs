@@ -111,6 +111,15 @@ fn extended_maps_load_into_crossmaps() {
 
     // DB: forward (SNOMED -> ICD-10 / OPCS-4) and reverse (code -> SNOMED).
     let conn = Connection::open(&db).unwrap();
+    let ctv3: String = conn
+        .query_row(
+            "SELECT target_code FROM crossmaps
+             WHERE source_system='ctv3' AND source_code='X200' AND target_system='snomed'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(ctv3, "22298006");
     let fwd: String = conn
         .query_row(
             "SELECT target_code FROM crossmaps WHERE source_code='22298006' AND target_system='icd10'",
@@ -139,14 +148,27 @@ fn extended_maps_load_into_crossmaps() {
 }
 
 #[test]
-fn simple_mode_omits_crossmaps() {
-    // Default `--refsets simple` must NOT load the heavy ExtendedMap / history data.
+fn simple_mode_omits_extended_maps() {
+    // Default `--refsets simple` loads SimpleMap rows into crossmaps, but must
+    // NOT load the heavy ExtendedMap / history data.
     let (_d, _ndjson, db) = build("en-GB");
     let conn = Connection::open(&db).unwrap();
-    let maps: i64 = conn
-        .query_row("SELECT COUNT(*) FROM crossmaps", [], |r| r.get(0))
+    let simple_maps: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM crossmaps WHERE source_system='ctv3' AND target_system='snomed'",
+            [],
+            |r| r.get(0),
+        )
         .unwrap();
-    assert_eq!(maps, 0);
+    assert!(simple_maps > 0);
+    let extended_maps: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM crossmaps WHERE source_system='snomed' AND target_system IN ('icd10', 'opcs4')",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(extended_maps, 0);
     let hist: i64 = conn
         .query_row("SELECT COUNT(*) FROM concept_history", [], |r| r.get(0))
         .unwrap();

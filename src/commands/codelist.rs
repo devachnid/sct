@@ -1368,9 +1368,7 @@ fn cmd_export(args: ExportArgs) -> Result<()> {
         None
     } else {
         let db = crate::paths::resolve_db(args.db.as_deref())
-            .context(
-                "--include-maps needs a SNOMED CT database to resolve crosswalks from concept_maps",
-            )?
+            .context("--include-maps needs a SNOMED CT database to resolve crosswalks")?
             .path;
         let conn = open_db(&db)?;
         let sctids: Vec<&str> = active.iter().map(|(id, _)| *id).collect();
@@ -1597,7 +1595,12 @@ impl CrosswalkMaps {
         self.inner
             .get(sctid)
             .and_then(|m| m.get(terminology))
-            .map(|v| v.join("|"))
+            .map(|v| {
+                let mut v = v.clone();
+                v.sort();
+                v.dedup();
+                v.join("|")
+            })
             .unwrap_or_default()
     }
 }
@@ -1605,10 +1608,11 @@ impl CrosswalkMaps {
 /// Load crosswalk codes for a set of SCTIDs across the given terminologies.
 ///
 /// Terminology names are compared case-insensitively against the lowercased
-/// values stored in `concept_maps.terminology`. Missing terminologies are
-/// silently absent from the result (caller can detect this by getting empty
-/// strings from `codes_for`); we also emit a stderr warning once per missing
-/// terminology so users know the DB didn't have the requested crosswalk.
+/// values stored in `crossmaps` (or, for older databases, `concept_maps`).
+/// Missing terminologies are silently absent from the result (caller can detect
+/// this by getting empty strings from `codes_for`); we also emit a stderr
+/// warning once per missing terminology so users know the DB didn't have the
+/// requested crosswalk.
 pub fn lookup_crosswalks(
     conn: &Connection,
     sctids: &[&str],
@@ -1620,16 +1624,22 @@ pub fn lookup_crosswalks(
     }
 
     let has_crossmaps = table_exists(conn, "crossmaps");
+    let has_concept_maps = table_exists(conn, "concept_maps");
 
-    // Available terminologies span both tables: concept_maps (ctv3/read2) and
-    // crossmaps (icd10/opcs4).
-    let mut available: HashSet<String> = {
+    // Available terminologies span both map tables while old databases migrate
+    // from concept_maps to the general crossmaps model.
+    let mut available: HashSet<String> = HashSet::new();
+    if has_concept_maps {
         let mut stmt = conn.prepare("SELECT DISTINCT lower(terminology) FROM concept_maps")?;
         let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
-        rows.collect::<std::result::Result<_, _>>()?
-    };
+        available.extend(rows.collect::<std::result::Result<Vec<_>, _>>()?);
+    }
     if has_crossmaps {
-        let mut stmt = conn.prepare("SELECT DISTINCT lower(target_system) FROM crossmaps")?;
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT lower(source_system) FROM crossmaps WHERE target_system = 'snomed'
+             UNION
+             SELECT DISTINCT lower(target_system) FROM crossmaps WHERE source_system = 'snomed'",
+        )?;
         for r in stmt.query_map([], |row| row.get::<_, String>(0))? {
             available.insert(r?);
         }
@@ -1647,13 +1657,52 @@ pub fn lookup_crosswalks(
     let id_ph = std::iter::repeat_n("?", sctids.len())
         .collect::<Vec<_>>()
         .join(",");
+    let active_filter = if column_exists(conn, "crossmaps", "active") {
+        "AND active != 0"
+    } else {
+        ""
+    };
 
-    // concept_maps holds the legacy reverse maps (ctv3, read2).
+    // Newer databases use crossmaps for both SNOMED -> classification and
+    // legacy -> SNOMED rows.
+    let crossmap_terms: Vec<&String> = terminologies.iter().collect();
+    if has_crossmaps && !crossmap_terms.is_empty() {
+        fill_maps(
+            conn,
+            &mut maps,
+            sctids,
+            &crossmap_terms,
+            &format!(
+                "SELECT source_code, lower(target_system), target_code FROM crossmaps
+                 WHERE source_system = 'snomed'
+                   AND source_code IN ({id_ph})
+                   AND lower(target_system) IN ({})
+                   {active_filter}",
+                placeholders(crossmap_terms.len())
+            ),
+        )?;
+        fill_maps(
+            conn,
+            &mut maps,
+            sctids,
+            &crossmap_terms,
+            &format!(
+                "SELECT target_code, lower(source_system), source_code FROM crossmaps
+                 WHERE target_system = 'snomed'
+                   AND target_code IN ({id_ph})
+                   AND lower(source_system) IN ({})
+                   {active_filter}",
+                placeholders(crossmap_terms.len())
+            ),
+        )?;
+    }
+
+    // concept_maps holds legacy CTV3/Read v2 rows in older SQLite databases.
     let legacy: Vec<&String> = terminologies
         .iter()
         .filter(|t| matches!(t.as_str(), "ctv3" | "read2"))
         .collect();
-    if !legacy.is_empty() {
+    if has_concept_maps && !legacy.is_empty() {
         fill_maps(
             conn,
             &mut maps,
@@ -1667,24 +1716,6 @@ pub fn lookup_crosswalks(
         )?;
     }
 
-    // crossmaps holds the forward classification maps (icd10, opcs4).
-    let classification: Vec<&String> = terminologies
-        .iter()
-        .filter(|t| matches!(t.as_str(), "icd10" | "opcs4"))
-        .collect();
-    if has_crossmaps && !classification.is_empty() {
-        fill_maps(
-            conn,
-            &mut maps,
-            sctids,
-            &classification,
-            &format!(
-                "SELECT source_code, lower(target_system), target_code FROM crossmaps
-                 WHERE source_code IN ({id_ph}) AND lower(target_system) IN ({})",
-                placeholders(classification.len())
-            ),
-        )?;
-    }
     Ok(maps)
 }
 
@@ -1699,6 +1730,21 @@ fn table_exists(conn: &Connection, name: &str) -> bool {
         |_| Ok(()),
     )
     .is_ok()
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
+    let Ok(mut stmt) = conn.prepare(&format!("PRAGMA table_info({table})")) else {
+        return false;
+    };
+    let Ok(rows) = stmt.query_map([], |row| row.get::<_, String>(1)) else {
+        return false;
+    };
+    for row in rows {
+        if row.ok().as_deref() == Some(column) {
+            return true;
+        }
+    }
+    false
 }
 
 /// Run a `SELECT sctid, terminology, code` query (params = sctids then terms)

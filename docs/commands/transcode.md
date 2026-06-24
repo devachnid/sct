@@ -13,7 +13,7 @@ sct ndjson --rf2 release.zip --refsets all --output snomed.ndjson
 sct sqlite --input snomed.ndjson --output snomed.db
 ```
 
-CTV3 maps work on a UK-derived `snomed.db`; Read v2 works only if your database already contains `read2` rows in `concept_maps`. Current UK RF2 releases do not contain the DMWB-unique Read v2 maps. ICD-10 / OPCS-4 and `--forward-history` need `--refsets all`. `sct transcode` fails with a clear message if the database lacks the required maps.
+CTV3 maps work on a UK-derived `snomed.db`; Read v2 works only if your database already contains item 9 Read v2 rows. Current UK RF2 releases do not contain the DMWB-unique Read v2 maps. ICD-10 / OPCS-4 and `--forward-history` need `--refsets all`. `sct transcode` fails with a clear message if the database lacks the required maps.
 
 ## Usage
 
@@ -57,8 +57,8 @@ echo 'I219' | sct transcode --from icd10 --to snomed
 
 Every mapping pivots through SNOMED CT:
 
-1. **Source → SNOMED** - `snomed` passes through; `ctv3`/`read2` resolve via the `concept_maps` table; `icd10`/`opcs4` reverse-resolve via `crossmaps`.
+1. **Source → SNOMED** - `snomed` passes through; `ctv3`/`read2` resolve via `crossmaps` rows where the target is SNOMED CT; `icd10`/`opcs4` reverse-resolve via SNOMED CT → classification `crossmaps`. Older databases can still resolve CTV3/Read v2 through `concept_maps`.
 2. **(optional) history forwarding** - if `--forward-history` and the pivot concept is inactive, it is forwarded to its `replaced_by` / `same_as` / `possibly_equivalent_to` target(s) from `concept_history`.
-3. **SNOMED → target** - `snomed` passes through; `ctv3`/`read2` via `concept_maps`; `icd10`/`opcs4` via `crossmaps`.
+3. **SNOMED → target** - `snomed` passes through; all other systems resolve through `crossmaps`, falling back to `concept_maps` for legacy CTV3/Read v2 databases.
 
 See [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md) for the full design and the DMWB-replacement context.

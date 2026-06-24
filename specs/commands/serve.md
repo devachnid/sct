@@ -510,27 +510,12 @@ CREATE INDEX idx_refset_members_by_concept
 
 This unblocks the `^` ECL member-of operator for Simple refsets.
 
-### To come: extended map refsets (`ConceptMap`)
+### ConceptMap storage
 
-For `ConceptMap/$translate` beyond CTV3 / Read v2 (which already use the `concept_maps` table),
-a `concept_maps_rf2` table will be needed to load SNOMED→ICD-10 / OPCS-4 / LOINC extended map
-refsets:
-
-```sql
-CREATE TABLE concept_maps_rf2 (
-    refset_id        TEXT NOT NULL,  -- SCTID of the map refset
-    source_concept   TEXT NOT NULL,  -- SNOMED CT source SCTID
-    target_system    TEXT NOT NULL,  -- e.g. 'http://hl7.org/fhir/sid/icd-10'
-    target_code      TEXT NOT NULL,
-    map_group        INTEGER,
-    map_priority     INTEGER,
-    map_rule         TEXT,
-    map_advice       TEXT,
-    correlation      TEXT
-);
-```
-
-This table is not yet created - part of the future `--refsets all` work.
+`ConceptMap/$translate` reads the same general `crossmaps` table as
+`sct transcode`. CTV3 / Read v2 rows are represented as external source code ->
+SNOMED CT target rows. ICD-10 / OPCS-4 rows are represented as SNOMED CT source
+-> external target rows and require `sct ndjson --refsets all`.
 
 ---
 
@@ -591,8 +576,8 @@ Prerequisites: `refset_members` table (done - shipped in `sct ndjson --refsets s
 Deliverables:
 
 - `^` ECL operator (member-of reference set) via `refset_members` table
-- `ConceptMap/$translate` for CTV3 and Read v2 (using existing `concept_maps` table)
-- `ConceptMap/$translate` for ICD-10 and OPCS-4 (requires `concept_maps_rf2` - `--refsets all`)
+- `ConceptMap/$translate` for CTV3 and Read v2 via `crossmaps`
+- `ConceptMap/$translate` for ICD-10 and OPCS-4 via `crossmaps` (requires `--refsets all`)
 - `ValueSet/$expand` with `^` ECL
 
 ### Phase 4 - R5 + hardening

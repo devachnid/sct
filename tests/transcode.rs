@@ -97,7 +97,7 @@ fn codelist_include_maps_spans_concept_maps_and_crossmaps() {
         &["icd10".to_string(), "ctv3".to_string()],
     )
     .unwrap();
-    // ICD-10 from crossmaps, CTV3 from concept_maps - merged in one call.
+    // ICD-10 and CTV3 both come through the general crossmaps model.
     assert_eq!(maps.codes_for("22298006", "icd10"), "I219");
     assert_eq!(maps.codes_for("73211009", "icd10"), "E149");
     assert_eq!(maps.codes_for("22298006", "ctv3"), "X200");

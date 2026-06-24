@@ -103,19 +103,26 @@ DescriptionId and assurance metadata. That is why `sct` should prefer
 
 ## Import Design
 
-The importer should load item 9 into the existing SNOMED SQLite database, but
-it should not throw away assurance metadata. A minimal import into the current
-`concept_maps(code, terminology, concept_id)` table would make `sct transcode
---from read2` work, but would lose `DescriptionId`, `IS_ASSURED`, `MapId`, and
-source release provenance.
+The importer should load item 9 into the existing SNOMED SQLite database through
+the general `crossmaps` table. It should not collapse Read v2 rows into only the
+legacy `concept_maps(code, terminology, concept_id)` shape, because that loses
+`DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, map status, and source
+release provenance.
 
-The production import should therefore either:
+The production import should store Read v2 -> SNOMED rows with:
 
-- extend the crossmap model so Read v2 -> SNOMED rows can carry
-  `description_id`, `assured`, `map_id`, `effective_date`, and `source_release`;
-  or
-- add a dedicated `read2_snomed_maps` table and expose it through `transcode`,
-  `crosswalk`, codelist export, FHIR `$translate`, and MCP.
+- `source_system = 'read2'`
+- `source_code = <ReadCode><TermCode>`
+- `source_term_code = <TermCode>`
+- `target_system = 'snomed'`
+- `target_code = ConceptId`
+- `target_description_id = DescriptionId`
+- `map_source = 'nhs_data_migration_item9'`
+- `map_id = MapId`
+- `effective_date = EffectiveDate`
+- `active = MapStatus > 0`
+- `map_status = MapStatus`
+- `is_assured = IS_ASSURED`
 
 Recommended source-code encoding for command-line input is the seven-character
 Read v2 source key:

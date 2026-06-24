@@ -113,16 +113,24 @@ directions and the ICD/OPCS map metadata fit one shape.
 CREATE TABLE crossmaps (
     source_system  TEXT NOT NULL,   -- 'snomed' | 'read2' | 'ctv3' | 'icd10' | 'opcs4'
     source_code    TEXT NOT NULL,
+    source_term_code TEXT,          -- e.g. Read v2 TermCode where source_code is ReadCode+TermCode
     target_system  TEXT NOT NULL,
     target_code    TEXT NOT NULL,
+    target_description_id TEXT,     -- SNOMED description SCTID where the map specifies one
+    map_refset     TEXT NOT NULL,   -- RF2 refset SCTID or synthetic/import source key
+    map_source     TEXT NOT NULL DEFAULT 'rf2',
+    map_id         TEXT,            -- source map row identifier, e.g. DMWB MapId
+    effective_date TEXT,
+    active         INTEGER NOT NULL DEFAULT 1,
+    map_status     TEXT,
     map_group      INTEGER,         -- ExtendedMap grouping (alternatives)
     map_priority   INTEGER,         -- order within a group
     map_rule       TEXT,            -- ICD-10 map rule (age/sex/etc), nullable
     map_advice     TEXT,            -- human-readable advice, nullable
     correlation    TEXT,            -- 'exact'|'broad'|'narrow'|'inexact'|'unspecified'
-    assured        INTEGER,         -- 1 if clinically assured (DMWB), else 0/NULL
-    source_release TEXT,            -- provenance (effectiveTime / MAPVERSIONS)
-    PRIMARY KEY (source_system, source_code, target_system, target_code, map_group)
+    is_assured     INTEGER,         -- 1 if clinically assured (DMWB), else 0/NULL
+    metadata_json  TEXT NOT NULL DEFAULT '{}',
+    PRIMARY KEY (source_system, source_code, target_system, target_code, map_refset, map_group)
 );
 CREATE INDEX idx_crossmaps_src ON crossmaps(source_system, source_code);
 CREATE INDEX idx_crossmaps_tgt ON crossmaps(target_system, target_code);
@@ -325,7 +333,8 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
 - **5. `sct codelist` cross-terminology export** ✅ **shipped** - `sct codelist
   export --include-maps ctv3,read2,icd10,opcs4` appends a column per terminology,
   cross-walking a SNOMED codelist to legacy + classification codes in one export
-  (ICD-10/OPCS-4 from `crossmaps`, CTV3/Read v2 from `concept_maps`, merged).
+  through the general `crossmaps` table, with legacy `concept_maps` fallback for
+  older CTV3/Read v2 databases.
   Tests: `tests/transcode.rs::codelist_include_maps_spans_concept_maps_and_crossmaps`.
   Remaining: full intensional multi-terminology codelists (format v2).
 

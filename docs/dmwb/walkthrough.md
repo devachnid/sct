@@ -248,7 +248,7 @@ ICD-10, OPCS-4, CTV3, and history.
 | Browse equivalent codes around a concept | `sct crosswalk` | Shipped |
 | Batch terminology migration | `sct transcode` | Shipped |
 | SNOMED CT -> ICD-10 / OPCS-4 maps | `sct ndjson --refsets all` + `sct sqlite` | Shipped |
-| CTV3 <-> SNOMED CT maps | UK RF2 SimpleMap -> `concept_maps` | Shipped |
+| CTV3 <-> SNOMED CT maps | UK RF2 SimpleMap -> `crossmaps` | Shipped |
 | Inactive concept forwarding | RF2 Association refsets + `--forward-history` | Shipped |
 | Cross-terminology codelist exports | `sct codelist export --include-maps` | Shipped |
 | FHIR translation for Excel / integration | `sct serve` `ConceptMap/$translate` | Shipped |

@@ -7,7 +7,8 @@
 //!   - `concepts` table (all fields)
 //!   - `concept_isa` table (child_id, parent_id) - indexed for fast children/ancestor queries
 //!   - `concept_relationships` table (source, type, destination, group) - typed attributes for ECL
-//!   - `concept_maps` table (code → concept reverse lookup for CTV3 / Read v2)
+//!   - `concept_maps` table (legacy code → concept reverse lookup for CTV3 / Read v2)
+//!   - `crossmaps` table (general source-system/code → target-system/code maps)
 //!   - `refset_members` table (refset_id → concept_id) - refset membership
 //!   - `concepts_fts` FTS5 virtual table over id, preferred_term, synonyms, fsn
 //!   - `concept_ancestors` table (optional, --transitive-closure) - precomputed TCT
@@ -111,11 +112,21 @@ pub fn run(args: Args) -> Result<()> {
             "INSERT OR IGNORE INTO refset_members (refset_id, referenced_component_id) VALUES (?1, ?2)",
         )?;
 
+        let mut insert_simple_crossmap = tx.prepare(
+            "INSERT OR IGNORE INTO crossmaps
+             (source_system, source_code, target_system, target_code, map_refset,
+              map_group, map_priority, map_source, active, metadata_json)
+             VALUES (?1, ?2, 'snomed', ?3, 'rf2-simplemap', 1, 1,
+                     'rf2_simple_map', 1, '{}')",
+        )?;
+
         let mut insert_crossmap = tx.prepare(
             "INSERT OR IGNORE INTO crossmaps
              (source_system, source_code, target_system, target_code, map_refset,
-              map_group, map_priority, map_rule, map_advice, correlation)
-             VALUES ('snomed', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+              map_group, map_priority, map_rule, map_advice, correlation,
+              map_source, active, metadata_json)
+             VALUES ('snomed', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9,
+                     'rf2_extended_map', 1, '{}')",
         )?;
 
         for line in reader.lines() {
@@ -173,9 +184,11 @@ pub fn run(args: Args) -> Result<()> {
 
             for code in &record.ctv3_codes {
                 insert_map.execute(params![code, "ctv3", record.id])?;
+                insert_simple_crossmap.execute(params!["ctv3", code, record.id])?;
             }
             for code in &record.read2_codes {
                 insert_map.execute(params![code, "read2", record.id])?;
+                insert_simple_crossmap.execute(params!["read2", code, record.id])?;
             }
 
             for refset_id in &record.refsets {
@@ -206,6 +219,7 @@ pub fn run(args: Args) -> Result<()> {
         drop(insert_isa);
         drop(insert_rel);
         drop(insert_map);
+        drop(insert_simple_crossmap);
         drop(insert_refset_member);
         drop(insert_crossmap);
         tx.commit().context("committing transaction")?;
@@ -339,21 +353,32 @@ fn create_schema(conn: &Connection) -> Result<()> {
             PRIMARY KEY (refset_id, referenced_component_id)
         );
 
-        -- SNOMED CT → external classification maps (ICD-10, OPCS-4) from the RF2
-        -- ExtendedMap refsets (loaded with `--refsets all`). One row per map
-        -- target, preserving map group / priority / rule / advice. See
-        -- specs/cross-terminology-mapping.md.
+        -- General cross-terminology map table. RF2 SimpleMap rows are stored as
+        -- external source -> SNOMED CT target (for CTV3 / Read v2), while RF2
+        -- ExtendedMap rows are stored as SNOMED CT source -> external target
+        -- (for ICD-10 / OPCS-4). Source-specific fields that matter for query
+        -- semantics are promoted to nullable columns; metadata_json is only an
+        -- escape hatch for low-use provenance details.
         CREATE TABLE IF NOT EXISTS crossmaps (
-            source_system  TEXT NOT NULL,   -- 'snomed'
-            source_code    TEXT NOT NULL,   -- SNOMED SCTID
-            target_system  TEXT NOT NULL,   -- 'icd10' | 'opcs4'
+            source_system  TEXT NOT NULL,
+            source_code    TEXT NOT NULL,
+            source_term_code TEXT,
+            target_system  TEXT NOT NULL,
             target_code    TEXT NOT NULL,
-            map_refset     TEXT NOT NULL,   -- source SNOMED map refset SCTID (provenance)
+            target_description_id TEXT,
+            map_refset     TEXT NOT NULL,
+            map_source     TEXT NOT NULL DEFAULT 'rf2',
+            map_id         TEXT,
+            effective_date TEXT,
+            active         INTEGER NOT NULL DEFAULT 1,
+            map_status     TEXT,
             map_group      INTEGER,
             map_priority   INTEGER,
             map_rule       TEXT,
             map_advice     TEXT,
             correlation    TEXT,
+            is_assured     INTEGER,
+            metadata_json  TEXT NOT NULL DEFAULT '{}',
             PRIMARY KEY (source_system, source_code, target_system, target_code, map_refset, map_group)
         );
 
@@ -385,5 +410,42 @@ fn create_schema(conn: &Connection) -> Result<()> {
             content_rowid='rowid'
         );",
     )
-    .context("creating schema")
+    .context("creating schema")?;
+
+    ensure_crossmap_columns(conn).context("migrating crossmaps schema")
+}
+
+fn ensure_crossmap_columns(conn: &Connection) -> Result<()> {
+    let columns = [
+        ("source_term_code", "TEXT"),
+        ("target_description_id", "TEXT"),
+        ("map_source", "TEXT NOT NULL DEFAULT 'rf2'"),
+        ("map_id", "TEXT"),
+        ("effective_date", "TEXT"),
+        ("active", "INTEGER NOT NULL DEFAULT 1"),
+        ("map_status", "TEXT"),
+        ("is_assured", "INTEGER"),
+        ("metadata_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ];
+
+    for (name, definition) in columns {
+        if !column_exists(conn, "crossmaps", name)? {
+            conn.execute(
+                &format!("ALTER TABLE crossmaps ADD COLUMN {name} {definition}"),
+                [],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+    for row in rows {
+        if row? == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

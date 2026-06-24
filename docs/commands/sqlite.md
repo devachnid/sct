@@ -91,7 +91,9 @@ CREATE VIRTUAL TABLE concepts_fts USING fts5(
 
 ### `concept_maps` table
 
-Reverse index for fast legacy code → SNOMED lookup (UK edition only).
+Legacy reverse index for fast CTV3 / Read v2 code → SNOMED lookup. New builds
+also write these rows into `crossmaps`; this table remains for compatibility
+with older queries and tools.
 
 ```sql
 CREATE TABLE concept_maps (
@@ -103,27 +105,43 @@ CREATE TABLE concept_maps (
 
 ### `crossmaps` table
 
-SNOMED CT → ICD-10 / OPCS-4 maps, parsed from the RF2 **ExtendedMap** reference
-sets. Only populated when the NDJSON was built with `sct ndjson --refsets all`.
-Each row is one map target, preserving the map group / priority / rule / advice.
+General cross-terminology maps. RF2 **SimpleMap** rows are stored as
+CTV3/Read v2 → SNOMED CT rows. RF2 **ExtendedMap** rows are stored as
+SNOMED CT → ICD-10 / OPCS-4 rows and require `sct ndjson --refsets all`.
+Known source-specific semantics such as assurance and target description IDs
+have nullable relational columns; `metadata_json` is reserved for low-use
+provenance details.
 See [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md).
 
 ```sql
 CREATE TABLE crossmaps (
-    source_system  TEXT NOT NULL,   -- 'snomed'
-    source_code    TEXT NOT NULL,   -- SNOMED SCTID
-    target_system  TEXT NOT NULL,   -- 'icd10' | 'opcs4'
+    source_system  TEXT NOT NULL,
+    source_code    TEXT NOT NULL,
+    source_term_code TEXT,
+    target_system  TEXT NOT NULL,
     target_code    TEXT NOT NULL,
-    map_refset     TEXT NOT NULL,   -- source SNOMED map refset SCTID
+    target_description_id TEXT,
+    map_refset     TEXT NOT NULL,
+    map_source     TEXT NOT NULL DEFAULT 'rf2',
+    map_id         TEXT,
+    effective_date TEXT,
+    active         INTEGER NOT NULL DEFAULT 1,
+    map_status     TEXT,
     map_group      INTEGER,
     map_priority   INTEGER,
     map_rule       TEXT,
     map_advice     TEXT,
-    correlation    TEXT
+    correlation    TEXT,
+    is_assured     INTEGER,
+    metadata_json  TEXT NOT NULL DEFAULT '{}'
 );
 ```
 
 ```bash
+# CTV3 -> SNOMED CT (RF2 SimpleMap)
+sqlite3 snomed.db \
+  "SELECT target_code FROM crossmaps WHERE source_system='ctv3' AND source_code='X200E'"
+
 # Forward: SNOMED -> ICD-10 (Myocardial infarction)
 sqlite3 snomed.db \
   "SELECT target_code FROM crossmaps WHERE source_code='22298006' AND target_system='icd10'"

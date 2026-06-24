@@ -420,7 +420,9 @@ as a separate refset in current UK releases.
 The SQLite database includes:
 
 - `concepts.ctv3_codes` - JSON array of CTV3 codes for each concept
-- `concept_maps` table - reverse index for fast CTV3 code → SNOMED lookup
+- `crossmaps` table - general cross-terminology rows, including CTV3 → SNOMED
+  SimpleMap rows
+- `concept_maps` table - legacy reverse index retained for compatibility
 
 **Example queries:**
 
