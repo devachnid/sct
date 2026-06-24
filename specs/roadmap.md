@@ -12,22 +12,19 @@ In no particular order
 * [ ] obtain Windows signing key https://ngrok.com/blog/so-you-want-to-sign-for-windows
 * [ ] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). This is a big piece of work but would be a great way to demonstrate the value of the FST approach, and to identify areas for further optimisation.
 * [ ] dockerfile && dockerhub build (for the server)
-* [ ] improve distribution - should be a .dmg and .exe with code signing, and ideally also .deb and .rpm packages for Linux users.
-* [ ] Installation docs improvements: Remove "See the [Installation section of the README](https://github.com/pacharanero/sct#installation) for all supported install methods (shell installer, Homebrew, Scoop, `cargo install`, `cargo binstall`, and building from source)" and replace with Zensical Content Tabs section as per this example https://zensical.org/docs/get-started/#install-with-pip in the actual docs themselves. Make it as pretty as possible and use icons and interesting Zensical features.
+* [ ] improve distribution - remaining work is signing/notarization and registry submissions; `.dmg`, `.exe`, `.deb`, `.rpm`, Homebrew tap, Scoop bucket, shell installers, crates.io, and cargo-binstall are already shipped.
 * [ ] mermaid diagrams for the architecture and data flow, to visually explain how the different components fit together and how data moves through the system. This would replace the ascii diagrams in the README and make it easier for users to understand the overall design and how the different pieces interact. FST can more easily be explained this way. We should use real SNOMED examples in the diagrams to make them more concrete and relatable.
-ly explain how the different components fit together and how data moves through the system. This would replace the ascii diagrams in the README and make it easier for users to understand the overall design and how the different pieces interact. FST can more easily be explained this way. We should use real SNOMED examples in the diagrams to make them more concrete and relatable.
 * [ ] SNOMED primer - undestanding SNOMED basics (concepts, descriptions, relationships, refsets, ECL, etc.) is a barrier to entry for new users. A concise primer that explains these core concepts in plain language, with examples, is needed. It may need to take different approaches for technical vs clinical audiences. It should be in a section of the docs.
 
 ## In progress / near-term
 
 ### Distribution
 
-Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `install.sh` / `install.ps1`, cargo-binstall, a Homebrew tap, and a Scoop bucket - all auto-bumped by the release workflow. See the README install section. Outstanding:
+Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, a Homebrew tap, and a Scoop bucket - all auto-bumped by the release workflow. See the docs installation tabs. Outstanding:
 
 - [ ] macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users
       don't have to `chmod +x` and bypass Gatekeeper
 - [ ] Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block
-- [ ] `.deb` / `.rpm` via `cargo-deb` / `cargo-generate-rpm`, attached to GitHub Releases
 - [ ] Submit to `homebrew-core` once project hits 30+ stars and has stable release cadence
       (would enable `brew install sct` without the tap)
 - [ ] Submit to `winget` after Windows signing is in place
@@ -70,8 +67,9 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks). See [`docs/commands/codelist.md`](commands/codelist.md). Outstanding:
 
 - [ ] `sct codelist export <file> --format fhir-json/rf2` - remaining export formats
-- [ ] **Multi-terminology codelists (format v2)** - future extension once Read v2 /
-      ICD-10 / OPCS-4 maps are fully ingested. Would allow `terminology: [SNOMED CT,
+- [ ] **Multi-terminology codelists (format v2)** - future extension once the remaining
+      DMWB-unique Read v2 import path is solved. ICD-10 / OPCS-4 maps are now available
+      through RF2 `--refsets all`; Read v2 is still blocked. Would allow `terminology: [SNOMED CT,
       CTV3]` with first-class non-SNOMED codes (for historical Read v2 codes that
       have no modern SNOMED equivalent). The `--include-maps` export above is the
       interim solution for SNOMED-canonical lists; v2 is for genuinely cross-terminology
@@ -117,17 +115,18 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 
 ## Future / larger scope
 
-> **Cross-terminology mapping + DMWB replacement.** The History files, Concept
-> maps, Extended/Association refset, `--refsets all`, and `ConceptMap/$translate`
-> items below are unified into one design:
-> [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) - making
-> `sct` a successor to the NHS Data Migration Workbench's terminology/mapping
-> core (ICD-10 / OPCS-4 / CTV3 / Read v2 maps + SNOMED history + `sct transcode`),
-> acquired via `sct trud --edition dmwb` (item 98) and from the RF2 `sct` already
-> downloads. A June 2026 POC proved the data loads cleanly.
+> **Cross-terminology mapping + DMWB replacement.** The RF2-native terminology/mapping
+> core is now shipped: CTV3 maps, SNOMED CT -> ICD-10 / OPCS-4 ExtendedMap rows,
+> Association-refset history forwarding, `sct transcode`, `sct crosswalk`,
+> codelist `--include-maps`, and FHIR `ConceptMap/$translate`. See
+> [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) and the
+> DMWB walkthrough in the docs site. The remaining DMWB-specific gap is Read v2
+> import: current UK RF2 does not contain those maps, and the Access `.mdb` path
+> is blocked because `jetdb` cannot decode DMWB's Binary `SCUI` column.
 
-- [ ] **History files** - parse RF2 history substitution tables to map inactivated concept IDs
-      forward to their replacements; expose via `snomed_resolve` MCP tool
+- [ ] **History MCP surface** - RF2 Association history is parsed and loaded into
+      `concept_history`, and `sct transcode --forward-history` uses it. Still missing:
+      expose the same forwarding through an MCP `snomed_resolve` tool.
 - [~] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
       for Ontoserver, Snowstorm, and the NHS FHIR Terminology Server. Full spec in
       [`specs/commands/serve.md`](commands/serve.md); user docs in
@@ -154,8 +153,9 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
   2. ✅ **shipped** - **`ValueSet/$validate-code`** for a stored `.codelist` (set membership +
      live display) and for an implicit ECL value set (`?url=...fhir_vs=ecl/...`, via the ECL
      engine). Complements `CodeSystem/$validate-code`.
-  3. **`ConceptMap/$translate`** (also Phase 3 below) - CTV3 / Read v2 from the existing
-     `concept_maps` table; ICD-10 / OPCS-4 once `--refsets all` lands.
+  3. ✅ **shipped** - **`ConceptMap/$translate`** over the crossmap engine. Supports
+     SNOMED CT, CTV3, ICD-10, OPCS-4, and Read v2 when the backing DB contains those
+     maps. ICD-10 / OPCS-4 come from `--refsets all`; Read v2 remains data-blocked.
   4. **`$expand` parameter completeness + FHIR batch Bundles** - `activeOnly`, `displayLanguage`,
      specific `designation` / `property` filters, version params (`system-version` /
      `valueSetVersion`); `POST /` transaction/batch Bundle handler; `CodeSystem` resource read;
@@ -165,35 +165,35 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
   `ValueSet/$validate-code` per the priorities above; `CodeSystem` resource read; pagination
   polish - `$expand` ECL/`<<`/`<!`/`>>`/`>!`/boolean already done in Phase 1)
 
-  **Phase 3 - Refsets + ConceptMap** (`^` ECL member-of operator now unblocked - Simple
-  refsets load into the `refset_members` table via `sct ndjson --refsets simple` + `sct sqlite`;
-  `ConceptMap/$translate` for CTV3, Read v2, ICD-10, OPCS-4; complex/map/association refsets
-  still to come via `--refsets all`)
+  **Phase 3 - Refsets + ConceptMap** ✅ **mostly shipped**: `^` ECL member-of operator
+  works over Simple refsets; `ConceptMap/$translate` works over CTV3, ICD-10, OPCS-4
+  and any loaded Read v2 rows; Association refsets load concept history under
+  `--refsets all`. Remaining refset families: Complex refsets and AttributeValue refsets.
 
   **Phase 4 - R5 + hardening** (FHIR R5 CapabilityStatement; named ValueSet registry;
-  Docker image / systemd unit; full ECL attribute filter support - stretch goal)
-- [ ] **`sct ndjson --refsets all`** - extend RF2 ingestion beyond Simple refsets to cover the
-      remaining derivative-2 refset shapes. The CLI flag and `RefsetMode::All` enum variant
-      already exist (added with the Simple refset work) and currently bail with "not yet
-      implemented". Concretely needs:
+  Docker image / systemd unit; parameter completeness; batch Bundle support)
+- [~] **`sct ndjson --refsets all`** - RF2-native DMWB-relevant map/history ingestion is
+      shipped: ExtendedMap rows load into `crossmaps`, Association rows load into
+      `concept_history` via a history sidecar, and default `simple` mode still omits the
+      heavy data. Remaining derivative-2 refset shapes:
       - **Complex refsets** (`der2_Refset_Complex*Snapshot*.txt`) - adds attribute payload columns
         beyond simple membership; needs a wider row type and a strategy for surfacing those
         attributes to downstream consumers
-      - **Association refsets** (`der2_cRefset_Association*Snapshot*.txt`) - `SAME_AS`,
-        `REPLACED_BY`, `MAY_BE_A`, etc. Foundation for the `History files` item below
       - **Attribute value refsets** (`der2_cRefset_AttributeValue*Snapshot*.txt`) - concept-to-value
         annotations used by some UK national refsets
-      - **Extended map refsets** (`der2_iissssRefset_ExtendedMap*Snapshot*.txt`) - structured
-        SNOMED→ICD-10 / OPCS-4 / LOINC map data; needs a new `concept_maps_rf2` table (designed
-        in `specs/commands/serve.md`) to capture map_group, map_priority, map_rule, map_advice,
-        correlation. This is the prerequisite for full `ConceptMap/$translate` in `sct serve`
-        beyond the CTV3/Read v2 maps already supported.
+      - **Additional ExtendedMap systems** beyond the known ICD-10 / OPCS-4 refset ids, if a
+        future RF2 release adds new map targets that should be classified by
+        `rf2::extended_map_system`.
 
       Each refset family gets its own table or column extension; `refset_members` (concept-only,
       already shipped) stays as-is.
 
-- [ ] **Concept maps** - cross-map support: load SNOMED→ICD-10/OPCS-4 map files from RF2 and
-      expose via `snomed_map` MCP tool
+- [ ] **MCP crossmaps** - CLI/codelist/FHIR crossmap support is shipped. Extend the MCP
+      `snomed_map` tool beyond CTV3/Read v2 so it can expose ICD-10 / OPCS-4 `crossmaps`
+      and history-forwarding results too.
+- [ ] **Read v2 import** - solve the DMWB-unique data gap. Preferred path is TRUD item 9
+      flat files if available; alternatives are upstream `jetdb` Binary support or a
+      documented `mdbtools` pre-export that `sct dmwb import` can ingest.
 - [ ] **IPS Free Set bundling** - investigate bundling the pre-processed NDJSON artefact of the
       SNOMED International IPS Free Set (freely available from MLDS without affiliate membership)
       to make `sct lexical`, `sct mcp`, and `sct serve` work out-of-the-box for IPS tooling
@@ -361,5 +361,4 @@ being the next concrete pieces of work.
       first interface that would make a medical student *play* with the ontology, and
       the traversal patterns discovered during play are genuinely useful codelist seeds.
       Ship as a subcommand; minimal dependencies; pure terminal UX.
-
 
