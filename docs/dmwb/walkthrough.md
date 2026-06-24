@@ -14,10 +14,35 @@ and serving FHIR `ConceptMap/$translate`.
 !!! warning "Read v2 status"
     `sct` supports `read2` wherever the SQLite database contains Read v2 rows in
     `concept_maps`, but current UK RF2 releases do not contain the DMWB-unique
-    Read v2 maps. The `sct dmwb` Access-file reader is currently introspection
-    only because `jetdb` cannot decode DMWB's Binary `SCUI` Read v2 column. For
-    now, the complete shipped path is CTV3, SNOMED CT, ICD-10, OPCS-4, and
-    SNOMED CT history forwarding.
+    Read v2 maps. We have now confirmed that TRUD item 9, **NHS Data
+    Migration**, provides the final April 2020 Read v2 maps as flat TSV files.
+    The Access-file reader remains introspection only because `jetdb` cannot
+    decode DMWB's Binary `SCUI` Read v2 column.
+
+---
+
+## Methodology
+
+The replacement work treats DMWB as two separate products:
+
+| DMWB area | `sct` treatment |
+|---|---|
+| Terminology browsing, crossmaps, clusters, and `TRANSCODE` | In scope. Recreated with RF2-native maps/history, TRUD item 9 Read v2 files, CLI commands, codelist exports, and FHIR `$translate`. |
+| EPR patient-data loading, miscode repair, casemix graphs, and Access UI | Out of scope for `sct`'s terminology toolchain. |
+
+The analysis method is:
+
+1. Prefer current RF2 data where it already contains DMWB-equivalent content:
+   CTV3 SimpleMap, SNOMED -> ICD-10 / OPCS-4 ExtendedMap, and Association
+   history refsets.
+2. Use TRUD item 9 only for the DMWB-unique legacy Read v2 maps. It is the final
+   April 2020 static flat-file release.
+3. Preserve the migration product's own safety metadata. For Read v2 this means
+   retaining `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and source
+   release provenance, rather than flattening everything into a bare code ->
+   concept lookup.
+4. Expose the same map engine consistently through `transcode`, `crosswalk`,
+   codelist export, FHIR `$translate`, and eventually MCP.
 
 ---
 
@@ -127,6 +152,16 @@ cat ctv3-codes.txt \
   | sct transcode --from ctv3 --to icd10 --json --db snomed.db
 ```
 
+Read v2 will use the same command shape once item 9 import is implemented:
+
+```bash
+cat read2-code-term-keys.txt \
+  | sct transcode --from read2 --to snomed --forward-history --db snomed.db
+```
+
+The recommended Read v2 input key is the seven-character ReadCode+TermCode
+form, e.g. `0111.00`. See [Read v2 via TRUD item 9](read-v2-item9.md).
+
 ---
 
 ## Forward inactive SNOMED CT concepts
@@ -200,8 +235,9 @@ sct dmwb dump "DMWB NHS Data Migration Maps.mdb" SCTICDMAP --limit 5
 ```
 
 This is useful for validation and reverse engineering, but it is not the
-recommended production ingestion path today. Prefer the RF2-native maps loaded
-by `--refsets all`.
+recommended production ingestion path for Read v2 today. Prefer TRUD item 9's
+flat files for Read v2 and the RF2-native maps loaded by `--refsets all` for
+ICD-10, OPCS-4, CTV3, and history.
 
 ---
 
@@ -216,7 +252,7 @@ by `--refsets all`.
 | Inactive concept forwarding | RF2 Association refsets + `--forward-history` | Shipped |
 | Cross-terminology codelist exports | `sct codelist export --include-maps` | Shipped |
 | FHIR translation for Excel / integration | `sct serve` `ConceptMap/$translate` | Shipped |
-| DMWB Read v2 map import | planned `sct dmwb import` / TRUD item 9 path | Blocked |
+| DMWB Read v2 map import | TRUD item 9 flat files; importer design documented | Data source confirmed |
 | DMWB EPR DATA / casemix analytics | Out of scope | Not planned |
 
 For the design history and remaining Read v2 options, see the

@@ -121,8 +121,9 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 > codelist `--include-maps`, and FHIR `ConceptMap/$translate`. See
 > [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) and the
 > DMWB walkthrough in the docs site. The remaining DMWB-specific gap is Read v2
-> import: current UK RF2 does not contain those maps, and the Access `.mdb` path
-> is blocked because `jetdb` cannot decode DMWB's Binary `SCUI` column.
+> import. Current UK RF2 does not contain those maps, and the Access `.mdb` path
+> is blocked because `jetdb` cannot decode DMWB's Binary `SCUI` column; however
+> TRUD item 9 is now confirmed as the final April 2020 flat-file source.
 
 - [ ] **History MCP surface** - RF2 Association history is parsed and loaded into
       `concept_history`, and `sct transcode --forward-history` uses it. Still missing:
@@ -191,9 +192,12 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 - [ ] **MCP crossmaps** - CLI/codelist/FHIR crossmap support is shipped. Extend the MCP
       `snomed_map` tool beyond CTV3/Read v2 so it can expose ICD-10 / OPCS-4 `crossmaps`
       and history-forwarding results too.
-- [ ] **Read v2 import** - solve the DMWB-unique data gap. Preferred path is TRUD item 9
-      flat files if available; alternatives are upstream `jetdb` Binary support or a
-      documented `mdbtools` pre-export that `sct dmwb import` can ingest.
+- [ ] **Read v2 import** - source data confirmed in TRUD item 9
+      (`nhs_datamigration_29.0.0_20200401000001.zip`). Implement import from
+      `rcsctmap2_uk_20200401000001.txt` using latest `EffectiveDate` per `MapId`
+      and `MapStatus > 0`, preserving `DescriptionId`, `IS_ASSURED`, `MapId`,
+      `EffectiveDate`, and source release provenance. Do not collapse into the
+      current `concept_maps` table unless that metadata is also retained elsewhere.
 - [ ] **IPS Free Set bundling** - investigate bundling the pre-processed NDJSON artefact of the
       SNOMED International IPS Free Set (freely available from MLDS without affiliate membership)
       to make `sct lexical`, `sct mcp`, and `sct serve` work out-of-the-box for IPS tooling
@@ -361,4 +365,3 @@ being the next concrete pieces of work.
       first interface that would make a medical student *play* with the ontology, and
       the traversal patterns discovered during play are genuinely useful codelist seeds.
       Ship as a subcommand; minimal dependencies; pure terminal UX.
-

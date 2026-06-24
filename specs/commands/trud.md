@@ -34,6 +34,7 @@ always verifies this after download and deletes the file if the checksum does no
 | **1799** | UK Monolith | Snapshot only | International + UK Clinical + UK Drug (dm+d) + UK Pathology, fully merged and de-duplicated |
 | **101** | UK Clinical Edition | Full, Snapshot & Delta | International + UK Clinical extension |
 | **105** | UK Drug Extension (dm+d) | Full, Snapshot & Delta | Prescribing/medicines concepts only |
+| **9** | NHS Data Migration | Final April 2020 flat-file pack | Read v2 / CTV3 / SNOMED CT migration maps. Not RF2; download only, no pipeline. |
 
 For most users the **Monolith (item 1799)** is the right default - it is a single zip containing
 everything, with conflicts and duplicates already resolved by NHS England.
@@ -99,6 +100,10 @@ description = "UK Clinical Edition (International + UK Clinical, no dm+d)"
 [trud.editions.uk_drug]
 trud_item = 105
 description = "UK Drug Extension (dm+d only)"
+
+[trud.editions.nhs_data_migration]
+trud_item = 9
+description = "NHS Data Migration Pack (final Read v2 / CTV3 / SNOMED CT maps)"
 ```
 
 ---

@@ -14,6 +14,7 @@ using the TRUD REST API. Handles authentication, SHA-256 integrity verification,
    - **UK Monolith** (item 1799) - recommended for most users; includes International + UK Clinical + UK Drug (dm+d) + UK Pathology in one merged zip. Snapshot only.
    - **UK Clinical Edition** (item 101) - International + UK Clinical, without dm+d.
    - **UK Drug Extension** (item 105) - dm+d prescribing/medicines concepts only.
+   - **NHS Data Migration** (item 9) - final April 2020 Read v2 / CTV3 / SNOMED CT migration maps. This is not RF2; download it without `--pipeline`.
 
 ### Get your API key
 
@@ -129,6 +130,7 @@ Lists all available releases for an edition, newest first.
 sct trud list                          # UK Monolith (default)
 sct trud list --edition uk_clinical
 sct trud list --edition uk_drug
+sct trud list --edition nhs_data_migration
 sct trud list --item 1799              # raw TRUD item number
 ```
 
@@ -280,6 +282,19 @@ first invocation after a release but be a no-op on all others.
 sct trud download --release 41.5.0
 ```
 
+#### Download the final NHS Data Migration maps
+
+TRUD item 9 is the final April 2020 NHS Data Migration Pack. It contains flat
+Read v2 / CTV3 / SNOMED CT mapping tables, including the Read v2 maps missing
+from current UK RF2 releases.
+
+```bash
+sct trud download --edition nhs_data_migration
+```
+
+Do not pass `--pipeline`: this archive is not an RF2 release. See the
+[DMWB Read v2 notes](../dmwb/read-v2-item9.md) for the import methodology.
+
 #### Save to a specific directory
 
 ```bash
@@ -294,7 +309,7 @@ sct trud download --output-dir /data/snomed/
 
 | Flag                    | Description                                                      |
 | ----------------------- | ---------------------------------------------------------------- |
-| `--edition <NAME>`      | Named edition: `uk_monolith` (default), `uk_clinical`, `uk_drug` |
+| `--edition <NAME>`      | Named edition: `uk_monolith` (default), `uk_clinical`, `uk_drug`, `nhs_data_migration` |
 | `--item <N>`            | Raw TRUD item number - overrides `--edition`                     |
 | `--api-key <KEY>`       | API key as a plain string                                        |
 | `--api-key-file <PATH>` | File whose first line is the API key                             |

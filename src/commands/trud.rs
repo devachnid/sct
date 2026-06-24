@@ -99,7 +99,7 @@ struct KeyArgs {
 
 #[derive(Parser, Debug)]
 pub struct ListArgs {
-    /// Named edition profile: uk_monolith, uk_clinical, uk_drug.
+    /// Named edition profile: uk_monolith, uk_clinical, uk_drug, nhs_data_migration.
     ///
     /// If omitted (and --item is not given), shows subscription status for all
     /// built-in editions. If supplied, lists all releases for that edition.
@@ -116,7 +116,7 @@ pub struct ListArgs {
 
 #[derive(Parser, Debug)]
 pub struct CheckArgs {
-    /// Named edition profile: uk_monolith (default), uk_clinical, uk_drug.
+    /// Named edition profile: uk_monolith (default), uk_clinical, uk_drug, nhs_data_migration.
     #[arg(long, default_value = "uk_monolith")]
     edition: String,
 
@@ -130,7 +130,7 @@ pub struct CheckArgs {
 
 #[derive(Parser, Debug)]
 pub struct DownloadArgs {
-    /// Named edition profile: uk_monolith (default), uk_clinical, uk_drug.
+    /// Named edition profile: uk_monolith (default), uk_clinical, uk_drug, nhs_data_migration.
     #[arg(long, default_value = "uk_monolith")]
     edition: String,
 
@@ -245,6 +245,13 @@ fn builtin_editions() -> HashMap<&'static str, BuiltinEdition> {
         BuiltinEdition {
             trud_item: 105,
             description: "UK Drug Extension (dm+d only)",
+        },
+    );
+    m.insert(
+        "nhs_data_migration",
+        BuiltinEdition {
+            trud_item: 9,
+            description: "NHS Data Migration Pack (final Read v2 / CTV3 / SNOMED CT maps)",
         },
     );
     m
@@ -1064,6 +1071,15 @@ mod tests {
     fn builtin_edition_drug() {
         let config = Config::default();
         assert_eq!(resolve_item_id(None, "uk_drug", &config).unwrap(), 105);
+    }
+
+    #[test]
+    fn builtin_edition_nhs_data_migration() {
+        let config = Config::default();
+        assert_eq!(
+            resolve_item_id(None, "nhs_data_migration", &config).unwrap(),
+            9
+        );
     }
 
     #[test]

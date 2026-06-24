@@ -59,6 +59,7 @@ nav:
       - Everything Else: walkthrough/everything-else.md
   - DMWB:
       - Walkthrough: dmwb/walkthrough.md
+      - Read v2 via TRUD item 9: dmwb/read-v2-item9.md
   - Why Build This?:
       - Why sct?: why/why-build-this.md
       - Why code lists?: why/why-codelists.md

@@ -43,10 +43,10 @@ RF2 text files `sct` can parse:
 
 | File (Snapshot) | Yields | Today |
 |---|---|---|
-| `der2_iisssccRefset_ExtendedMap…` / `der2_iisssciRefset_ExtendedMap…` | SNOMED → **ICD-10** and **OPCS-4** maps (with map group / priority / rule / advice / correlation) | not parsed |
+| `der2_iisssccRefset_ExtendedMap…` / `der2_iisssciRefset_ExtendedMap…` | SNOMED → **ICD-10** and **OPCS-4** maps (with map group / priority / rule / advice / correlation) | ✅ parsed |
 | `der2_iissscRefset_ComplexMap…` | complex maps (older shape) | not parsed |
 | `der2_sRefset_SimpleMap…` | **CTV3** ↔ SNOMED | ✅ parsed |
-| `der2_cRefset_Association…` | **historical associations** (REPLACED BY, SAME AS, POSSIBLY EQUIVALENT TO, MOVED TO, ALTERNATIVE) | not parsed |
+| `der2_cRefset_Association…` | **historical associations** (REPLACED BY, SAME AS, POSSIBLY EQUIVALENT TO, MOVED TO, ALTERNATIVE) | ✅ parsed |
 | `der2_cRefset_AttributeValue…` | concept **inactivation reason** | not parsed |
 
 This is the bulk of the value and needs no DMWB and no new acquisition - it is
@@ -62,22 +62,20 @@ machinery is item-agnostic.
   pre-loaded with SNOMED / CTV3 / Read / OPCS-4 / ICD-10 and the crossmaps. This
   is where the **Read v2 maps** (`RCTSCTMAP`, `RCTCTV3MAP`) and **Code Usage**
   live. Format: a zip of Jet/ACE `.mdb` files.
-- **TRUD item 9** - "NHS Data Migration": the underlying many:one forward/backward
-  crossmap products. **Open question (§11):** confirm whether item 9 ships the
-  maps as *flat files*; if so it is the preferred source for Read v2 maps and
-  avoids `.mdb` parsing entirely.
+- **TRUD item 9** - "NHS Data Migration": the underlying many:one forward
+  migration crossmap products. **Confirmed June 2026:** this ships the final
+  April 2020 flat-file pack, including
+  `Mapping Tables/Updated/Clinically Assured/rcsctmap2_uk_20200401000001.txt`.
+  This is the preferred source for Read v2 maps and avoids `.mdb` parsing.
 
 Add a built-in edition mapping (in `trud.rs` `builtin_editions()`):
 
 ```
-dmwb              -> TRUD item 98   (Data Migration Workbench, .mdb pack)
-nhs_data_migration -> TRUD item 9   (raw crossmap products; format TBC)
+nhs_data_migration -> TRUD item 9   (final April 2020 flat-file crossmap pack)
 ```
 
-`sct trud download --edition dmwb` then reuses everything (releases dir, SHA-256,
-`--skip-if-current`). A new `--pipeline` branch (see §6) runs the DMWB importer
-instead of `ndjson`/`sqlite`, keyed off the edition's *kind* (terminology vs
-mapping pack).
+`sct trud download --edition nhs_data_migration` reuses the standard download
+and SHA-256 verification path. Do not run the RF2 pipeline for item 9.
 
 ### 2.3 Reading `.mdb` from a single Rust binary
 
@@ -204,24 +202,31 @@ A new command (and library module) for the DMWB-unique data:
 sct dmwb import <path-to-dmwb-dir-or-zip> [--db snomed.db]
 ```
 
-- Reads, via `jetdb`: `RCTSCTMAP` (Read v2→SNOMED), `RCTCTV3MAP` (Read v2→CTV3),
-  and the Code Usage table; loads them into `crossmaps` (`source_system='read2'`)
-  and `code_usage`. Recovers the Read v2 code from the UTF-16LE `SCUI` field.
+- Reads TRUD item 9 flat files, primarily `RcSctMap2` for Read v2→SNOMED.
+  Active rows are selected by the product's documented method: latest
+  `EffectiveDate` per `MapId`, then `MapStatus > 0`. Preserve `DescriptionId`,
+  `IS_ASSURED`, `MapId`, `EffectiveDate`, and source release provenance; do not
+  collapse directly into `concept_maps` unless that metadata is also retained
+  elsewhere.
+- Optional later fallbacks: `RcTermSctMap` when a source record has ReadCode +
+  term text but no TermCode, and `RcMap` when it has ReadCode only.
 - Optionally loads `SCTHREL`/`SCTSUBST` into `concept_history` **only if** the RF2
   Association refset was not used (prefer RF2 as the canonical history source).
-- Records provenance in `map_versions` (`source='dmwb_item98'`, from `MAPVERSIONS`).
+- Records provenance in `map_versions` (`source='nhs_data_migration_item9'`,
+  release `DATAMIGRATION_29.0.0_20200401000001`).
 - Idempotent: `INSERT OR REPLACE` keyed on the primary keys; safe to re-run on a
   new DMWB release.
 
 ## 6. Acquisition wiring (`sct trud`)
 
-- Add `dmwb` (item 98) and `nhs_data_migration` (item 9) to `builtin_editions()`.
-- `sct trud download --edition dmwb` works immediately (download + SHA verify).
+- Add `nhs_data_migration` (item 9) to `builtin_editions()`. ✅ shipped.
+- `sct trud download --edition nhs_data_migration` works (download + SHA verify).
 - Extend the `--pipeline` branch in `run_download` to dispatch on edition kind:
   - terminology editions (`uk_monolith`, …) → `sct ndjson` → `sct sqlite` (as now);
-  - mapping editions (`dmwb`) → `sct dmwb import` into the existing/target DB.
-- End-state one-liner: `sct trud download --edition dmwb --pipeline --db snomed.db`
-  downloads item 98 and loads the Read v2 maps + usage into your SNOMED DB.
+  - mapping editions (`nhs_data_migration`) → future Read v2 importer into the
+    existing/target DB.
+- End-state one-liner: `sct trud download --edition nhs_data_migration --pipeline --db snomed.db`
+  downloads item 9 and loads the Read v2 maps into your SNOMED DB.
 
 ## 7. Query surface (CLI)
 
@@ -300,19 +305,18 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   cross-terminology equivalents of one code at once (the tri-terminology BROWSE
   view as text; degrades gracefully on a DB without ICD/OPCS maps).
   Tests: `tests/transcode.rs`.
-- **3. DMWB acquisition** (Channel B) ⚠️ **validation gate FAILED for jetdb; Read v2
-  import blocked.** Shipped: `sct dmwb tables`/`dump` (feature `dmwb`, pure-Rust
+- **3. DMWB acquisition** (Channel B) ⚠️ **Access validation gate failed, but
+  TRUD item 9 flat files are confirmed.** Shipped: `sct dmwb tables`/`dump` (feature `dmwb`, pure-Rust
   `jetdb` 0.3) reads a DMWB `.mdb` and confirmed jetdb decodes the all-Text map
   tables cleanly (`SCTICDMAP`: `24005006 → H438`). **But** DMWB stores the Read v2
   code in a **Binary `SCUI` column, which jetdb 0.3 returns as `Null`** - and the
   Read v2 maps are the *only* DMWB-unique data (ICD-10/OPCS-4/CTV3/history are all
-  already covered by the shipped RF2-native phases above). So the jetdb import of
-  Read v2 is not viable as-is. Paths forward, in order of preference:
-  (a) **TRUD item 9 "NHS Data Migration"** - check whether it ships the Read v2
-  maps as flat files (would be pure-Rust, no `.mdb`); (b) upstream `jetdb` Binary
-  support; (c) a documented `mdbtools mdb-export` pre-step that `sct dmwb import`
-  then ingests from TSV. The `sct trud --edition dmwb` download wiring is deferred
-  until one of these makes the import deliver real value.
+  already covered by the shipped RF2-native phases above). TRUD item 9 solves the
+  source-data problem: `nhs_datamigration_29.0.0_20200401000001.zip` is a flat-file
+  release containing `rcsctmap2_uk_20200401000001.txt`. Applying the documented
+  latest-row / active-map method yields 102,057 active ReadCode+TermCode rows:
+  77,079 assured and 24,978 unassured. Remaining work: implement the importer while
+  preserving `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and provenance.
 - **4. `sct serve` `ConceptMap/$translate`** ✅ **shipped** - FHIR R4 `$translate`
   over the crossmap engine (`GET|POST /ConceptMap/$translate?system=&code=&targetsystem=`),
   accepting FHIR system URIs or bare names, both directions, with the SNOMED
