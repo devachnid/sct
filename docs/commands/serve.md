@@ -35,6 +35,9 @@ Responses are `application/fhir+json`. An `Accept` header that requests XML excl
 
 ## Docker Compose
 
+For the focused quick-start, see
+[Get your own terminology server in 2 commands](../terminology-server.md).
+
 For a small VPS where you want a working terminology server from a fresh clone:
 
 ```bash
