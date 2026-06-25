@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+services:
+  sct:
+    build:
+      context: .
+    image: sct:local
+    restart: unless-stopped
+    environment:
+      TRUD_API_KEY: ${TRUD_API_KEY:-}
+      SCT_DATA_HOME: /data
+      SCT_CODELISTS: /codelists
+      SCT_SERVE_HOST: 0.0.0.0
+      SCT_SERVE_PORT: 8080
+      SCT_FHIR_BASE: /fhir
+      SCT_TRUD_EDITION: ${SCT_TRUD_EDITION:-uk_monolith}
+      SCT_REFSETS: ${SCT_REFSETS:-all}
+      SCT_LOCALE: ${SCT_LOCALE:-en-GB}
+      SCT_INCLUDE_INACTIVE: ${SCT_INCLUDE_INACTIVE:-false}
+      SCT_BOOTSTRAP: ${SCT_BOOTSTRAP:-true}
+    ports:
+      - "${SCT_PORT:-8080}:8080"
+    volumes:
+      - sct-data:/data
+      - ./codelists:/codelists:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/fhir/metadata"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20m
+
+volumes:
+  sct-data:

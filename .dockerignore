@@ -1,0 +1,25 @@
+# Keep Docker build contexts small and avoid copying licensed/generated data.
+target/
+site/
+.git/
+.github/
+.agents/
+.codex/
+
+*.ndjson
+*.parquet
+*.lance
+*.db
+*.db-shm
+*.db-wal
+*.arrow
+*.fst
+*.zip
+snomed-concepts/
+snomed-hierarchies/
+
+node_modules/
+.DS_Store
+.idea/
+.vscode/
+.config/sct/

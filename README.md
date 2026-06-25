@@ -166,6 +166,18 @@ UK users can automate steps 1–3 with a single command once the [TRUD API integ
 sct trud download --edition uk_monolith --pipeline
 ```
 
+Or, on a fresh VPS with Docker installed, run the FHIR terminology server from
+this checkout:
+
+```bash
+cp .env.example .env
+$EDITOR .env   # set TRUD_API_KEY
+docker compose up --build
+```
+
+The first boot downloads the configured TRUD edition, builds `snomed.db` into a
+persistent Docker volume, and serves FHIR at `http://localhost:8080/fhir`.
+
 ## Documentation
 
 For all further information see the full documentation by either exploring the [docs/](docs/) directory or running the docs site locally with `s/docs`, or visit the docs on the GitHub Pages site: <https://pacharanero.github.io/sct/>

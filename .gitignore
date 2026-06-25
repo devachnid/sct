@@ -22,6 +22,7 @@ benchmarks/*.md
 .idea/
 .vscode/
 *.swp
+.env
 
 
 # Zensical generated output
