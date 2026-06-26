@@ -62,6 +62,7 @@ struct AppState {
     db: Arc<PathBuf>,
     impl_url: Arc<String>,
     registry: Arc<ValueSetRegistry>,
+    translate_available: bool,
 }
 
 pub fn run(args: Args) -> Result<()> {
@@ -113,6 +114,7 @@ pub fn serve_listener(
         }
     }
     let state = AppState {
+        translate_available: table_exists(&db, "crossmaps")?,
         db: Arc::new(db),
         impl_url: Arc::new(impl_url),
         registry: Arc::new(registry),
@@ -130,6 +132,19 @@ pub fn serve_listener(
         axum::serve(listener, app).await.context("serving")?;
         Ok::<_, anyhow::Error>(())
     })
+}
+
+fn table_exists(db: &PathBuf, table: &str) -> Result<bool> {
+    let conn = crate::commands::open_db_readonly(db, None)
+        .with_context(|| format!("opening database {}", db.display()))?;
+    let exists: i64 = conn.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1
+        )",
+        [table],
+        |r| r.get(0),
+    )?;
+    Ok(exists != 0)
 }
 
 fn normalise_base(base: &str) -> String {
@@ -178,6 +193,7 @@ async fn metadata(State(st): State<AppState>, headers: HeaderMap) -> Response {
     fhir_ok(fhir::capability_statement(
         env!("CARGO_PKG_VERSION"),
         &st.impl_url,
+        st.translate_available,
     ))
 }
 

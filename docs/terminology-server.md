@@ -125,6 +125,6 @@ including:
 - `CodeSystem/$subsumes`
 - `ValueSet/$expand`
 - `ValueSet/$validate-code`
-- `ConceptMap/$translate`
+- `ConceptMap/$translate` when the database has crossmaps loaded
 
 For the full operation reference, see [`sct serve`](commands/serve.md).

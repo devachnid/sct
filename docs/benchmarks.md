@@ -10,6 +10,18 @@ Timing measurements for `sct` commands run against two SNOMED CT editions:
 
 Each command was timed with `time` (wall-clock) on a warm filesystem (second run, after OS page-cache is populated). Disk is NVMe SSD. NB: the first cold run will be slower due to filesystem and page-cache effects.
 
+FHIR terminology server timings should be treated differently from command
+timings. Run the FHIR conformance harness first, then benchmark only servers
+that pass the relevant profile:
+
+```bash
+bench/conformance.sh --server http://localhost:8080/fhir
+bench/bench.sh --db snomed.db --server http://localhost:8080/fhir --runs 20 --warmup 5
+```
+
+See [FHIR Conformance And Benchmarks](fhir-conformance-benchmarks.md) for the
+full methodology.
+
 ```bash
 time sct ndjson --rf2 ~/downloads/SnomedCT_MonolithRF2_PRODUCTION_20260311T120000Z/
 time sct sqlite  --input snomed.ndjson

@@ -112,7 +112,37 @@ pub fn designation(type_id: &str, type_label: &str, term: &str) -> Value {
 }
 
 /// The `/metadata` CapabilityStatement.
-pub fn capability_statement(software_version: &str, impl_url: &str) -> Value {
+pub fn capability_statement(
+    software_version: &str,
+    impl_url: &str,
+    translate_available: bool,
+) -> Value {
+    let mut resources = vec![
+        json!({
+            "type": "CodeSystem",
+            "operation": [
+                { "name": "lookup", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-lookup" },
+                { "name": "validate-code", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code" },
+                { "name": "subsumes", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-subsumes" },
+            ],
+        }),
+        json!({
+            "type": "ValueSet",
+            "operation": [
+                { "name": "expand", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-expand" },
+                { "name": "validate-code", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code" },
+            ],
+        }),
+    ];
+    if translate_available {
+        resources.push(json!({
+            "type": "ConceptMap",
+            "operation": [
+                { "name": "translate", "definition": "http://hl7.org/fhir/OperationDefinition/ConceptMap-translate" },
+            ],
+        }));
+    }
+
     json!({
         "resourceType": "CapabilityStatement",
         "status": "active",
@@ -126,29 +156,7 @@ pub fn capability_statement(software_version: &str, impl_url: &str) -> Value {
         },
         "rest": [{
             "mode": "server",
-            "resource": [
-                {
-                    "type": "CodeSystem",
-                    "operation": [
-                        { "name": "lookup", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-lookup" },
-                        { "name": "validate-code", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code" },
-                        { "name": "subsumes", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-subsumes" },
-                    ],
-                },
-                {
-                    "type": "ValueSet",
-                    "operation": [
-                        { "name": "expand", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-expand" },
-                        { "name": "validate-code", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code" },
-                    ],
-                },
-                {
-                    "type": "ConceptMap",
-                    "operation": [
-                        { "name": "translate", "definition": "http://hl7.org/fhir/OperationDefinition/ConceptMap-translate" },
-                    ],
-                },
-            ],
+            "resource": resources,
         }],
     })
 }

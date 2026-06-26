@@ -60,6 +60,8 @@ sct trud download --edition uk_monolith \
 
 That command downloads the latest UK Monolith release, verifies it, builds the
 NDJSON artefact, and builds the SQLite database under `~/.local/share/sct/data/`.
+It does **not** overwrite an existing `./snomed.db` in your current project
+directory.
 
 The two important flags are:
 
@@ -79,13 +81,48 @@ sct ndjson --rf2 uk_sct2mo_42.2.0_20260603000001Z.zip \
 sct sqlite --input snomed.ndjson --output snomed.db
 ```
 
-Check that the database has the DMWB-replacement tables:
+### Check the right database
+
+First confirm which database `sct` will use:
 
 ```bash
-sqlite3 snomed.db "select count(*) from crossmaps"
-sqlite3 snomed.db "select count(*) from concept_history"
-sqlite3 snomed.db "select count(*) from concepts where active = 0"
+sct paths
 ```
+
+The database resolution order deliberately prefers `./snomed.db` before the
+newest database under `~/.local/share/sct/data/`. That is convenient for local
+experiments, but it means an older active-only `./snomed.db` can mask the
+DMWB-ready database that `sct trud --pipeline` just built.
+
+If you used `sct trud --pipeline`, either omit `--db` from later commands and
+make sure `sct paths` resolves to the new data-home database, or copy/pass that
+exact path explicitly:
+
+```bash
+DB="$HOME/.local/share/sct/data/uk_sct2mo_41.6.0_20260311000001Z.db"
+```
+
+If you used the manual `sct ndjson` / `sct sqlite` build above, `DB=./snomed.db`
+is fine:
+
+```bash
+DB=./snomed.db
+```
+
+Now check that the selected database has the DMWB-replacement tables:
+
+```bash
+sqlite3 "$DB" "select name from sqlite_master where type='table' and name in ('crossmaps','concept_history')"
+sqlite3 "$DB" "select count(*) from crossmaps"
+sqlite3 "$DB" "select count(*) from concept_history"
+sqlite3 "$DB" "select count(*) from concepts where active = 0"
+```
+
+If `crossmaps` or `concept_history` does not exist, that database was not built
+from a current `sct ndjson --refsets all` artefact. If the inactive-concept count
+is zero, it was not built with `--include-inactive` or the selected release slice
+contains no inactive concepts. The most common cause is simply checking an old
+local `./snomed.db` rather than the pipeline output.
 
 ---
 
@@ -97,6 +134,10 @@ use [`sct crosswalk`](../commands/crosswalk.md):
 ```bash
 sct crosswalk 22298006 --db snomed.db
 ```
+
+If you built via `sct trud --pipeline` and did not copy the database to
+`./snomed.db`, either omit `--db` and let path resolution find it, or pass the
+explicit `$DB` path from the previous section.
 
 Typical output:
 

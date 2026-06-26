@@ -1,0 +1,6 @@
+# name	valueset_url	filter	count	min_total	contains_csv
+diabetes-descendants	http://snomed.info/sct?fhir_vs=ecl/<<73211009	-	200	3	73211009,44054006
+diabetes-children	http://snomed.info/sct?fhir_vs=ecl/<!73211009	-	200	1	44054006
+clinical-finding-heart-attack	http://snomed.info/sct?fhir_vs=ecl/<<404684003	heart attack	20	1	22298006
+all-filter-asthma	http://snomed.info/sct?fhir_vs	asthma	100	1	281239006
+body-structure-heart	http://snomed.info/sct?fhir_vs=ecl/<<91723000	heart	20	1	80891009

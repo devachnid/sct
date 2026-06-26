@@ -193,19 +193,26 @@ pub fn validate_code(
             json!({ "name": "message", "valueString": format!("Code '{code}' not found in SNOMED CT") }),
         ])),
         Some(c) => {
-            let mut params = vec![
-                json!({ "name": "result", "valueBoolean": true }),
-                json!({ "name": "display", "valueString": c.pt }),
-            ];
+            let mut result = true;
+            let mut messages = Vec::new();
             if let Some(d) = display {
                 let matches = d == c.pt || d == c.fsn || c.synonyms.iter().any(|s| s == d);
                 if !matches {
-                    params.push(json!({ "name": "message",
-                        "valueString": format!("Display '{d}' does not match any designation for {code}") }));
+                    result = false;
+                    messages.push(format!(
+                        "Display '{d}' does not match any designation for {code}"
+                    ));
                 }
             }
             if !c.active {
-                params.push(json!({ "name": "message", "valueString": "Concept is inactive" }));
+                messages.push("Concept is inactive".to_string());
+            }
+            let mut params = vec![
+                json!({ "name": "result", "valueBoolean": result }),
+                json!({ "name": "display", "valueString": c.pt }),
+            ];
+            for message in messages {
+                params.push(json!({ "name": "message", "valueString": message }));
             }
             Ok(parameters(params))
         }

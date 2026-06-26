@@ -1,0 +1,4 @@
+# name	system	code	targetsystem	expected_result	expected_code
+mi-to-icd10	http://snomed.info/sct	22298006	http://hl7.org/fhir/sid/icd-10	true	I219
+icd10-to-snomed	http://hl7.org/fhir/sid/icd-10	I219	http://snomed.info/sct	true	22298006
+asthma-no-map	http://snomed.info/sct	195967001	http://hl7.org/fhir/sid/icd-10	false	-

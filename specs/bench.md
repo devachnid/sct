@@ -13,6 +13,7 @@ statistically-rigorous timing.
 - Demonstrate the latency advantage of local-first tooling in talks and documentation
 - Detect regressions in `sct` query performance across releases
 - Evaluate third-party terminology servers before adopting them
+- Require FHIR conformance assertions before publishing terminology-server timings
 
 ---
 
@@ -21,6 +22,7 @@ statistically-rigorous timing.
 ```
 bench/
   bench.sh              ← entry point; orchestrates all operations
+  conformance.sh        ← FHIR R4 terminology conformance runner
   lib/
     timing.sh           ← hyperfine wrapper + manual timing fallback
     fhir.sh             ← curl wrappers for each FHIR operation
@@ -36,8 +38,39 @@ bench/
   fixtures/
     concepts.txt        ← fixed SCTIDs used as lookup/hierarchy fixtures
     search_terms.txt    ← free-text queries used for search fixtures
+    conformance/        ← TSV fixture matrices for FHIR response assertions
   README.md
 ```
+
+---
+
+## Conformance entry point
+
+```bash
+bench/conformance.sh --server http://localhost:8080/fhir
+```
+
+The conformance runner is a prerequisite for serious benchmark comparisons.
+It checks the server's FHIR R4 terminology surface, response resource types,
+operation outcomes and representative semantics before any latency numbers are
+used. It is aligned with the HL7 FHIR terminology operations, but is not an
+official certification suite.
+
+Fixture files live in `bench/fixtures/conformance/`:
+
+| file | purpose |
+|---|---|
+| `lookup.tsv` | `$lookup` display, designation and hierarchy property checks |
+| `validate-code.tsv` | `CodeSystem/$validate-code` true/false/display checks |
+| `expand.tsv` | `ValueSet/$expand` over ECL and text filters |
+| `subsumes.tsv` | all four `$subsumes` relationship outcomes |
+| `valueset-validate.tsv` | `ValueSet/$validate-code` membership checks |
+| `translate.tsv` | `ConceptMap/$translate` mappings when supported |
+| `errors.tsv` | expected HTTP status and `OperationOutcome` cases |
+
+The benchmark publication rule is simple: conformance first, timings second.
+If a server fails the relevant profile, either fix the server/configuration or
+publish the failure alongside the timing numbers.
 
 ---
 

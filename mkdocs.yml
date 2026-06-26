@@ -15,13 +15,13 @@ theme:
   name: zensical
   variant: modern
   features:
-  - content.code.copy
-  - content.action.edit # Edit this page
-  - content.action.view  # View source of this page
-
+    - content.code.copy
+    - content.action.edit # Edit this page
+    - content.action.view # View source of this page
+    - navigation.path # Show the current path in breadcrumbs
+    - navigation.footer # Show Previous and Next links
 
   palette:
-
     # Follows OS preference
     - media: "(prefers-color-scheme)"
       toggle:
@@ -95,12 +95,12 @@ nav:
       - sct paths: commands/paths.md
       - sct completions: commands/completions.md
   - Reference:
-    - Path Resolution: path-resolution.md
-    - UK Edition Structure: uk-edition-structure.md
-    - GPS and IPS Releases: gps-ips.md
-    - Benchmarks: benchmarks.md
-    - Vector Search Landscape: vector-search-landscape.md
-
+      - Path Resolution: path-resolution.md
+      - UK Edition Structure: uk-edition-structure.md
+      - GPS and IPS Releases: gps-ips.md
+      - Benchmarks: benchmarks.md
+      - FHIR Conformance And Benchmarks: fhir-conformance-benchmarks.md
+      - Vector Search Landscape: vector-search-landscape.md
 
 markdown_extensions:
   - admonition

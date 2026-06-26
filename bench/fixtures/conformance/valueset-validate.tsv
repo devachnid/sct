@@ -1,0 +1,4 @@
+# name	valueset_url	code	expected_result
+type-2-in-diabetes	http://snomed.info/sct?fhir_vs=ecl/<<73211009	44054006	true
+mi-not-in-diabetes	http://snomed.info/sct?fhir_vs=ecl/<<73211009	22298006	false
+asthma-in-clinical-finding	http://snomed.info/sct?fhir_vs=ecl/<<404684003	195967001	true

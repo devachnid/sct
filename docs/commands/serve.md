@@ -87,7 +87,7 @@ step. To force a rebuild, remove the `sct-data` Docker volume or run the desired
 | `GET /ValueSet` | Searchset Bundle of the stored `.codelist` ValueSets |
 | `GET /ValueSet/{id}` | The stored ValueSet resource (with `compose`) |
 | `GET /ValueSet/{id}/$expand` | Expand a stored ValueSet by id |
-| `ConceptMap/$translate` | Map a code across terminologies (SNOMED CT ↔ ICD-10 / OPCS-4 / CTV3 / Read v2) |
+| `ConceptMap/$translate` | Map a code across terminologies when the loaded database has `crossmaps` data (SNOMED CT ↔ ICD-10 / OPCS-4 / CTV3 / Read v2) |
 
 GET and POST are both accepted; parameters are read from the query string.
 
@@ -132,7 +132,7 @@ The canonical URL of a served list is `{server-base}/ValueSet/{id}`. `$validate-
 
 ### Cross-terminology translation (`ConceptMap/$translate`)
 
-Map a code between SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 using the same maps as [`sct transcode`](transcode.md). Needs a database built with [`sct ndjson --refsets all`](ndjson.md) for the ICD-10 / OPCS-4 maps. Read v2 works only when the database already contains item 9 Read v2 rows; current UK RF2 releases do not load the DMWB-unique Read v2 maps.
+Map a code between SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 using the same maps as [`sct transcode`](transcode.md). `$translate` is advertised in `/metadata` only when the loaded SQLite database has the `crossmaps` table. Needs a database built with [`sct ndjson --refsets all`](ndjson.md) for the ICD-10 / OPCS-4 maps. Read v2 works only when the database already contains item 9 Read v2 rows; current UK RF2 releases do not load the DMWB-unique Read v2 maps.
 
 ```bash
 # SNOMED CT -> ICD-10
@@ -164,7 +164,7 @@ Errors are FHIR `OperationOutcome` resources with the appropriate status (`404` 
 This is **Phase 1**. Known boundaries (see [`specs/commands/serve.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/serve.md) for the full picture):
 
 - **Single edition / single version** per process - the server serves whatever is in `--db`; a `version` parameter is accepted and logged but not used for routing.
-- **Stored ValueSets** come from `.codelist` files (read-only, served from `--codelists`); there is no write/CRUD API for ValueSets, and no stored `ConceptMap` resources. `ConceptMap/$translate`, `$closure`, multi-version routing, and FHIR R5 are later phases.
+- **Stored ValueSets** come from `.codelist` files (read-only, served from `--codelists`); there is no write/CRUD API for ValueSets, and no stored `ConceptMap` resources. `$closure`, multi-version routing, and FHIR R5 are later phases.
 - **`^` (refset) ECL** depends on refsets being loaded (`sct ndjson --refsets simple` + `sct sqlite`); **attribute refinement** depends on the schema-v4 `concept_relationships` table (rebuild with a current `sct`).
 - **No auth / SMART on FHIR** - run it behind your own gateway if exposing it beyond localhost.
 - **JSON only** - XML requests get a `406`.

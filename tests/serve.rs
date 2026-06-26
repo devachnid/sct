@@ -196,6 +196,21 @@ fn validate_code_known_and_unknown() {
         param_bool(&ops::validate_code(&c, "99999999", None).unwrap(), "result"),
         Some(false)
     );
+    assert_eq!(
+        param_bool(
+            &ops::validate_code(&c, "22298006", Some("Myocardial infarction")).unwrap(),
+            "result"
+        ),
+        Some(true)
+    );
+    assert_eq!(
+        param_bool(
+            &ops::validate_code(&c, "22298006", Some("Definitely not myocardial infarction"))
+                .unwrap(),
+            "result"
+        ),
+        Some(false)
+    );
 }
 
 #[test]

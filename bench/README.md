@@ -18,6 +18,9 @@ without `hyperfine`, timing falls back to `date +%s%N` (linux only; less accurat
 ## Quick start
 
 ```bash
+# conformance first: prove the FHIR server returns the expected shapes/results
+bench/conformance.sh --server http://localhost:8080/fhir
+
 # local-only benchmark (no remote server required)
 bench/bench.sh --db snomed.db --no-remote
 
@@ -28,6 +31,31 @@ bench/bench.sh --db snomed.db --server https://terminology.myserver.org/fhir
 bench/bench.sh --db snomed.db --server https://terminology.myserver.org/fhir \
   --write-benchmarks
 ```
+
+## Conformance before benchmarks
+
+`bench/conformance.sh` checks a FHIR R4 terminology server before timing it.
+It uses fixture matrices under `bench/fixtures/conformance/` to assert:
+
+- `/metadata` advertises the expected FHIR R4 terminology operations
+- `CodeSystem/$lookup` returns `Parameters` with display and hierarchy
+- `CodeSystem/$validate-code` handles known, unknown and display-mismatch cases
+- `ValueSet/$expand` handles ECL, text filtering and expected members
+- `CodeSystem/$subsumes` returns the four expected relationship outcomes
+- `ValueSet/$validate-code` tests ECL membership
+- `ConceptMap/$translate` works when the server advertises it
+- invalid requests return FHIR `OperationOutcome`
+
+Run it against any candidate server before using the benchmark numbers:
+
+```bash
+bench/conformance.sh --server http://localhost:8080/fhir
+bench/conformance.sh --server http://localhost:8080/fhir --output reports/conformance.jsonl
+```
+
+The runner is HL7-aligned because it exercises the FHIR R4 terminology
+operations, but it is not an official HL7 certification suite. A future
+Touchstone/FHIR `TestScript` suite would complement it.
 
 ## Options
 
@@ -59,6 +87,8 @@ bench/bench.sh --db snomed.db --server https://terminology.myserver.org/fhir \
 
 ## Fairness
 
+- **conformance first**: do not publish timing comparisons for a server that
+  fails the relevant fixture profile.
 - **local times include sqlite3 process startup** (~5–15 ms). this reflects
   real cli usage, not in-process query time.
 - **remote warm-up runs** are issued before timing to ensure both sides are
@@ -74,6 +104,13 @@ bench/bench.sh --db snomed.db --server https://terminology.myserver.org/fhir \
 create `bench/operations/myop.sh` that defines `run_myop()` and calls
 `append_result`. then pass `--operations myop` or include it in the default
 list in `bench.sh`.
+
+## Adding conformance cases
+
+Add rows to the TSV files in `bench/fixtures/conformance/`. Keep them
+stratified: common concepts, deep hierarchy concepts, high-fanout parents,
+invalid codes, ECL expressions, refsets and cross-terminology mappings. The
+goal is a production-shaped request matrix, not a handful of easy examples.
 
 ## Run a local instance of Snowstorm Lite (FHIR terminology server) for testing
 
