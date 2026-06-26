@@ -26,8 +26,8 @@ sct trud download --edition nhs_data_migration
 
 Do not use `--pipeline`: this archive is not RF2. It is a zip of flat mapping
 tables, documentation PDFs, primary care refsets, and legacy navigation subsets.
-Downloading it does not currently modify `snomed.db`; the Read v2 importer is
-not shipped yet.
+Import it into an existing SNOMED SQLite database with `sct read2 import`, or
+let `sct trud download --multi-terminology` do both downloads and the import.
 
 You can also use the raw item number:
 
@@ -103,18 +103,29 @@ rows and 102,066 distinct active ReadCode+TermCode pairs, but it lacks
 DescriptionId and assurance metadata. That is why `sct` should prefer
 `RcSctMap2`.
 
-## Import Design, Not Yet A Command
+## Import
 
-This section describes the importer `sct` should grow next. It is not a current
-walkthrough step.
+The easiest path is:
 
-The importer should load item 9 into the existing SNOMED SQLite database through
+```bash
+sct trud download --multi-terminology
+```
+
+If you already have the SNOMED database and item 9 archive locally:
+
+```bash
+sct read2 import \
+  --archive ~/.local/share/sct/releases/nhs_datamigration_29.0.0_20200401000001.zip \
+  --db snomed.db
+```
+
+The importer loads item 9 into the existing SNOMED SQLite database through
 the general `crossmaps` table. It should not collapse Read v2 rows into only the
 legacy `concept_maps(code, terminology, concept_id)` shape, because that loses
 `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, map status, and source
 release provenance.
 
-The production import should store Read v2 -> SNOMED rows with:
+The import stores Read v2 -> SNOMED rows with:
 
 - `source_system = 'read2'`
 - `source_code = <ReadCode><TermCode>`

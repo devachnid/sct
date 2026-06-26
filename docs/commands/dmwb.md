@@ -24,13 +24,17 @@ Use TRUD item 9 instead of the DMWB `.mdb` pack:
 
 ```bash
 sct trud download --edition nhs_data_migration
+sct read2 import \
+  --archive ~/.local/share/sct/releases/nhs_datamigration_29.0.0_20200401000001.zip \
+  --db snomed.db
 ```
 
 The primary source file is
 `Mapping Tables/Updated/Clinically Assured/rcsctmap2_uk_20200401000001.txt`.
 It carries ReadCode, TermCode, target SNOMED ConceptId, target DescriptionId,
-`IS_ASSURED`, effective date, and map status. The import methodology is documented
-in [Read v2 via TRUD item 9](../dmwb/read-v2-item9.md).
+`IS_ASSURED`, effective date, and map status. For the full one-command workflow,
+use `sct trud download --multi-terminology`. Details are documented in
+[Read v2 via TRUD item 9](../dmwb/read-v2-item9.md).
 
 ## Licensing
 

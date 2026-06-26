@@ -14,7 +14,7 @@ using the TRUD REST API. Handles authentication, SHA-256 integrity verification,
    - **UK Monolith** (item 1799) - recommended for most users; includes International + UK Clinical + UK Drug (dm+d) + UK Pathology in one merged zip. Snapshot only.
    - **UK Clinical Edition** (item 101) - International + UK Clinical, without dm+d.
    - **UK Drug Extension** (item 105) - dm+d prescribing/medicines concepts only.
-   - **NHS Data Migration** (item 9) - final April 2020 Read v2 / CTV3 / SNOMED CT migration maps. This is not RF2; download it without `--pipeline`.
+   - **NHS Data Migration** (item 9) - final April 2020 Read v2 / CTV3 / SNOMED CT migration maps. This is not RF2; import it with [`sct read2 import`](read2.md), or use `sct trud download --multi-terminology`.
 
 ### Get your API key
 
@@ -266,6 +266,25 @@ sct trud download --pipeline --include-inactive --refsets all
 
 `--include-inactive`, `--refsets` and `--locale` shape the `sct ndjson` step of the pipeline, exactly as if you had run [`sct ndjson`](ndjson.md) by hand - they have no effect without `--pipeline` / `--pipeline-full`. Here, inactive concepts are retained (each keeps its FSN, preferred term and synonyms) and the ICD-10 / OPCS-4 crossmaps plus concept-history sidecar are built. This downloads the latest release and goes straight through to a SQLite database in one command.
 
+#### Build a complete multi-terminology workspace
+
+```bash
+sct trud download --multi-terminology
+```
+
+This is the shortest path from a fresh `cargo install sct-rs` to a local
+multi-terminology workspace. It implies:
+
+- `--pipeline`
+- `--include-inactive`
+- `--refsets all`
+- `--with-read2`
+
+The command downloads the UK Monolith, builds NDJSON and SQLite, downloads TRUD
+item 9, and imports the final Read v2 maps into the same database. The resulting
+SQLite database supports SNOMED CT, CTV3, Read v2, ICD-10, OPCS-4, and inactive
+concept forwarding.
+
 #### Skip the download if already current (safe for cron)
 
 ```bash
@@ -292,8 +311,9 @@ from current UK RF2 releases.
 sct trud download --edition nhs_data_migration
 ```
 
-Do not pass `--pipeline`: this archive is not an RF2 release. See the
-[DMWB Read v2 notes](../dmwb/read-v2-item9.md) for the import methodology.
+Do not pass `--pipeline`: this archive is not an RF2 release. Import it with
+[`sct read2 import`](read2.md), or use `sct trud download --multi-terminology`
+to download the UK Monolith and item 9 in one workflow.
 
 #### Save to a specific directory
 
@@ -325,6 +345,8 @@ sct trud download --output-dir /data/snomed/
 | `--skip-if-current`   | off                       | Do nothing if the latest zip is already cached with a matching checksum                     |
 | `--pipeline`          | off                       | Auto-run `sct ndjson` + `sct sqlite` after download                                         |
 | `--pipeline-full`     | off                       | As `--pipeline`, plus `sct tct` + `sct embed`                                               |
+| `--multi-terminology` | off                       | Implies pipeline + inactive concepts + all RF2 maps/history + item 9 Read v2 import         |
+| `--with-read2`        | off                       | Pipeline only: download item 9 and import final Read v2 maps into the generated database    |
 | `--include-inactive`  | off                       | Pipeline only: include inactive concepts in the `sct ndjson` step                           |
 | `--refsets <MODE>`    | `simple`                  | Pipeline only: refsets to load - `none`, `simple`, or `all` (adds ICD-10/OPCS-4 + history)  |
 | `--locale <LOCALE>`   | `en-GB`                   | Pipeline only: BCP-47 locale for preferred-term selection                                   |

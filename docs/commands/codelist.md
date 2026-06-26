@@ -252,8 +252,8 @@ sct codelist export codelists/asthma.codelist --format csv
 sct codelist export codelists/asthma.codelist --format opencodelists-csv
 sct codelist export codelists/asthma.codelist --format markdown --output asthma.md
 
-# Append cross-terminology columns (CTV3 from UK RF2; ICD-10/OPCS-4 need --refsets all)
-sct codelist export codelists/asthma.codelist --format csv --include-maps ctv3,icd10 --db snomed.db
+# Append cross-terminology columns (build all maps with sct trud download --multi-terminology)
+sct codelist export codelists/asthma.codelist --format csv --include-maps read2,ctv3,icd10 --db snomed.db
 ```
 
 | Format | Description |
@@ -262,7 +262,7 @@ sct codelist export codelists/asthma.codelist --format csv --include-maps ctv3,i
 | `opencodelists-csv` | `code,term` - OpenCodelists-compatible upload format |
 | `markdown` | Markdown table with front-matter metadata header |
 
-`--include-maps <terminologies>` (csv/markdown only) appends a column per terminology - `ctv3`, `read2`, `icd10`, `opcs4` - so a SNOMED codelist can be cross-walked to legacy and classification codes in one export. Maps are read from the general `crossmaps` table, with a fallback to the legacy `concept_maps` table for older CTV3/Read v2 databases. ICD-10 / OPCS-4 require a database built with [`sct ndjson --refsets all`](ndjson.md). Read v2 is supported when the database already contains item 9 Read v2 rows; current UK RF2 releases do not load the DMWB-unique Read v2 maps.
+`--include-maps <terminologies>` (csv/markdown only) appends a column per terminology - `ctv3`, `read2`, `icd10`, `opcs4` - so a SNOMED codelist can be cross-walked to legacy and classification codes in one export. Maps are read from the general `crossmaps` table, with a fallback to the legacy `concept_maps` table for older CTV3/Read v2 databases. `sct trud download --multi-terminology` builds the full map set; manually, ICD-10 / OPCS-4 require [`sct ndjson --refsets all`](ndjson.md), and Read v2 requires [`sct read2 import`](read2.md) over TRUD item 9.
 
 ---
 

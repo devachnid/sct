@@ -88,10 +88,10 @@ which needs no ODBC/C libraries.
 committing to it, prove it reads the *real* DMWB tables correctly - especially the
 Jet4 UTF-16LE text columns where the POC's Python reader mis-split the Read v2
 `SCUI` field (recoverable as the first 5 UTF-16 chars, but a sign the column
-offsets are fiddly). If `jetdb` cannot read them cleanly, fall back to: (a) TRUD
-item 9 flat files, or (b) a documented `mdbtools` pre-export to TSV that
-`sct dmwb import` then ingests (keeps the core binary pure; `.mdb` parsing becomes
-an optional power-user path).
+offsets are fiddly). That gate did fail for the Binary `SCUI` Read v2 column, so
+the shipped path is TRUD item 9 flat files via `sct read2 import`. A documented
+`mdbtools` pre-export remains only an optional power-user path for Access-file
+inspection.
 
 ### 2.4 Licensing
 
@@ -202,39 +202,36 @@ In `src/rf2.rs` / `src/commands/ndjson.rs` / `src/commands/sqlite.rs`:
 5. **Inactive retention** - populate `inactive_concepts` from the inactive RF2
    rows (the ones currently filtered out).
 
-## 5. Ingestion - Channel B (`sct dmwb import`)
+## 5. Ingestion - Channel B (`sct read2 import`)
 
-A new command (and library module) for the DMWB-unique data:
+The shipped command for the DMWB-unique Read v2 data:
 
 ```
-sct dmwb import <path-to-dmwb-dir-or-zip> [--db snomed.db]
+sct read2 import --archive nhs_datamigration_29.0.0_20200401000001.zip [--db snomed.db]
 ```
 
-- Reads TRUD item 9 flat files, primarily `RcSctMap2` for Read v2→SNOMED.
+- Reads TRUD item 9 flat files, primarily `RcSctMap2` for Read v2 -> SNOMED.
   Active rows are selected by the product's documented method: latest
-  `EffectiveDate` per `MapId`, then `MapStatus > 0`. Preserve `DescriptionId`,
-  `IS_ASSURED`, `MapId`, `EffectiveDate`, and source release provenance; do not
-  collapse directly into `concept_maps` unless that metadata is also retained
-  elsewhere.
+  `EffectiveDate` per `MapId`, then `MapStatus > 0`. Preserves `DescriptionId`,
+  `IS_ASSURED`, `MapId`, `EffectiveDate`, map status, and source release
+  provenance in `crossmaps`; active rows are also written to `concept_maps` for
+  compatibility.
 - Optional later fallbacks: `RcTermSctMap` when a source record has ReadCode +
   term text but no TermCode, and `RcMap` when it has ReadCode only.
 - Optionally loads `SCTHREL`/`SCTSUBST` into `concept_history` **only if** the RF2
   Association refset was not used (prefer RF2 as the canonical history source).
-- Records provenance in `map_versions` (`source='nhs_data_migration_item9'`,
-  release `DATAMIGRATION_29.0.0_20200401000001`).
 - Idempotent: `INSERT OR REPLACE` keyed on the primary keys; safe to re-run on a
-  new DMWB release.
+  new item 9 import.
 
 ## 6. Acquisition wiring (`sct trud`)
 
 - Add `nhs_data_migration` (item 9) to `builtin_editions()`. ✅ shipped.
 - `sct trud download --edition nhs_data_migration` works (download + SHA verify).
-- Extend the `--pipeline` branch in `run_download` to dispatch on edition kind:
-  - terminology editions (`uk_monolith`, …) → `sct ndjson` → `sct sqlite` (as now);
-  - mapping editions (`nhs_data_migration`) → future Read v2 importer into the
-    existing/target DB.
-- End-state one-liner: `sct trud download --edition nhs_data_migration --pipeline --db snomed.db`
-  downloads item 9 and loads the Read v2 maps into your SNOMED DB.
+- `sct trud download --multi-terminology` ✅ shipped: downloads/builds the UK
+  Monolith with `--include-inactive --refsets all`, downloads item 9, and imports
+  the Read v2 maps into the generated SQLite database.
+- `sct trud download --pipeline --with-read2` ✅ shipped for users who want the
+  same Read v2 import while spelling out the RF2 pipeline options themselves.
 
 ## 7. Query surface (CLI)
 
@@ -313,7 +310,8 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   cross-terminology equivalents of one code at once (the tri-terminology BROWSE
   view as text; degrades gracefully on a DB without ICD/OPCS maps).
   Tests: `tests/transcode.rs`.
-- **3. DMWB acquisition** (Channel B) ⚠️ **Access validation gate failed, but
+- **3. DMWB acquisition** (Channel B) ✅ **shipped via item 9 flat files; Access
+  validation gate failed, but
   TRUD item 9 flat files are confirmed.** Shipped: `sct dmwb tables`/`dump` (feature `dmwb`, pure-Rust
   `jetdb` 0.3) reads a DMWB `.mdb` and confirmed jetdb decodes the all-Text map
   tables cleanly (`SCTICDMAP`: `24005006 → H438`). **But** DMWB stores the Read v2
@@ -323,8 +321,9 @@ the text equivalent of DMWB's tri-terminology `BROWSE` triad.
   source-data problem: `nhs_datamigration_29.0.0_20200401000001.zip` is a flat-file
   release containing `rcsctmap2_uk_20200401000001.txt`. Applying the documented
   latest-row / active-map method yields 102,057 active ReadCode+TermCode rows:
-  77,079 assured and 24,978 unassured. Remaining work: implement the importer while
-  preserving `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and provenance.
+  77,079 assured and 24,978 unassured. `sct read2 import` implements that importer
+  and preserves `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and
+  provenance in `crossmaps`.
 - **4. `sct serve` `ConceptMap/$translate`** ✅ **shipped** - FHIR R4 `$translate`
   over the crossmap engine (`GET|POST /ConceptMap/$translate?system=&code=&targetsystem=`),
   accepting FHIR system URIs or bare names, both directions, with the SNOMED

@@ -192,12 +192,13 @@ For all further information see the full documentation by either exploring the [
 * [sct markdown](docs/markdown.md) - export NDJSON to per-concept Markdown files (or per-hierarchy with `--mode hierarchy`)
 * [sct mcp](docs/mcp.md) - start a local MCP server over stdio backed by the SQLite database
 * [sct serve](docs/commands/serve.md) - FHIR R4 terminology server ($lookup/$validate-code/$subsumes/$expand with ECL) *(optional `--features serve`)*
+* [sct read2](docs/commands/read2.md) - import final Read v2 maps from NHS Data Migration TRUD item 9
 * [sct embed](docs/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
 * [sct lexical](docs/lexical.md) - keyword (FTS5) search over the SQLite database
 * [sct fst](docs/commands/fst.md) - mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
 * [sct semantic](docs/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama)
 * `sct lookup <code>` - look up a concept by SCTID, or reverse-resolve a CTV3 code
-* [sct transcode](docs/commands/transcode.md) - map a stream of codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4 (needs `sct ndjson --refsets all`)
+* [sct transcode](docs/commands/transcode.md) - map a stream of codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4 (`sct trud download --multi-terminology` builds the full workspace)
 * [sct crosswalk](docs/commands/crosswalk.md) - show all cross-terminology equivalents of a single code at once
 * `sct codelist` - build, validate, and publish clinical code lists; `add --ecl "<<73211009"` populates from an ECL query
 * `sct info <file>` - inspect any `.ndjson`, `.db`, or `.arrow` artefact and print a summary

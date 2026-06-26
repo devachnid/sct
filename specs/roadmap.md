@@ -192,12 +192,13 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 - [ ] **MCP crossmaps** - CLI/codelist/FHIR crossmap support is shipped. Extend the MCP
       `snomed_map` tool beyond CTV3/Read v2 so it can expose ICD-10 / OPCS-4 `crossmaps`
       and history-forwarding results too.
-- [ ] **Read v2 import** - source data confirmed in TRUD item 9
-      (`nhs_datamigration_29.0.0_20200401000001.zip`). Implement import from
-      `rcsctmap2_uk_20200401000001.txt` using latest `EffectiveDate` per `MapId`
-      and `MapStatus > 0`, preserving `DescriptionId`, `IS_ASSURED`, `MapId`,
-      `EffectiveDate`, and source release provenance. Do not collapse into the
-      current `concept_maps` table unless that metadata is also retained elsewhere.
+- [x] **Read v2 import** ✅ **shipped** - `sct read2 import` loads TRUD item 9
+      (`nhs_datamigration_29.0.0_20200401000001.zip`) from
+      `rcsctmap2_uk_20200401000001.txt`, selecting latest `EffectiveDate` per
+      `MapId`, storing `MapStatus > 0` as the active flag, and preserving
+      `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and source
+      provenance in `crossmaps`. `sct trud download --multi-terminology` builds
+      the full SNOMED/CTV3/Read v2/ICD-10/OPCS-4 workspace in one command.
 - [ ] **IPS Free Set bundling** - investigate bundling the pre-processed NDJSON artefact of the
       SNOMED International IPS Free Set (freely available from MLDS without affiliate membership)
       to make `sct lexical`, `sct mcp`, and `sct serve` work out-of-the-box for IPS tooling

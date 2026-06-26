@@ -167,6 +167,20 @@ pub struct DownloadArgs {
     #[arg(long)]
     pipeline_full: bool,
 
+    /// Build a ready-to-use multi-terminology workspace.
+    ///
+    /// Implies --pipeline, --include-inactive, --refsets all, and --with-read2.
+    /// Downloads the UK Monolith plus TRUD item 9, then imports CTV3, Read v2,
+    /// ICD-10, OPCS-4, and concept history into one SQLite database.
+    #[arg(long)]
+    multi_terminology: bool,
+
+    /// After the SNOMED pipeline, download TRUD item 9 and import final Read v2
+    /// maps into the generated SQLite database. Requires --pipeline or
+    /// --pipeline-full unless --multi-terminology is used.
+    #[arg(long)]
+    with_read2: bool,
+
     /// BCP-47 locale for preferred-term selection in the pipelined `sct ndjson`
     /// step (e.g. en-GB, en-US). Only used with --pipeline / --pipeline-full.
     #[arg(long, default_value = "en-GB")]
@@ -421,8 +435,15 @@ fn run_check(args: CheckArgs) -> Result<()> {
 // sct trud download
 // ---------------------------------------------------------------------------
 
-fn run_download(args: DownloadArgs) -> Result<()> {
+fn run_download(mut args: DownloadArgs) -> Result<()> {
     let config = load_config();
+    if args.multi_terminology {
+        args.pipeline = true;
+        args.include_inactive = true;
+        args.refsets = super::ndjson::RefsetMode::All;
+        args.with_read2 = true;
+    }
+
     let api_key = resolve_api_key(
         args.key.api_key.as_deref(),
         args.key.api_key_file.as_deref(),
@@ -436,6 +457,17 @@ fn run_download(args: DownloadArgs) -> Result<()> {
         .with_context(|| format!("creating releases directory {}", releases_dir.display()))?;
     std::fs::create_dir_all(&data_dir)
         .with_context(|| format!("creating data directory {}", data_dir.display()))?;
+
+    if item_id == 9 && (args.pipeline || args.pipeline_full) {
+        anyhow::bail!(
+            "TRUD item 9 is not an RF2 release and cannot use --pipeline. \
+             To import Read v2 into an existing database, run: \
+             sct read2 import --archive <item9.zip> --db <snomed.db>"
+        );
+    }
+    if args.with_read2 && !args.pipeline && !args.pipeline_full {
+        anyhow::bail!("--with-read2 requires --pipeline, --pipeline-full, or --multi-terminology");
+    }
 
     // Fetch release metadata
     let latest_only = args.release.is_none();
@@ -466,13 +498,13 @@ fn run_download(args: DownloadArgs) -> Result<()> {
                     "Already up to date: {} - skipping download.",
                     release.archive_file_name
                 );
-                return run_pipeline_if_requested(&args, &dest, &data_dir);
+                return finish_download(&args, &dest, &data_dir, &api_key, &releases_dir);
             }
             println!(
                 "File already present with matching SHA-256: {}",
                 release.archive_file_name
             );
-            return run_pipeline_if_requested(&args, &dest, &data_dir);
+            return finish_download(&args, &dest, &data_dir, &api_key, &releases_dir);
         }
         // Checksum mismatch - re-download
         eprintln!(
@@ -580,16 +612,44 @@ fn run_download(args: DownloadArgs) -> Result<()> {
         println!("  Built artefacts will go to: {}", data_dir.display());
     }
 
-    run_pipeline_if_requested(&args, &dest, &data_dir)
+    finish_download(&args, &dest, &data_dir, &api_key, &releases_dir)
 }
 
 // ---------------------------------------------------------------------------
 // Pipeline chaining
 // ---------------------------------------------------------------------------
 
-fn run_pipeline_if_requested(args: &DownloadArgs, zip_path: &Path, data_dir: &Path) -> Result<()> {
+fn finish_download(
+    args: &DownloadArgs,
+    zip_path: &Path,
+    data_dir: &Path,
+    api_key: &str,
+    releases_dir: &Path,
+) -> Result<()> {
+    let db_path = run_pipeline_if_requested(args, zip_path, data_dir)?;
+    if args.with_read2 {
+        let Some(db_path) = db_path else {
+            anyhow::bail!("--with-read2 requires a generated SQLite database");
+        };
+        println!("\n→ Running: sct read2 import");
+        let item9 = ensure_latest_release(api_key, 9, releases_dir)?;
+        let summary = super::read2::import_archive(&db_path, &item9)
+            .context("sct read2 import step failed")?;
+        println!(
+            "✓ Read v2 imported: {} active source key(s), {} target concept(s)",
+            summary.distinct_source_keys, summary.distinct_target_concepts
+        );
+    }
+    Ok(())
+}
+
+fn run_pipeline_if_requested(
+    args: &DownloadArgs,
+    zip_path: &Path,
+    data_dir: &Path,
+) -> Result<Option<PathBuf>> {
     if !args.pipeline && !args.pipeline_full {
-        return Ok(());
+        return Ok(None);
     }
 
     // Derive output filenames from the zip stem (lowercased)
@@ -649,6 +709,112 @@ fn run_pipeline_if_requested(args: &DownloadArgs, zip_path: &Path, data_dir: &Pa
     println!("\n✓ Pipeline complete.");
     println!("  NDJSON: {}", ndjson_path.display());
     println!("  SQLite: {}", db_path.display());
+    Ok(Some(db_path))
+}
+
+fn ensure_latest_release(api_key: &str, item_id: u32, releases_dir: &Path) -> Result<PathBuf> {
+    let release = fetch_releases(api_key, item_id, true)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("No releases found for TRUD item {item_id}"))?;
+    let dest = releases_dir.join(&release.archive_file_name);
+    if dest.exists() {
+        let existing_hash = sha256_of_file(&dest)?;
+        if existing_hash.eq_ignore_ascii_case(&release.archive_file_sha256) {
+            println!(
+                "File already present with matching SHA-256: {}",
+                release.archive_file_name
+            );
+            return Ok(dest);
+        }
+        eprintln!(
+            "Warning: existing file has unexpected SHA-256 - re-downloading {}",
+            release.archive_file_name
+        );
+    }
+    download_release(&release, &dest)?;
+    Ok(dest)
+}
+
+fn download_release(release: &TrudRelease, dest: &Path) -> Result<()> {
+    println!(
+        "Downloading {} ({}) ...",
+        release.archive_file_name,
+        human_size(release.archive_file_size_bytes)
+    );
+
+    let tmp_path = dest.with_file_name(format!("{}.tmp", release.archive_file_name));
+    let resp = ureq::get(&release.archive_file_url)
+        .call()
+        .map_err(|e| anyhow::anyhow!("TRUD download request failed: {e}"))?;
+
+    let content_length: Option<u64> = resp
+        .headers()
+        .get("content-length")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok());
+
+    let pb = match content_length {
+        Some(total) => ProgressBar::new(total),
+        None => ProgressBar::new_spinner(),
+    };
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] \
+                 [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+    pb.enable_steady_tick(Duration::from_millis(120));
+
+    {
+        let tmp_file = std::fs::File::create(&tmp_path)
+            .with_context(|| format!("creating temporary file {}", tmp_path.display()))?;
+        let mut writer = BufWriter::new(tmp_file);
+        let mut hasher = Sha256::new();
+        let mut body_reader = resp.into_body().into_reader();
+        let mut buf = [0u8; 65536];
+        let mut downloaded: u64 = 0;
+
+        loop {
+            let n = body_reader
+                .read(&mut buf)
+                .context("reading download response body")?;
+            if n == 0 {
+                break;
+            }
+            writer
+                .write_all(&buf[..n])
+                .context("writing to temp file")?;
+            hasher.update(&buf[..n]);
+            downloaded += n as u64;
+            pb.set_position(downloaded);
+        }
+        writer.flush().context("flushing temp file")?;
+        pb.finish_with_message(format!(
+            "Downloaded {} ({})",
+            release.archive_file_name,
+            human_size(downloaded)
+        ));
+
+        let computed = format!("{:X}", hasher.finalize());
+        if !computed.eq_ignore_ascii_case(&release.archive_file_sha256) {
+            std::fs::remove_file(&tmp_path).ok();
+            anyhow::bail!(
+                "SHA-256 checksum mismatch - download may be corrupt. Temporary file deleted.\n\
+                 Expected: {}\n\
+                 Got:      {}",
+                release.archive_file_sha256,
+                computed
+            );
+        }
+    }
+
+    std::fs::rename(&tmp_path, dest)
+        .with_context(|| format!("renaming temp file to {}", dest.display()))?;
+    println!("✓ Saved: {}", dest.display());
     Ok(())
 }
 
@@ -1416,6 +1582,8 @@ mod tests {
                 skip_if_current: false,
                 pipeline: true,
                 pipeline_full: false,
+                multi_terminology: false,
+                with_read2: false,
                 locale: "en-GB".into(),
                 include_inactive,
                 refsets: crate::commands::ndjson::RefsetMode::All,
@@ -1424,13 +1592,15 @@ mod tests {
                     api_key_file: None,
                 },
             };
-            run_pipeline_if_requested(&args, &fixture, data_dir.path()).unwrap();
-
             let stem = fixture
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap()
                 .to_lowercase();
+            let db_path = run_pipeline_if_requested(&args, &fixture, data_dir.path())
+                .unwrap()
+                .expect("pipeline should return generated database path");
+            assert_eq!(db_path, data_dir.path().join(format!("{stem}.db")));
             std::fs::read_to_string(data_dir.path().join(format!("{stem}.ndjson"))).unwrap()
         };
 

@@ -56,6 +56,9 @@ enum Command {
     /// Inspect SNOMED CT simple reference sets loaded into a SQLite database.
     Refset(commands::refset::Args),
 
+    /// Import final Read v2 maps from NHS Data Migration TRUD item 9.
+    Read2(commands::read2::Args),
+
     /// Build a transitive closure table over the IS-A hierarchy in an existing SQLite database.
     Tct(commands::tct::Args),
 
@@ -132,6 +135,7 @@ fn main() -> Result<()> {
         Command::Diff(args) => commands::diff::run(args),
         Command::Codelist(args) => commands::codelist::run(args),
         Command::Refset(args) => commands::refset::run(args),
+        Command::Read2(args) => commands::read2::run(args),
         Command::Tct(args) => commands::tct::run(args),
         Command::Transcode(args) => commands::transcode::run(args),
         Command::Crosswalk(args) => commands::crosswalk::run(args),

@@ -66,6 +66,7 @@ nav:
       - Why code lists?: why/why-codelists.md
   - Get & build:
       - sct trud: commands/trud.md
+      - sct read2: commands/read2.md
       - sct ndjson: commands/ndjson.md
       - sct sqlite: commands/sqlite.md
       - sct parquet: commands/parquet.md

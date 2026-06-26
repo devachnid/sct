@@ -2,7 +2,7 @@
 
 Show **all** cross-terminology equivalents of a single code at once - the text equivalent of the NHS Data Migration Workbench's tri-terminology BROWSE view. Where [`sct transcode`](transcode.md) maps a stream of codes from one terminology to one other, `sct crosswalk` takes one code and shows its equivalents in every terminology.
 
-Built on the same maps as `sct transcode` (see [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md)). ICD-10 / OPCS-4 columns need a database built with [`sct ndjson --refsets all`](ndjson.md); without it they show `(none)`. CTV3 works from UK RF2 SimpleMap rows. Read v2 works only when the database already contains item 9 Read v2 rows.
+Built on the same maps as `sct transcode` (see [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md)). `sct trud download --multi-terminology` builds the full workspace. ICD-10 / OPCS-4 columns need a database built with [`sct ndjson --refsets all`](ndjson.md); without it they show `(none)`. CTV3 works from UK RF2 SimpleMap rows. Read v2 comes from [`sct read2 import`](read2.md) over TRUD item 9.
 
 ## Usage
 
@@ -30,6 +30,9 @@ sct crosswalk 22298006
 
 # Start from a legacy code - resolves to SNOMED, then shows the rest
 sct crosswalk X200E --from ctv3
+
+# Start from a Read v2 ReadCode+TermCode key
+sct crosswalk 0111.00 --from read2
 
 # Machine-readable
 sct crosswalk 22298006 --json

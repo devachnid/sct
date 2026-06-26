@@ -6,14 +6,25 @@ Map a stream of codes from one NHS terminology to another, pivoting through SNOM
 
 ## Prerequisite
 
-The ICD-10 / OPCS-4 maps and concept history come from a database built with [`sct ndjson --refsets all`](ndjson.md):
+The easiest way to get all supported maps is:
+
+```bash
+sct trud download --multi-terminology
+```
+
+That builds a database containing CTV3, Read v2, ICD-10, OPCS-4, and concept
+history. If building manually, the ICD-10 / OPCS-4 maps and concept history come
+from a database built with [`sct ndjson --refsets all`](ndjson.md):
 
 ```bash
 sct ndjson --rf2 release.zip --refsets all --output snomed.ndjson
 sct sqlite --input snomed.ndjson --output snomed.db
 ```
 
-CTV3 maps work on a UK-derived `snomed.db`; Read v2 works only if your database already contains item 9 Read v2 rows. Current UK RF2 releases do not contain the DMWB-unique Read v2 maps. ICD-10 / OPCS-4 and `--forward-history` need `--refsets all`. `sct transcode` fails with a clear message if the database lacks the required maps.
+CTV3 maps work on a UK-derived `snomed.db`; Read v2 rows come from
+[`sct read2 import`](read2.md) over TRUD item 9. ICD-10 / OPCS-4 and
+`--forward-history` need `--refsets all`. `sct transcode` fails with a clear
+message if the database lacks the required maps.
 
 ## Usage
 
@@ -45,6 +56,9 @@ cat ctv3_codes.csv | sct transcode --from ctv3 --to snomed --forward-history
 
 # Two-hop: CTV3 -> (SNOMED) -> ICD-10
 echo 'X200E' | sct transcode --from ctv3 --to icd10
+
+# Read v2 -> SNOMED, using the ReadCode+TermCode key
+echo '0111.00' | sct transcode --from read2 --to snomed
 
 # Compose with ECL: every descendant of Diabetes, as ICD-10
 sct ecl expand '<<73211009' | sct transcode --from snomed --to icd10 --json

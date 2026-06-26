@@ -7,6 +7,7 @@
 use rusqlite::Connection;
 use sct_rs::commands::crosswalk::equivalents;
 use sct_rs::commands::ndjson::{self, RefsetMode};
+use sct_rs::commands::read2;
 use sct_rs::commands::sqlite;
 use sct_rs::commands::transcode::transcode_one;
 use std::path::PathBuf;
@@ -48,6 +49,31 @@ fn targets(c: &Connection, from: &str, code: &str, to: &str, fwd: bool) -> Vec<S
     v
 }
 
+fn item9_zip() -> (tempfile::TempDir, PathBuf) {
+    use std::io::Write;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir
+        .path()
+        .join("nhs_datamigration_29.0.0_20200401000001.zip");
+    let file = std::fs::File::create(&path).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    let opts = zip::write::SimpleFileOptions::default();
+    zip.start_file(
+        "Mapping Tables/Updated/Clinically Assured/rcsctmap2_uk_20200401000001.txt",
+        opts,
+    )
+    .unwrap();
+    write!(
+        zip,
+        "MapId\tReadCode\tTermCode\tConceptId\tDescriptionId\tIS_ASSURED\tEffectiveDate\tMapStatus\r\n\
+         rm1\t0111.\t00\t22298006\t1001\t1\t20200401\t1\r\n\
+         rm2\tH33..\t11\t195967001\t1002\t0\t20200401\t1\r\n"
+    )
+    .unwrap();
+    zip.finish().unwrap();
+    (dir, path)
+}
+
 #[test]
 fn snomed_to_icd10_and_reverse() {
     let (_d, c) = build();
@@ -67,6 +93,20 @@ fn ctv3_to_icd10_two_hop() {
     let (_d, c) = build();
     // CTV3 X200 -> SNOMED 22298006 -> ICD-10 I219.
     assert_eq!(targets(&c, "ctv3", "X200", "icd10", false), ["I219"]);
+}
+
+#[test]
+fn read2_item9_import_feeds_transcode() {
+    let (_d, mut c) = build();
+    let (_zdir, archive) = item9_zip();
+    read2::import_archive_conn(&mut c, &archive).unwrap();
+
+    // Read v2 -> SNOMED -> ICD-10 uses the imported item 9 map plus RF2
+    // ExtendedMap rows from the SNOMED pipeline.
+    assert_eq!(targets(&c, "read2", "0111.00", "icd10", false), ["I219"]);
+
+    // Reverse through SNOMED also exposes the Read v2 source key.
+    assert_eq!(targets(&c, "icd10", "I219", "read2", false), ["0111.00"]);
 }
 
 #[test]
