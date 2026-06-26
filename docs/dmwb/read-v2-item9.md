@@ -26,6 +26,8 @@ sct trud download --edition nhs_data_migration
 
 Do not use `--pipeline`: this archive is not RF2. It is a zip of flat mapping
 tables, documentation PDFs, primary care refsets, and legacy navigation subsets.
+Downloading it does not currently modify `snomed.db`; the Read v2 importer is
+not shipped yet.
 
 You can also use the raw item number:
 
@@ -101,7 +103,10 @@ rows and 102,066 distinct active ReadCode+TermCode pairs, but it lacks
 DescriptionId and assurance metadata. That is why `sct` should prefer
 `RcSctMap2`.
 
-## Import Design
+## Import Design, Not Yet A Command
+
+This section describes the importer `sct` should grow next. It is not a current
+walkthrough step.
 
 The importer should load item 9 into the existing SNOMED SQLite database through
 the general `crossmaps` table. It should not collapse Read v2 rows into only the

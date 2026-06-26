@@ -12,12 +12,13 @@ and serving FHIR `ConceptMap/$translate`.
     miscode repair, casemix analytics, or Access GUI.
 
 !!! warning "Read v2 status"
-    `sct` supports `read2` wherever the SQLite database contains Read v2 rows in
-    `concept_maps`, but current UK RF2 releases do not contain the DMWB-unique
-    Read v2 maps. We have now confirmed that TRUD item 9, **NHS Data
-    Migration**, provides the final April 2020 Read v2 maps as flat TSV files.
-    The Access-file reader remains introspection only because `jetdb` cannot
-    decode DMWB's Binary `SCUI` Read v2 column.
+    Current `sct` releases do **not yet import Read v2 item 9 into SQLite**.
+    `sct` supports `read2` once a database contains Read v2 rows in
+    `crossmaps` / `concept_maps`, but current UK RF2 releases do not contain
+    the DMWB-unique Read v2 maps. TRUD item 9, **NHS Data Migration**, provides
+    the final April 2020 Read v2 maps as flat TSV files; the import path is
+    documented in [Read v2 via TRUD item 9](read-v2-item9.md) but is not yet a
+    shipped command.
 
 ---
 
@@ -27,7 +28,7 @@ The replacement work treats DMWB as two separate products:
 
 | DMWB area | `sct` treatment |
 |---|---|
-| Terminology browsing, crossmaps, clusters, and `TRANSCODE` | In scope. Recreated with RF2-native maps/history, TRUD item 9 Read v2 files, CLI commands, codelist exports, and FHIR `$translate`. |
+| Terminology browsing, crossmaps, clusters, and `TRANSCODE` | In scope. RF2-native maps/history are shipped; TRUD item 9 Read v2 import is designed but not yet implemented. |
 | EPR patient-data loading, miscode repair, casemix graphs, and Access UI | Out of scope for `sct`'s terminology toolchain. |
 
 The analysis method is:
@@ -36,7 +37,9 @@ The analysis method is:
    CTV3 SimpleMap, SNOMED -> ICD-10 / OPCS-4 ExtendedMap, and Association
    history refsets.
 2. Use TRUD item 9 only for the DMWB-unique legacy Read v2 maps. It is the final
-   April 2020 static flat-file release.
+   April 2020 static flat-file release. At present `sct trud download --edition
+   nhs_data_migration` downloads it for inspection; it does not add rows to
+   `snomed.db`.
 3. Preserve the migration product's own safety metadata. For Read v2 this means
    retaining `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and source
    release provenance, rather than flattening everything into a bare code ->
@@ -46,7 +49,7 @@ The analysis method is:
 
 ---
 
-## Build a DMWB-ready database
+## Build a DMWB-ready RF2 database
 
 Use the UK Monolith from NHS TRUD and ask `sct` to load all RF2 map and history
 refsets:
@@ -62,6 +65,16 @@ That command downloads the latest UK Monolith release, verifies it, builds the
 NDJSON artefact, and builds the SQLite database under `~/.local/share/sct/data/`.
 It does **not** overwrite an existing `./snomed.db` in your current project
 directory.
+
+This build adds the RF2-native DMWB-equivalent data:
+
+- CTV3 -> SNOMED CT SimpleMap rows
+- SNOMED CT -> ICD-10 / OPCS-4 ExtendedMap rows
+- SNOMED CT association history for inactive-concept forwarding
+- inactive concepts, when `--include-inactive` is used
+
+It does **not** add Read v2 item 9 rows yet. Read v2 remains the remaining
+importer work.
 
 The two important flags are:
 
@@ -96,10 +109,10 @@ DMWB-ready database that `sct trud --pipeline` just built.
 
 If you used `sct trud --pipeline`, either omit `--db` from later commands and
 make sure `sct paths` resolves to the new data-home database, or copy/pass that
-exact path explicitly:
+exact path explicitly. For example:
 
 ```bash
-DB="$HOME/.local/share/sct/data/uk_sct2mo_41.6.0_20260311000001Z.db"
+DB="$HOME/.local/share/sct/data/uk_sct2mo_42.2.0_20260603000001z.db"
 ```
 
 If you used the manual `sct ndjson` / `sct sqlite` build above, `DB=./snomed.db`
@@ -112,17 +125,36 @@ DB=./snomed.db
 Now check that the selected database has the DMWB-replacement tables:
 
 ```bash
+: "${DB:?Set DB to the SQLite database path first}"
+test -f "$DB"
+sqlite3 "$DB" "select count(*) from concepts"
 sqlite3 "$DB" "select name from sqlite_master where type='table' and name in ('crossmaps','concept_history')"
 sqlite3 "$DB" "select count(*) from crossmaps"
 sqlite3 "$DB" "select count(*) from concept_history"
 sqlite3 "$DB" "select count(*) from concepts where active = 0"
 ```
 
-If `crossmaps` or `concept_history` does not exist, that database was not built
-from a current `sct ndjson --refsets all` artefact. If the inactive-concept count
-is zero, it was not built with `--include-inactive` or the selected release slice
-contains no inactive concepts. The most common cause is simply checking an old
-local `./snomed.db` rather than the pipeline output.
+If even `concepts` does not exist, `DB` is unset, points at the wrong file, or
+points at an empty SQLite file. If `concepts` exists but `crossmaps` or
+`concept_history` does not, that database was not built from a current
+`sct ndjson --refsets all` artefact. If the inactive-concept count is zero, it
+was not built with `--include-inactive` or the selected release slice contains
+no inactive concepts. The most common cause is simply checking an old local
+`./snomed.db` rather than the pipeline output.
+
+You do not have to delete any database. Use one of these patterns:
+
+```bash
+# Highest priority: make every sct command use the DMWB-ready database.
+export SCT_DB="$DB"
+
+# Or pass it explicitly.
+sct crosswalk 22298006 --db "$DB"
+
+# Or replace the local convenience filename after you are sure it is old.
+mv ./snomed.db ./snomed.core-only.db
+cp "$DB" ./snomed.db
+```
 
 ---
 
@@ -132,7 +164,7 @@ DMWB's `BROWSE` screen shows equivalent codes around a SNOMED CT pivot. In `sct`
 use [`sct crosswalk`](../commands/crosswalk.md):
 
 ```bash
-sct crosswalk 22298006 --db snomed.db
+sct crosswalk 22298006 --db "$DB"
 ```
 
 If you built via `sct trud --pipeline` and did not copy the database to
@@ -152,14 +184,14 @@ Typical output:
 Start from another system when that is the code you have:
 
 ```bash
-sct crosswalk X200E --from ctv3 --db snomed.db
-sct crosswalk I219 --from icd10 --db snomed.db
+sct crosswalk X200E --from ctv3 --db "$DB"
+sct crosswalk I219 --from icd10 --db "$DB"
 ```
 
 Use JSON when another process needs the result:
 
 ```bash
-sct crosswalk 22298006 --json --db snomed.db
+sct crosswalk 22298006 --json --db "$DB"
 ```
 
 ---
@@ -170,34 +202,34 @@ DMWB's `TRANSCODE` workflow becomes [`sct transcode`](../commands/transcode.md):
 one input code per line, one output row per mapping.
 
 ```bash
-cat ctv3-codes.txt | sct transcode --from ctv3 --to snomed --db snomed.db
+cat ctv3-codes.txt | sct transcode --from ctv3 --to snomed --db "$DB"
 ```
 
 Crosswalk via SNOMED CT into ICD-10:
 
 ```bash
-cat ctv3-codes.txt | sct transcode --from ctv3 --to icd10 --db snomed.db
+cat ctv3-codes.txt | sct transcode --from ctv3 --to icd10 --db "$DB"
 ```
 
 Map SNOMED CT concepts to ICD-10:
 
 ```bash
 printf '22298006\n73211009\n' \
-  | sct transcode --from snomed --to icd10 --db snomed.db
+  | sct transcode --from snomed --to icd10 --db "$DB"
 ```
 
 Emit JSON lines for a downstream script:
 
 ```bash
 cat ctv3-codes.txt \
-  | sct transcode --from ctv3 --to icd10 --json --db snomed.db
+  | sct transcode --from ctv3 --to icd10 --json --db "$DB"
 ```
 
 Read v2 will use the same command shape once item 9 import is implemented:
 
 ```bash
 cat read2-code-term-keys.txt \
-  | sct transcode --from read2 --to snomed --forward-history --db snomed.db
+  | sct transcode --from read2 --to snomed --forward-history --db "$DB"
 ```
 
 The recommended Read v2 input key is the seven-character ReadCode+TermCode
@@ -213,7 +245,7 @@ release. Build with `--refsets all --include-inactive`, then add
 
 ```bash
 cat old-sctids.txt \
-  | sct transcode --from snomed --to snomed --forward-history --db snomed.db
+  | sct transcode --from snomed --to snomed --forward-history --db "$DB"
 ```
 
 The forwarding data comes from the RF2 Association refsets, so it is sourced from
@@ -230,7 +262,7 @@ append target terminology columns at export time:
 sct codelist export codelists/mi.codelist \
   --format csv \
   --include-maps ctv3,icd10,opcs4 \
-  --db snomed.db \
+  --db "$DB" \
   --output mi-crosswalk.csv
 ```
 
@@ -246,7 +278,7 @@ DMWB's Excel add-in can target a FHIR terminology server. `sct serve` provides
 FHIR R4 `ConceptMap/$translate` over the same local SQLite database:
 
 ```bash
-sct serve --db snomed.db --host 127.0.0.1 --port 8080
+sct serve --db "$DB" --host 127.0.0.1 --port 8080
 ```
 
 Then call `$translate` directly:
@@ -293,7 +325,7 @@ ICD-10, OPCS-4, CTV3, and history.
 | Inactive concept forwarding | RF2 Association refsets + `--forward-history` | Shipped |
 | Cross-terminology codelist exports | `sct codelist export --include-maps` | Shipped |
 | FHIR translation for Excel / integration | `sct serve` `ConceptMap/$translate` | Shipped |
-| DMWB Read v2 map import | TRUD item 9 flat files; importer design documented | Data source confirmed |
+| DMWB Read v2 map import | TRUD item 9 flat files; importer design documented | Not yet implemented |
 | DMWB EPR DATA / casemix analytics | Out of scope | Not planned |
 
 For the design history and remaining Read v2 options, see the
