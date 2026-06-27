@@ -79,7 +79,7 @@ Both installers auto-detect your OS and architecture, download the matching bina
 ### Homebrew (macOS and Linux)
 
 ```bash
-brew tap pacharanero/sct
+brew tap pacharanero/tap
 brew install sct
 ```
 

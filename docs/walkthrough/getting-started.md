@@ -13,7 +13,7 @@ Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Appl
     **Homebrew** (recommended)
 
     ```bash
-    brew tap pacharanero/sct
+    brew tap pacharanero/tap
     brew install sct
     ```
 
@@ -50,7 +50,7 @@ Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Appl
     **Homebrew**
 
     ```bash
-    brew tap pacharanero/sct
+    brew tap pacharanero/tap
     brew install sct
     ```
 

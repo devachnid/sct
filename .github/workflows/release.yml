@@ -231,13 +231,13 @@ jobs:
             echo "windows_x86_64=$(grep ' sct-windows-x86_64\.zip$'     SHA256SUMS | awk '{print $1}')"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Update Homebrew tap (pacharanero/homebrew-sct)
+      - name: Update Homebrew tap (pacharanero/homebrew-tap)
         env:
           GH_TOKEN: ${{ secrets.TAP_REPOS_TOKEN }}
         run: |
           set -eu
           git clone --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/pacharanero/homebrew-sct.git" tap
+            "https://x-access-token:${GH_TOKEN}@github.com/pacharanero/homebrew-tap.git" tap
           cd tap
 
           cat > Formula/sct.rb <<EOF
