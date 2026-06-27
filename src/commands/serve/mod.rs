@@ -22,7 +22,7 @@ use axum::{
 };
 use clap::Parser;
 use rusqlite::Connection;
-use std::path::PathBuf;
+use std::path::{Path as FsPath, PathBuf};
 use std::sync::Arc;
 
 use fhir::FhirError;
@@ -134,7 +134,7 @@ pub fn serve_listener(
     })
 }
 
-fn table_exists(db: &PathBuf, table: &str) -> Result<bool> {
+fn table_exists(db: &FsPath, table: &str) -> Result<bool> {
     let conn = crate::commands::open_db_readonly(db, None)
         .with_context(|| format!("opening database {}", db.display()))?;
     let exists: i64 = conn.query_row(
