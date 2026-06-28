@@ -11,17 +11,21 @@ In no particular order
 
 * [ ] obtain Windows signing key https://ngrok.com/blog/so-you-want-to-sign-for-windows
 * [~] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). FHIR conformance fixtures and a terminology-server runner now exist in `bench/conformance.sh`; remaining work is broader fixture coverage, concurrency/percentile benchmarks, comparator server compose profiles, and published reports.
-* [ ] dockerfile && dockerhub build (for the server)
-* [ ] improve distribution - remaining work is signing/notarization and registry submissions; `.dmg`, `.exe`, `.deb`, `.rpm`, Homebrew tap, Scoop bucket, shell installers, crates.io, and cargo-binstall are already shipped.
+* [ ] Docker Hub image for the terminology server. `Dockerfile`, Compose, and docs are shipped;
+      remaining work is publishing/versioning the image and documenting pull-based deployment.
+* [ ] improve distribution - remaining work is signing/notarization and registry submissions;
+      `.dmg`, `.exe`, `.deb`, `.rpm`, shared Homebrew tap, Scoop bucket, shell installers,
+      crates.io, cargo-binstall, and Docker Compose are already shipped.
 * [ ] mermaid diagrams for the architecture and data flow, to visually explain how the different components fit together and how data moves through the system. This would replace the ascii diagrams in the README and make it easier for users to understand the overall design and how the different pieces interact. FST can more easily be explained this way. We should use real SNOMED examples in the diagrams to make them more concrete and relatable.
-* [ ] SNOMED primer - undestanding SNOMED basics (concepts, descriptions, relationships, refsets, ECL, etc.) is a barrier to entry for new users. A concise primer that explains these core concepts in plain language, with examples, is needed. It may need to take different approaches for technical vs clinical audiences. It should be in a section of the docs.
+* [ ] SNOMED primer - understanding SNOMED basics (concepts, descriptions, relationships, refsets, ECL, etc.) is a barrier to entry for new users. A concise primer that explains these core concepts in plain language, with examples, is needed. It may need to take different approaches for technical vs clinical audiences. It should be in a section of the docs.
 
 ## In progress / near-term
 
 ### Distribution
 
-Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, a Homebrew tap, and a Scoop bucket - all auto-bumped by the release workflow. See the docs installation tabs. Outstanding:
+Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and Docker Compose quickstart for the terminology server. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs. Outstanding:
 
+- [ ] Publish a Docker Hub / GHCR image for `sct serve`, with tags matching `sct` releases
 - [ ] macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users
       don't have to `chmod +x` and bypass Gatekeeper
 - [ ] Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block
@@ -67,13 +71,13 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks). See [`docs/commands/codelist.md`](../docs/commands/codelist.md). Outstanding:
 
 - [ ] `sct codelist export <file> --format fhir-json/rf2` - remaining export formats
-- [ ] **Multi-terminology codelists (format v2)** - future extension once the remaining
-      DMWB-unique Read v2 import path is solved. ICD-10 / OPCS-4 maps are now available
-      through RF2 `--refsets all`; Read v2 is still blocked. Would allow `terminology: [SNOMED CT,
-      CTV3]` with first-class non-SNOMED codes (for historical Read v2 codes that
-      have no modern SNOMED equivalent). The `--include-maps` export above is the
-      interim solution for SNOMED-canonical lists; v2 is for genuinely cross-terminology
-      source artefacts.
+- [ ] **Multi-terminology codelists (format v2)** - future extension now that the
+      terminology workspace can contain SNOMED CT, CTV3, Read v2, ICD-10, and OPCS-4.
+      Would allow first-class non-SNOMED source codes in a codelist, e.g. historical
+      Read v2 codes with no modern SNOMED equivalent, instead of treating SNOMED as
+      the canonical pivot for every list. The `--include-maps` export is the interim
+      solution for SNOMED-canonical lists; v2 is for genuinely cross-terminology source
+      artefacts.
 - [ ] `sct codelist search <file> <query>` - interactive FTS5 search → include/exclude
 - [ ] `sct codelist import --from <source>` - OCL, CSV, RF2, FHIR import
 - [x] **Composable codelists** ✅ **shipped** - a `.codelist` composes others via an
@@ -118,12 +122,14 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 > **Cross-terminology mapping + DMWB replacement.** The RF2-native terminology/mapping
 > core is now shipped: CTV3 maps, SNOMED CT -> ICD-10 / OPCS-4 ExtendedMap rows,
 > Association-refset history forwarding, `sct transcode`, `sct crosswalk`,
-> codelist `--include-maps`, and FHIR `ConceptMap/$translate`. See
+> codelist `--include-maps`, FHIR `ConceptMap/$translate`, and Read v2 import
+> from the final TRUD item 9 flat-file release. `sct trud download
+> --multi-terminology` now builds a SNOMED/CTV3/Read v2/ICD-10/OPCS-4 workspace
+> in one command. The Access `.mdb` path remains intentionally documented as
+> historical analysis only: `jetdb` cannot decode DMWB's Binary `SCUI` column,
+> and item 9 is the cleaner authoritative source. See
 > [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) and the
-> DMWB walkthrough in the docs site. The remaining DMWB-specific gap is Read v2
-> import. Current UK RF2 does not contain those maps, and the Access `.mdb` path
-> is blocked because `jetdb` cannot decode DMWB's Binary `SCUI` column; however
-> TRUD item 9 is now confirmed as the final April 2020 flat-file source.
+> DMWB walkthrough in the docs site.
 
 - [ ] **History MCP surface** - RF2 Association history is parsed and loaded into
       `concept_history`, and `sct transcode --forward-history` uses it. Still missing:
@@ -156,7 +162,8 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
      engine). Complements `CodeSystem/$validate-code`.
   3. ✅ **shipped** - **`ConceptMap/$translate`** over the crossmap engine. Supports
      SNOMED CT, CTV3, ICD-10, OPCS-4, and Read v2 when the backing DB contains those
-     maps. ICD-10 / OPCS-4 come from `--refsets all`; Read v2 remains data-blocked.
+     maps. ICD-10 / OPCS-4 come from `--refsets all`; Read v2 comes from TRUD item 9
+     via `sct read2 import` or `sct trud download --multi-terminology`.
   4. **`$expand` parameter completeness + FHIR batch Bundles** - `activeOnly`, `displayLanguage`,
      specific `designation` / `property` filters, version params (`system-version` /
      `valueSetVersion`); `POST /` transaction/batch Bundle handler; `CodeSystem` resource read;
@@ -171,8 +178,8 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
   and any loaded Read v2 rows; Association refsets load concept history under
   `--refsets all`. Remaining refset families: Complex refsets and AttributeValue refsets.
 
-  **Phase 4 - R5 + hardening** (FHIR R5 CapabilityStatement; named ValueSet registry;
-  Docker image / systemd unit; parameter completeness; batch Bundle support)
+  **Phase 4 - R5 + hardening** (FHIR R5 CapabilityStatement; published Docker image /
+  systemd unit; parameter completeness; batch Bundle support)
 - [~] **`sct ndjson --refsets all`** - RF2-native DMWB-relevant map/history ingestion is
       shipped: ExtendedMap rows load into `crossmaps`, Association rows load into
       `concept_history` via a history sidecar, and default `simple` mode still omits the
