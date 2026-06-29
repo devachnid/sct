@@ -7,16 +7,49 @@ cd "$(git rev-parse --show-toplevel)"
 
 CARGO_TOML="Cargo.toml"
 
+usage() {
+  echo "Usage: s/version++ [patch|minor|major]" >&2
+}
+
+if [[ $# -gt 1 ]]; then
+  usage
+  exit 2
+fi
+
+bump="${1:-patch}"
+case "$bump" in
+  patch|minor|major) ;;
+  *)
+    usage
+    echo "Invalid bump: $bump" >&2
+    exit 2
+    ;;
+esac
+
 # Read current version
 current=$(grep -E '^version\s*=' "$CARGO_TOML" | head -1 | sed 's/.*"\(.*\)".*/\1/')
 echo "Current version: $current"
 
 # Parse semver parts
 IFS='.' read -r major minor patch <<< "$current"
-next_patch=$((patch + 1))
-next="${major}.${minor}.${next_patch}"
+if [[ ! "$major" =~ ^[0-9]+$ || ! "$minor" =~ ^[0-9]+$ || ! "$patch" =~ ^[0-9]+$ ]]; then
+  echo "Cannot bump non-simple SemVer version: $current" >&2
+  exit 1
+fi
 
-echo "Bumping to: $next"
+case "$bump" in
+  major)
+    next="$((major + 1)).0.0"
+    ;;
+  minor)
+    next="${major}.$((minor + 1)).0"
+    ;;
+  patch)
+    next="${major}.${minor}.$((patch + 1))"
+    ;;
+esac
+
+echo "Bumping $bump: $current -> $next"
 
 # Update Cargo.toml
 sed -i "0,/^version\s*=/{s/^version\s*=\s*\"${current}\"/version = \"${next}\"/}" "$CARGO_TOML"
