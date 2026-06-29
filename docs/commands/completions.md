@@ -1,6 +1,6 @@
 # sct completions
 
-Print a shell completion script to stdout. Supports bash, zsh, fish, PowerShell, and elvish.
+Install or print shell completion scripts. Supports bash, zsh, fish, PowerShell, and elvish.
 
 ---
 
@@ -8,6 +8,8 @@ Print a shell completion script to stdout. Supports bash, zsh, fish, PowerShell,
 
 ```
 sct completions <SHELL>
+sct completions --dir <PATH> <SHELL>
+sct completions install [--shell <SHELL>] [--dir <PATH>]
 ```
 
 ## Arguments
@@ -20,17 +22,25 @@ sct completions <SHELL>
 
 ## Installation
 
+For the current user, prefer the installer:
+
+```bash
+sct completions install
+```
+
+It detects your shell, writes the correctly named completion file, and prints any one-time shell setup still needed. Re-run it after upgrading `sct` if your package manager or installer did not refresh completions for you.
+
 ### bash
 
 ```bash
 mkdir -p ~/.local/share/bash-completion/completions
-sct completions bash > ~/.local/share/bash-completion/completions/sct
+sct completions --dir ~/.local/share/bash-completion/completions bash
 ```
 
 Or system-wide:
 
 ```bash
-sct completions bash > /etc/bash_completion.d/sct
+sct completions --dir /etc/bash_completion.d bash
 ```
 
 Reload with `source ~/.bashrc` or open a new shell.
@@ -39,7 +49,7 @@ Reload with `source ~/.bashrc` or open a new shell.
 
 ```zsh
 mkdir -p ~/.zfunc
-sct completions zsh > ~/.zfunc/_sct
+sct completions --dir ~/.zfunc zsh
 ```
 
 Ensure `~/.zfunc` is on `$fpath` - add this to `~/.zshrc` **before** `compinit`:
@@ -54,7 +64,7 @@ Then open a new shell or run `exec zsh`.
 ### fish
 
 ```fish
-sct completions fish > ~/.config/fish/completions/sct.fish
+sct completions --dir ~/.config/fish/completions fish
 ```
 
 Takes effect immediately in new fish sessions.
@@ -62,7 +72,7 @@ Takes effect immediately in new fish sessions.
 ### PowerShell
 
 ```powershell
-sct completions powershell >> $PROFILE
+sct completions --dir ~/.config/powershell/completions powershell
 ```
 
 Reload with `. $PROFILE` or open a new PowerShell session.
@@ -70,7 +80,7 @@ Reload with `. $PROFILE` or open a new PowerShell session.
 ### elvish
 
 ```elvish
-sct completions elvish >> ~/.elvish/lib/completions.elv
+sct completions --dir ~/.elvish/lib elvish
 ```
 
 ---
@@ -78,7 +88,7 @@ sct completions elvish >> ~/.elvish/lib/completions.elv
 ## Example
 
 ```bash
-$ sct completions zsh > ~/.zfunc/_sct
+$ sct completions install --shell zsh
 $ exec zsh
 $ sct <TAB>
 codelist     completions  diff         embed        gui          info
