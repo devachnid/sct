@@ -206,6 +206,54 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
       `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and source
       provenance in `crossmaps`. `sct trud download --multi-terminology` builds
       the full SNOMED/CTV3/Read v2/ICD-10/OPCS-4 workspace in one command.
+- [ ] **First-class ICD-10 / ICD-11 support** - current `sct` support for ICD-10 is
+      map-centric: UK/International SNOMED CT -> ICD-10 ExtendedMap rows are
+      already imported into `crossmaps` with `sct ndjson --refsets all`, and
+      `sct transcode`, `sct crosswalk`, codelist `--include-maps`, and FHIR
+      `ConceptMap/$translate` can use them. What is missing is ICD itself as a
+      searchable/servable code system: code titles, hierarchy, includes/excludes,
+      synonyms/index terms, validation, lookup, expansion, and version metadata.
+
+      Initial research (June 2026):
+      - ICD-10 access is tractable. WHO exposes ICD-10 2019 through the ICD API
+        and browser; the ICD API supported-release list includes ICD-10 releases
+        2008, 2010, 2016, and 2019. NHS England's Classifications Browser exposes
+        ICD-10 5th Edition 2026 and related standards, with site content under
+        OGL unless excepted. For UK users, ICD-10 5th Edition is the practical
+        target because it is what NHS morbidity coding uses.
+      - ICD-11 access is also tractable, but different. WHO publishes ICD-11 MMS
+        spreadsheets from the browser, exposes ICD-11 through the OAuth-protected
+        ICD API, and provides local ICD API deployments via Docker, Windows
+        service, and Linux systemd. ICD-11 content is licensed CC BY-ND 3.0 IGO;
+        WHO clarifies that incorporating the classification in software is not
+        an adaptation if code, title, and URI are preserved, but mapping/crosswalk
+        production requires separate written agreement from WHO.
+      - Crossmaps differ sharply by generation. SNOMED -> ICD-10 maps already
+        arrive in SNOMED RF2 ExtendedMap refsets and are mostly an import/display
+        problem. WHO provides ICD-10 -> ICD-11 mapping tables in the ICD-11 MMS
+        browser. A public, production SNOMED CT -> ICD-11 map is not currently an
+        assumed input; treat it as unavailable until a licensable source is found.
+      - Sources checked: WHO ICD API supported classifications
+        <https://icd.who.int/icdapi/docs2/SupportedClassifications/>, WHO ICD API
+        authentication/local deployment docs, WHO ICD-11 MMS 2026 browser
+        <https://icd.who.int/browse/2026-01/mms/en>, WHO ICD-11 licence PDF
+        <https://icd.who.int/en/docs/ICD11-license.pdf>, NHS England
+        Classifications Browser <https://classbrowser.nhs.uk/> and licence page
+        <https://classbrowser.nhs.uk/license.html>.
+
+      Proposed shape:
+      - Add a generic `code_systems` / `codes` / `code_relationships` model for
+        non-SNOMED classifications rather than forcing ICD rows into `concepts`.
+        Preserve source URI/version/license/provenance per code system.
+      - Start with an `sct icd import` command for local files/API exports:
+        ICD-10 tabular data first, then ICD-11 MMS spreadsheet/API export.
+        Do not redistribute WHO/NHS source content in `sct` releases.
+      - Extend `sct lookup`, lexical search, codelist validation/export, and
+        `sct serve` so `CodeSystem/$lookup` and `$validate-code` work for ICD-10
+        and ICD-11 code systems as well as SNOMED CT.
+      - Keep crossmaps in the existing general `crossmaps` table. Add ICD-10 ->
+        ICD-11 maps only if the WHO mapping-table licence permits local import;
+        do not generate or ship new ICD crosswalks without explicit licence review.
 - [ ] **IPS Free Set bundling** - investigate bundling the pre-processed NDJSON artefact of the
       SNOMED International IPS Free Set (freely available from MLDS without affiliate membership)
       to make `sct lexical`, `sct mcp`, and `sct serve` work out-of-the-box for IPS tooling
