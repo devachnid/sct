@@ -112,7 +112,8 @@ description = "NHS Data Migration Pack (final Read v2 / CTV3 / SNOMED CT maps)"
 
 ### `sct trud list`
 
-List available releases for an edition, from newest to oldest.
+List subscription status for the built-in editions, or list available releases
+for one edition from newest to oldest.
 
 ```
 sct trud list [--edition <NAME>] [--item <N>]
@@ -121,12 +122,22 @@ sct trud list [--edition <NAME>] [--item <N>]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--edition <NAME>` | `uk_monolith` | Named edition profile (see config). |
+| `--edition <NAME>` | - | Named edition profile (see config). When omitted with `--item`, `sct trud list` shows subscription status for built-in editions. |
 | `--item <N>` | - | Raw TRUD item number; overrides `--edition`. |
 | `--api-key <KEY>` | - | API key as a plain string. |
 | `--api-key-file <PATH>` | - | Path to a file containing the API key. |
 
-**Output** (table to stdout):
+**Output with no edition/item** (table to stdout):
+
+```
+Edition           Item  Status          Latest release                                        Released
+----------------------------------------------------------------------------------------------------
+uk_monolith       1799  not subscribed  -                                                     -
+uk_clinical        101  subscribed      uk_sct2cl_41.6.0_20260311000001Z.zip                  2026-03-18
+uk_drug            105  subscribed      uk_sct2dr_41.6.0_20260311000001Z.zip                  2026-03-18
+```
+
+**Output with `--edition` or `--item`** (table to stdout):
 
 ```
 Version                                    Released     Size      SHA-256 (first 12)

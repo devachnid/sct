@@ -118,16 +118,36 @@ as "reachable". Only DNS failures, TCP timeouts, or TLS errors trigger this mess
 
 ### `sct trud list`
 
-Lists the available releases
+Lists TRUD subscription status, or available releases for one subscribed item.
 
 ```
 sct trud list [--edition <NAME>] [--item <N>]
 ```
 
-Lists all available releases for an edition, newest first.
+With no `--edition` or `--item`, `sct trud list` probes the built-in editions and
+shows whether the current API key is subscribed to each one. This is useful when
+setting up a new TRUD account because unsubscribed items return HTTP 404 from the
+TRUD API.
 
 ```bash
-sct trud list                          # UK Monolith (default)
+sct trud list
+```
+
+Example summary:
+
+```
+Edition           Item  Status          Latest release                                        Released
+----------------------------------------------------------------------------------------------------
+uk_monolith       1799  not subscribed  -                                                     -
+uk_clinical        101  subscribed      uk_sct2cl_41.6.0_20260311000001Z.zip                  2026-03-18
+uk_drug            105  subscribed      uk_sct2dr_41.6.0_20260311000001Z.zip                  2026-03-18
+```
+
+To list all available releases for one edition, pass `--edition` or `--item`.
+Results are shown newest first.
+
+```bash
+sct trud list --edition uk_monolith
 sct trud list --edition uk_clinical
 sct trud list --edition uk_drug
 sct trud list --edition nhs_data_migration
