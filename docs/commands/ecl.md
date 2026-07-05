@@ -45,6 +45,42 @@ echo "<<404684003 : 363698007 = <<39057004" | sct ecl expand -
 
 ---
 
+## `sct ecl compress` - set → ECL
+
+The inverse of `expand`: take an explicit set of SCTIDs (a hand-curated code list) and refactor it into a compact ECL expression that re-expands to *exactly* that set. Turns a brittle flat list into a self-documenting, release-stable intensional definition.
+
+```
+sct ecl compress [<IDS>...] [--codelist <FILE>] [--intensional-only]
+                 [--max-exclusions <N>] [--pretty] [--stats] [--db <FILE>]
+```
+
+| Argument / Flag | Default | Description |
+|---|---|---|
+| `<IDS>...` | *(stdin)* | SCTIDs to compress. Pass `-` or no ids to read newline/whitespace-delimited ids from stdin. |
+| `--codelist <FILE>` | - | Compress the effective members of a `.codelist` instead of ids. |
+| `--intensional-only` | off | Emit only subsumption/exclusion clauses; do **not** add literal `OR`/`MINUS` residuals. Exits non-zero if the result is not exact. |
+| `--max-exclusions <N>` | `32` | Cap the number of `MINUS <<x` clauses before the remainder falls to literal residuals. |
+| `--pretty` | off | Break the expression across indented lines. |
+| `--stats` | off | Print clause counts and intensional coverage to stderr. |
+| `--db <FILE>` | discovered | SQLite database. |
+
+By default the result is **exact**: if the subsumption heuristic can't express the set cleanly, literal `OR id` / `MINUS id` residuals are appended so the expression provably reproduces the input (verified by re-expansion). A set with no hierarchical structure degrades gracefully to a list of `OR`ed ids - never to a wrong answer.
+
+```bash
+# A whole subtree collapses to one clause
+sct ecl expand "<<73211009" | sct ecl compress -            # => <<73211009
+
+# Subtree-minus-subtree
+printf '73211009\n44054006\n' | sct ecl compress - --stats  # => <<73211009 MINUS <<46635009
+
+# Round-trip: compress then expand returns the original set
+sct ecl compress --codelist diabetes.codelist | sct ecl expand -
+```
+
+This is a greedy heuristic, not a proof of minimum size; `--stats` reports how much was expressed intensionally. See [`specs/commands/ecl-compress.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/ecl-compress.md).
+
+---
+
 ## Supported ECL
 
 | Construct | Example | Meaning |

@@ -37,6 +37,9 @@ enum Command {
     /// Evaluate an ECL expression and emit matching concept SCTIDs (pipe-friendly).
     Ecl(commands::ecl::Args),
 
+    /// Draw a concept's definition, ancestors, or descendants (tree/DOT/Mermaid).
+    Diagram(commands::diagram::Args),
+
     /// Start a local MCP server over stdio backed by a SNOMED CT SQLite database.
     Mcp(commands::mcp::Args),
 
@@ -129,6 +132,7 @@ fn main() -> Result<()> {
         Command::Markdown(args) => commands::markdown::run(args),
         Command::Fst(args) => commands::fst::run(args),
         Command::Ecl(args) => commands::ecl::run(args),
+        Command::Diagram(args) => commands::diagram::run(args),
         Command::Mcp(args) => commands::mcp::run(args),
         Command::Embed(args) => commands::embed::run(args),
         Command::Info(args) => commands::info::run(args),

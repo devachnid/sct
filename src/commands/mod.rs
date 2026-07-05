@@ -4,6 +4,7 @@
 pub mod codelist;
 pub mod completions;
 pub mod crosswalk;
+pub mod diagram;
 pub mod diff;
 #[cfg(feature = "dmwb")]
 pub mod dmwb;

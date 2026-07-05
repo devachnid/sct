@@ -103,7 +103,7 @@ fn eval_op(conn: &Connection, op: Op, base: &IdSet) -> Result<IdSet> {
 /// built by `sct sqlite --transitive-closure` / `sct tct`) is present. When it
 /// is, `<<`/`>>` are indexed lookups instead of recursive CTEs - a large
 /// speed-up on big hierarchies. See [`warn_if_no_tct`](crate::ecl::warn_if_no_tct).
-fn has_tct(conn: &Connection) -> bool {
+pub(crate) fn has_tct(conn: &Connection) -> bool {
     conn.query_row(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='concept_ancestors'",
         [],
@@ -112,12 +112,79 @@ fn has_tct(conn: &Connection) -> bool {
     .is_ok()
 }
 
+/// Descendants of `id` **including `id` itself** (`<<id`). Shared by
+/// `sct diagram` and `sct ecl compress`; reuses the same traversal the ECL
+/// evaluator uses so subsumption has one definition across the codebase.
+pub(crate) fn descendants_or_self(conn: &Connection, id: &str) -> Result<IdSet> {
+    let mut out = IdSet::new();
+    collect_transitive(conn, id, true, has_tct(conn), &mut out)?;
+    out.insert(id.to_string());
+    Ok(out)
+}
+
+/// Proper ancestors of `id` (excludes `id`).
+pub(crate) fn ancestors(conn: &Connection, id: &str) -> Result<IdSet> {
+    let mut out = IdSet::new();
+    collect_transitive(conn, id, false, has_tct(conn), &mut out)?;
+    Ok(out)
+}
+
+/// Direct IS-A parents of `id` (one hop up), deduplicated and sorted numerically.
+pub(crate) fn parents(conn: &Connection, id: &str) -> Result<Vec<String>> {
+    let mut set = IdSet::new();
+    collect_one_hop(conn, id, false, &mut set)?;
+    Ok(sorted_numeric(set))
+}
+
+/// Direct IS-A children of `id` (one hop down), deduplicated and sorted numerically.
+pub(crate) fn children(conn: &Connection, id: &str) -> Result<Vec<String>> {
+    let mut set = IdSet::new();
+    collect_one_hop(conn, id, true, &mut set)?;
+    Ok(sorted_numeric(set))
+}
+
+/// Defining attribute relationships of `id`: `(type_id, destination_id, group)`,
+/// deduplicated (RF2 carries repeated rows) and stably ordered by group then type.
+/// Returns an empty vec when the `concept_relationships` table is absent.
+pub(crate) fn relationships(conn: &Connection, id: &str) -> Result<Vec<(String, String, i64)>> {
+    if !has_relationships_table(conn) {
+        return Ok(Vec::new());
+    }
+    let mut stmt = conn.prepare_cached(
+        "SELECT DISTINCT type_id, destination_id, group_num
+         FROM concept_relationships WHERE source_id = ?1
+         ORDER BY group_num, type_id, destination_id",
+    )?;
+    let rows = stmt.query_map([id], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, i64>(2)?,
+        ))
+    })?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
+/// Sort an [`IdSet`] into a `Vec` by numeric SCTID value (lexical fallback).
+fn sorted_numeric(set: IdSet) -> Vec<String> {
+    let mut v: Vec<String> = set.into_iter().collect();
+    v.sort_by(|a, b| match (a.parse::<u128>(), b.parse::<u128>()) {
+        (Ok(x), Ok(y)) => x.cmp(&y),
+        _ => a.cmp(b),
+    });
+    v
+}
+
 /// Proper descendants (`down = true`) or ancestors (`down = false`) of `id`.
 /// Uses the indexed transitive-closure table when `tct` is set, otherwise a
 /// recursive CTE over `concept_isa`. Both exclude `id` itself (the `<<`/`>>`
 /// caller adds it back), so the `concept_ancestors` query filters self out in
 /// case the table was built with `--include-self`.
-fn collect_transitive(
+pub(crate) fn collect_transitive(
     conn: &Connection,
     id: &str,
     down: bool,
@@ -156,7 +223,12 @@ fn collect_transitive(
     Ok(())
 }
 
-fn collect_one_hop(conn: &Connection, id: &str, down: bool, out: &mut IdSet) -> Result<()> {
+pub(crate) fn collect_one_hop(
+    conn: &Connection,
+    id: &str,
+    down: bool,
+    out: &mut IdSet,
+) -> Result<()> {
     let sql = if down {
         "SELECT child_id FROM concept_isa WHERE parent_id = ?1"
     } else {
@@ -205,7 +277,7 @@ fn eval_refinement(conn: &Connection, focus: &IdSet, r: &Refinement) -> Result<I
 
 /// Whether the `concept_relationships` table exists. Databases built before
 /// schema v4 lack it, so attribute refinement needs a rebuild.
-fn has_relationships_table(conn: &Connection) -> bool {
+pub(crate) fn has_relationships_table(conn: &Connection) -> bool {
     conn.query_row(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='concept_relationships'",
         [],

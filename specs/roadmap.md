@@ -271,22 +271,31 @@ would be a clean-room Rust reimplementation in `sct`'s local-first, file-based,
 single-binary idiom. Ordered roughly by how well they fit `sct` and how distinctive
 they'd be. Source: <https://bitbucket.org/cheethame2017/sct/src/development/>.
 
-- [ ] **Concept-definition diagrams (`sct diagram <id>`)** - render a concept's logical
+- [~] **Concept-definition diagrams (`sct diagram <id>`)** - render a concept's logical
       definition + ancestry as Graphviz dot / SVG: the focus concept's defining
       relationships, a proximal-supertype view, and descendant "treemaps". This is the
       single most compelling, most demoable gap - `sct` already holds every relationship
       row needed; the work is a dot/SVG emitter plus layout options. Complements the
       planned Observable/D3 viewer (that's interactive-browser; this is static,
       file-based, pipeline-friendly - drop a concept SVG straight into docs or a PR).
-      *High priority.*
+      **Slice 1 shipped:** `definition` / `ancestors` / `descendants` / `neighbourhood`
+      views in `tree` / `dot` / `mermaid`, with SVG→PNG/JPG conversion recipes. Remaining:
+      primitive/defined node styling (needs a `definition_status` schema column), DOT
+      attribute-group clusters, and a built-in `svg` format via `layout-rs`. Spec + user
+      docs: [`specs/commands/diagram.md`](diagram.md), [`docs/commands/diagram.md`](../docs/commands/diagram.md).
 
-- [ ] **Set → minimal ECL refactoring (`sct ecl compress`)** - given a raw set of SCTIDs
+- [~] **Set → minimal ECL refactoring (`sct ecl compress`)** - given a raw set of SCTIDs
       (e.g. a `.codelist`), synthesise the *smallest* equivalent ECL expression: collapse
       members into `<<` subsumption clauses with include/exclude refinements, rather than
       enumerating every id. The inverse of `$expand`. Genuinely hard and genuinely
       valuable - turns a hand-curated concept list back into a maintainable, release-stable
       intensional definition. Pairs directly with the `.codelist` and ECL engine work
-      already shipped. *High priority - distinctive.*
+      already shipped. **Slice 1 shipped:** greedy include roots + clean exclusions + an
+      exactness residual net (verified by re-expansion), `--codelist` / stdin input,
+      `--intensional-only`, `--max-exclusions`, `--pretty`, `--stats`. Remaining:
+      straddling-exclusion push-down for tighter expressions, `^refset` cover clauses,
+      and `sct codelist export --format ecl` wiring. Spec + user docs:
+      [`specs/commands/ecl-compress.md`](ecl-compress.md), [`docs/commands/ecl.md`](../docs/commands/ecl.md).
 
 - [ ] **Proximal primitive supertypes (`sct pps <id>`)** - compute a fully-defined
       concept's proximal primitive parents (the classification/normal-form operation

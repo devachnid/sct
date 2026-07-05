@@ -78,6 +78,7 @@ nav:
       - sct lexical: commands/lexical.md
       - sct semantic: commands/semantic.md
       - sct ecl: commands/ecl.md
+      - sct diagram: commands/diagram.md
       - sct refset: commands/refset.md
       - sct transcode: commands/transcode.md
       - sct crosswalk: commands/crosswalk.md

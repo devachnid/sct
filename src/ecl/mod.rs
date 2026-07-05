@@ -13,6 +13,7 @@
 //! - [`expand`] - convenience: ECL text × SQLite → sorted `Vec` of SCTIDs
 
 pub mod ast;
+pub mod compress;
 pub mod eval;
 pub mod lex;
 pub mod parse;
