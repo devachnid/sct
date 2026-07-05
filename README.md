@@ -4,32 +4,26 @@ A local-first SNOMED CT toolchain that's 10-100x faster than IHTSDO Snowstorm. O
 
 This is very much a work in progress, but it's ready to use and I would very much like feedback on how it performs for you.
 
-```
-RF2 Snapshot SNOMED-CT release
-    │
-    ▼ sct ndjson                                    (~10s for 831k concepts)
-    │
-canonical NDJSON artefact
-    │
-    ├── sct sqlite  ──▶ snomed.db        (SQL + FTS5, MCP backend)
-    │       │
-    │       ├── sct lexical  ──▶ keyword search (FTS5)
-    │       ├── sct tct      ──▶ adds a transitive closure table for faster hierarchy queries
-    │       ├── sct refset   ──▶ query reference sets loaded into the SQLite database
-    │       └── sct mcp      ──▶ stdio MCP server (Claude Desktop / Claude Code)
-    ├── sct parquet ──▶ snomed.parquet   (DuckDB / analytics)
-    ├── sct markdown──▶ snomed-concepts/ (RAG / LLM file reading) (untested)
-    └── sct embed   ──▶ snomed-embeddings.arrow  (semantic vector search)
-                              │
-                         sct semantic ──▶ cosine similarity search (requires Ollama)
+```mermaid
+flowchart TD
+    TRUD(["NHS TRUD API"]) -->|"sct trud download"| RF2["RF2 Snapshot release"]
+    RF2 -->|"sct ndjson"| N[("canonical NDJSON artefact")]
 
-sct info  <file>              inspect any artefact for more information
-sct diff  --old <f> --new <f> compare two NDJSON releases (untested)
-sct gui                       browser-based UI served over localhost
-                              with graph visualisation and point-and-click exploration.
-sct tui                       experimental terminal UI to explore concepts and relationships.
-sct completions <shell>       generate shell completions (optional)
+    N -->|"sct sqlite"| DB[("snomed.db · SQL + FTS5<br/>+ transitive closure (sct tct)")]
+    N -->|"sct parquet"| PQ[("snomed.parquet")]
+    N -->|"sct markdown"| MD["snomed-concepts/"]
+    N -->|"sct embed"| AR[("snomed-embeddings.arrow")]
+
+    DB --> QUERY["sct lexical · lookup · ecl<br/>refset · map · diagram · codelist"]
+    DB --> SERVE["sct serve · FHIR R4 server"]
+    DB --> MCP["sct mcp · LLM tool use"]
+    AR --> SEM["sct semantic · vector search"]
+    PQ --> DUCK["DuckDB / pandas / Polars"]
+    MD --> RAG["RAG / LLM file reading"]
 ```
+
+Plus `sct diff` (compare two NDJSON releases), `sct info` (inspect any artefact),
+and `sct gui` / `sct tui` for visual, point-and-click exploration.
 
 The NDJSON artefact at the centre is a stable, versionable, greppable file. All other outputs are derived from it and can be regenerated at any time.
 

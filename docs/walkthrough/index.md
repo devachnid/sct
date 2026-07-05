@@ -21,20 +21,19 @@ It was initially created as an experiment in file-based data handling, offline-f
 
 ## Data map
 
-```
-SNOMED RF2 release
-        │
-        ▼
-   sct ndjson          ← build once per release (~30 s for 831k concepts)
-        │
-        ├──▶ sct sqlite   → snomed.db                 SQL + full-text search
-        │          │
-        │          └──▶ sct tct   → snomed.db (+TCT)  O(1) subsumption queries (optional)
-        ├──▶ sct parquet  → snomed.parquet            analytics with DuckDB / pandas
-        ├──▶ sct markdown → snomed-concepts/          one file per concept (RAG)
-        └──▶ sct embed    → snomed-embeddings.arrow   semantic vector search
-                                  │
-                            sct mcp                   AI tool use via Claude
+```mermaid
+flowchart TD
+    RF2["SNOMED RF2 release"] -->|"sct ndjson · build once per release (~30 s / 831k concepts)"| N[("canonical NDJSON artefact")]
+
+    N -->|"sct sqlite"| DB[("snomed.db · SQL + full-text search<br/>+ transitive closure (sct tct)")]
+    N -->|"sct parquet"| PQ[("snomed.parquet · analytics with DuckDB / pandas")]
+    N -->|"sct markdown"| MD["snomed-concepts/ · one file per concept (RAG)"]
+    N -->|"sct embed"| AR[("snomed-embeddings.arrow")]
+
+    DB --> QUERY["sct lexical · lookup · ecl<br/>refset · map · diagram · codelist"]
+    DB --> SERVE["sct serve · FHIR R4 server"]
+    DB --> MCP["sct mcp · AI tool use via Claude"]
+    AR --> SEM["sct semantic · vector search"]
 ```
 
 ### Key `sct` design principles
