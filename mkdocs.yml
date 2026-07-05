@@ -48,7 +48,6 @@ theme:
 
 nav:
   - Home: index.md
-  - Get Your Own Terminology Server: terminology-server.md
   - Walkthrough:
       - Overview: walkthrough/index.md
       - Getting Started: walkthrough/getting-started.md
@@ -95,6 +94,7 @@ nav:
       - sct diff: commands/diff.md
       - sct paths: commands/paths.md
       - sct completions: commands/completions.md
+  - Get Your Own Terminology Server: terminology-server.md
   - Reference:
       - Path Resolution: path-resolution.md
       - UK Edition Structure: uk-edition-structure.md

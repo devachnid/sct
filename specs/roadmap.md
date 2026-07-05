@@ -261,6 +261,74 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 
 ---
 
+## Ideas harvested from prior-art Python tooling
+
+A mature hobbyist Python toolchain (`cheethame2017/sct` on Bitbucket, Apache-2.0,
+by Ed Cheetham) implements a deep set of SNOMED inspection/analysis features built
+up over years. It is CLI-menu-driven, Linux/Android-oriented, and depends on Neo4j
+for state-valid ancestry. We are harvesting *ideas* here, not code - any of these
+would be a clean-room Rust reimplementation in `sct`'s local-first, file-based,
+single-binary idiom. Ordered roughly by how well they fit `sct` and how distinctive
+they'd be. Source: <https://bitbucket.org/cheethame2017/sct/src/development/>.
+
+- [ ] **Concept-definition diagrams (`sct diagram <id>`)** - render a concept's logical
+      definition + ancestry as Graphviz dot / SVG: the focus concept's defining
+      relationships, a proximal-supertype view, and descendant "treemaps". This is the
+      single most compelling, most demoable gap - `sct` already holds every relationship
+      row needed; the work is a dot/SVG emitter plus layout options. Complements the
+      planned Observable/D3 viewer (that's interactive-browser; this is static,
+      file-based, pipeline-friendly - drop a concept SVG straight into docs or a PR).
+      *High priority.*
+
+- [ ] **Set → minimal ECL refactoring (`sct ecl compress`)** - given a raw set of SCTIDs
+      (e.g. a `.codelist`), synthesise the *smallest* equivalent ECL expression: collapse
+      members into `<<` subsumption clauses with include/exclude refinements, rather than
+      enumerating every id. The inverse of `$expand`. Genuinely hard and genuinely
+      valuable - turns a hand-curated concept list back into a maintainable, release-stable
+      intensional definition. Pairs directly with the `.codelist` and ECL engine work
+      already shipped. *High priority - distinctive.*
+
+- [ ] **Proximal primitive supertypes (`sct pps <id>`)** - compute a fully-defined
+      concept's proximal primitive parents (the classification/normal-form operation
+      underpinning subsumption and post-coordination QA). Builds on the shipped TCT plus
+      definition-status; a core informatics primitive no local tool offers cheaply.
+      *Medium-high.*
+
+- [ ] **Set algebra over ECL results** - name query results (`A`, `B`, `C`...) and combine
+      them with AND / OR / NOT, feeding named sets back into further ECL as if they were
+      refsets. A thin algebra layer over the existing ECL engine that makes interactive
+      codelist construction far more powerful. Natural fit for the planned live/stdio
+      search component and `sct codelist`. *Medium-high.*
+
+- [ ] **Point-in-time + through-time reporting** - reconstruct the terminology at an
+      arbitrary `effectiveTime` from the **Full** RF2 release (not just the Snapshot), and
+      emit "through-time" matrices of how a concept's ancestors / descendants / refset
+      membership changed across releases. Extends `sct diff` (two-release) and the shipped
+      Association-history forwarding into true temporal browsing. Larger scope - needs Full
+      RF2 ingestion - but squarely in `sct`'s diff/history lane. *Medium; larger.*
+
+- [ ] **Refset / hierarchy comparison analytics** - compare two refsets' membership, and
+      profile a refset's members by top-level hierarchy chapter (spot the one cardiology
+      concept in an otherwise-respiratory set). Cheap, high-signal codelist-QA on top of
+      shipped refset data; overlaps the "Explain this refset" LLM item but is deterministic
+      and needs no model. *Medium.*
+
+- [ ] **SCG / OWL axiom handling** - parse and pretty-print Semantic Compositional Grammar
+      expressions and the OWL axiom refset (`sctid ⊑ ...`). Neither is currently surfaced;
+      would let `sct` show a concept's actual DL definition, not just relationship rows.
+      *Medium; specialist.*
+
+- [ ] **Further crossmap targets from the harness set** - the Python repo carries
+      experimental mappings to HPO (Human Phenotype Ontology), MedDRA, HGNC gene symbols,
+      and NICIP (UK imaging codes). HPO and NICIP are the most tractable UK-relevant
+      additions to the existing crossmap engine; MedDRA/HGNC are licence-gated. Fold into
+      the `crossmaps` table alongside ICD-10 / OPCS-4 / CTV3 / Read v2. *Low-medium;
+      licence review per source.*
+
+- [ ] **MRCM constraint diagrams** - render Machine-Readable Concept Model domain/attribute
+      /range constraints as diagrams, for content authors validating post-coordination.
+      Niche but unserved by any local tool. *Low; specialist.*
+
 ## Exploration & data-science surfaces
 
 With the RF2 → NDJSON → SQLite/Parquet/Arrow pipeline and MCP server in place, `sct`
@@ -385,6 +453,47 @@ being the next concrete pieces of work.
       Constraint: MIMIC requires PhysioNet credentialled access; the notebook should work
       against the demo subset for unauthenticated users.
       Pointer: <https://physionet.org/content/mimiciv-demo/>
+
+- [ ] **SNOMED CT AI Benchmark - entity-linking normalisation backend** - SNOMED
+      International, with DrivenData and Veratai, has turned its 2023-24 *Entity Linking
+      Challenge* into a **continuous AI Benchmark** that scores how well models code
+      free-text clinical notes to SNOMED CT (podcast "Measuring AI against SNOMED CT",
+      introduced June 2026). The task decomposes into two stages:
+      1. **Clinical entity recognition (span detection)** - find the spans of text that
+         name a clinical concept. This is genuinely an ML/NER problem (the baseline used a
+         fine-tuned DeBERTa BIO token classifier) and is **out of scope for `sct`** - we
+         have no custom model and don't intend to ship one.
+      2. **Entity linking / normalisation** - map each detected span to a specific SCTID.
+         This is candidate generation + disambiguation against the terminology, and it is
+         **exactly what `sct` already is**: a fast, local, zero-server lookup engine over
+         every SNOMED description. The winning "KIRI" team used a *dictionary-based*
+         method; `sct lexical` (FTS5), `sct fst` (sub-ms prefix/fuzzy), and `sct semantic`
+         (embeddings) together are a dictionary-based normaliser with a fuzzy and a
+         semantic tier on top.
+
+      Why this is worth doing:
+      - **A drop-in normalisation library/service for anyone building an entity-linking
+        pipeline.** They bring the NER (or an LLM span extractor); `sct` answers
+        "span text → ranked SCTID candidates" in microseconds, offline, over the exact
+        release they license. Natural fit for the planned live/stdio search component and
+        the `SnomedRetriever` (LangChain/LlamaIndex) and DSPy normalisation items above.
+      - **A published dictionary-only baseline on the benchmark.** Run `sct` as the linker
+        stage against gold spans and report the score - a concrete, reproducible
+        "how far does pure fast lexical/fuzzy/semantic matching get you" number, and a
+        compelling demo of the search backends.
+      - **Data + metric are already in our orbit.** Ground truth is MIMIC-IV-Note
+        discharge summaries on PhysioNet (the same corpus as the MIMIC crosswalk item
+        below); scoring is macro-averaged **character-level IoU**. Both are tractable to
+        wire into `bench/`. Constraint: MIMIC needs PhysioNet credentialled access, and
+        the annotated challenge set has its own DUA - do not redistribute either in `sct`.
+
+      Pointers: podcast/announcement
+      <https://forums.snomed.org/t/podcast-measuring-ai-against-snomed-ct-introducing-the-snomed-ct-ai-benchmark/1427>;
+      benchmark write-up <https://drivendata.co/blog/snomed-ct-entity-linking-benchmark>;
+      winners <https://drivendata.co/blog/snomed-ct-entity-linking-challenge-winners>;
+      dataset <https://physionet.org/content/snomed-ct-entity-challenge/>;
+      winning code <https://github.com/drivendataorg/snomed-ct-entity-linking>;
+      JAMIA paper <https://doi.org/10.1093/jamia/ocaf104>.
 
 - [ ] **OMOP CDM bridge** - bidirectional mapping between OMOP `concept_id` /
       vocabulary IDs and SCTIDs. Would land `sct` inside the OHDSI workflow. Needs
