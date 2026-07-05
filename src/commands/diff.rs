@@ -9,9 +9,10 @@
 //!   - Preferred term changes
 //!   - Hierarchy changes (concept moved to a different top-level hierarchy)
 //!
-//! Output modes:
-//!   --format summary (default) - human-readable report printed to stdout
-//!   --format ndjson             - one diff record per changed concept, written to stdout or --output
+//! Output modes (`--format`):
+//!   text (default, alias `summary`) - human-readable report on stdout
+//!   ndjson                          - one diff record per line (streaming)
+//!   json / yaml                     - all diff records as a single array
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
@@ -23,9 +24,17 @@ use std::path::PathBuf;
 use crate::schema::ConceptRecord;
 
 #[derive(ValueEnum, Debug, Clone, PartialEq)]
-pub enum OutputFormat {
-    Summary,
+pub enum DiffFormat {
+    /// Human-readable summary report (default).
+    #[value(alias = "summary")]
+    Text,
+    /// One JSON diff record per line (streaming).
     Ndjson,
+    /// A pretty JSON array of all diff records.
+    Json,
+    /// A YAML list of all diff records.
+    #[value(alias = "yml")]
+    Yaml,
 }
 
 #[derive(Parser, Debug)]
@@ -38,11 +47,11 @@ pub struct Args {
     #[arg(long)]
     pub new: PathBuf,
 
-    /// Output format: human-readable summary or NDJSON diff records.
-    #[arg(long, default_value = "summary")]
-    pub format: OutputFormat,
+    /// Output format.
+    #[arg(long, short = 'f', default_value = "text")]
+    pub format: DiffFormat,
 
-    /// Output file for `--format ndjson`. Defaults to stdout.
+    /// Output file for the structured formats (ndjson/json/yaml). Defaults to stdout.
     #[arg(long, short)]
     pub output: Option<PathBuf>,
 }
@@ -145,8 +154,8 @@ pub fn run(args: Args) -> Result<()> {
     diffs.sort_by_key(|d| (change_order(d), diff_id(d).to_string()));
 
     match args.format {
-        OutputFormat::Summary => print_summary(&diffs, &old_map, &new_map),
-        OutputFormat::Ndjson => {
+        DiffFormat::Text => print_summary(&diffs, &old_map, &new_map),
+        DiffFormat::Ndjson => {
             let writer: Box<dyn Write> = match &args.output {
                 Some(p) => Box::new(
                     std::fs::File::create(p)
@@ -155,6 +164,19 @@ pub fn run(args: Args) -> Result<()> {
                 None => Box::new(std::io::stdout()),
             };
             print_ndjson(&diffs, writer)
+        }
+        DiffFormat::Json | DiffFormat::Yaml => {
+            let serialized = if args.format == DiffFormat::Json {
+                serde_json::to_string_pretty(&diffs)?
+            } else {
+                serde_yaml_ng::to_string(&diffs)?
+            };
+            match &args.output {
+                Some(p) => std::fs::write(p, serialized)
+                    .with_context(|| format!("writing {}", p.display()))?,
+                None => println!("{serialized}"),
+            }
+            Ok(())
         }
     }
 }

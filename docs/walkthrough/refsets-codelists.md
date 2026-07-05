@@ -66,22 +66,23 @@ One line per concept, so `| wc -l` gives the true count and `| cut -d' ' -f1` ex
 
 ### JSON output for scripting
 
-All subcommands accept `--json` for machine-readable output:
+All subcommands accept `-f, --format text|json|yaml` for machine-readable output
+(`--json` is a deprecated alias for `--format json`):
 
 ```bash
-sct refset members 1129631000000105 --json | jq '.[] | .id'
+sct refset members 1129631000000105 -f json | jq '.[] | .id'
 ```
 
-### Custom format
+### Custom line template
 
-The per-concept line format is configurable with `--format` (and optionally `--format-fsn-suffix`),
+The per-concept line template is configurable with `--template` (and optionally `--template-fsn-suffix`),
 or globally in `~/.config/sct/config.toml`:
 
 ```bash
 # Tab-separated SCTID and PT, no FSN suffix, ready for cut/awk
 sct refset members 1129631000000105 \
-  --format '{id}	{pt}' \
-  --format-fsn-suffix ''
+  --template '{id}	{pt}' \
+  --template-fsn-suffix ''
 ```
 
 See the [`sct refset` docs](../commands/refset.md) for the full list of template variables.

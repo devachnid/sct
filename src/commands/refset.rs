@@ -23,6 +23,7 @@ use std::path::{Path, PathBuf};
 
 use crate::builder::strip_semantic_tag;
 use crate::format::{ConceptFields, ConceptFormat};
+use crate::output::OutputFormat;
 use crate::provenance::{self, OutputMode, ProvenanceFlags};
 
 /// Sentinel passed to SQLite `LIMIT ?` meaning "no limit".
@@ -53,14 +54,18 @@ pub struct ListArgs {
     #[arg(long)]
     pub db: Option<PathBuf>,
 
-    /// Output raw JSON instead of a human-readable table.
-    #[arg(long)]
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
+    /// Deprecated alias for `--format json`.
+    #[arg(long, hide = true)]
     pub json: bool,
 
-    /// Override the per-refset line template.
+    /// Override the per-refset line template (text output only).
     /// Default: `{id} | {pt} ({count} members)`. See `docs/commands/refset.md`.
     #[arg(long)]
-    pub format: Option<String>,
+    pub template: Option<String>,
 
     #[command(flatten)]
     pub prov: ProvenanceFlags,
@@ -76,8 +81,12 @@ pub struct InfoArgs {
     #[arg(long)]
     pub db: Option<PathBuf>,
 
-    /// Output raw JSON instead of a human-readable summary.
-    #[arg(long)]
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
+    /// Deprecated alias for `--format json`.
+    #[arg(long, hide = true)]
     pub json: bool,
 
     #[command(flatten)]
@@ -98,8 +107,12 @@ pub struct MembersArgs {
     #[arg(long)]
     pub limit: Option<usize>,
 
-    /// Output raw JSON instead of a human-readable list.
-    #[arg(long, conflicts_with = "ids")]
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
+    /// Deprecated alias for `--format json`.
+    #[arg(long, hide = true, conflicts_with = "ids")]
     pub json: bool,
 
     /// Emit only member SCTIDs (newline-delimited) for piping, e.g.
@@ -107,15 +120,15 @@ pub struct MembersArgs {
     #[arg(long)]
     pub ids: bool,
 
-    /// Override the per-concept line template. See `sct help format` or
+    /// Override the per-concept line template (text output only). See
     /// `docs/commands/refset.md` for the variable list.
     #[arg(long)]
-    pub format: Option<String>,
+    pub template: Option<String>,
 
     /// Override the FSN suffix template (rendered only when FSN differs from PT).
-    /// Pass an empty string (`--format-fsn-suffix ""`) to suppress it entirely.
+    /// Pass an empty string (`--template-fsn-suffix ""`) to suppress it entirely.
     #[arg(long)]
-    pub format_fsn_suffix: Option<String>,
+    pub template_fsn_suffix: Option<String>,
 
     #[command(flatten)]
     pub prov: ProvenanceFlags,
@@ -224,7 +237,8 @@ fn run_list(args: ListArgs) -> Result<()> {
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
     let conn = open_db(&db)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
-    let mode = if args.json {
+    let out = args.format.or_json_flag(args.json);
+    let mode = if out.is_structured() {
         OutputMode::Json
     } else {
         OutputMode::HumanText
@@ -241,15 +255,18 @@ fn run_list(args: ListArgs) -> Result<()> {
         return Ok(());
     }
 
-    if args.json {
+    if out.is_structured() {
         // Preserve the existing top-level array shape unless the user opts in
         // to provenance, in which case we wrap so we can attach _provenance.
-        if show_prov {
-            let mut value = serde_json::json!({ "refsets": rows });
-            provenance::inject_into_json(&mut value, prov.as_ref(), true);
-            println!("{}", serde_json::to_string_pretty(&value)?);
+        let value = if show_prov {
+            let mut v = serde_json::json!({ "refsets": rows });
+            provenance::inject_into_json(&mut v, prov.as_ref(), true);
+            v
         } else {
-            println!("{}", serde_json::to_string_pretty(&rows)?);
+            serde_json::to_value(&rows)?
+        };
+        if let Some(s) = out.render(&value)? {
+            println!("{s}");
         }
         return Ok(());
     }
@@ -258,7 +275,7 @@ fn run_list(args: ListArgs) -> Result<()> {
         line: "{id} | {pt} ({count} members)".into(),
         fsn_suffix: String::new(),
     }
-    .with_overrides(args.format, Some(String::new()));
+    .with_overrides(args.template, Some(String::new()));
 
     for r in &rows {
         println!(
@@ -281,7 +298,8 @@ fn run_info(args: InfoArgs) -> Result<()> {
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
     let conn = open_db(&db)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
-    let mode = if args.json {
+    let out = args.format.or_json_flag(args.json);
+    let mode = if out.is_structured() {
         OutputMode::Json
     } else {
         OutputMode::HumanText
@@ -315,7 +333,7 @@ fn run_info(args: InfoArgs) -> Result<()> {
         }
     };
 
-    if r.member_count == 0 {
+    if r.member_count == 0 && !out.is_structured() {
         println!(
             "Concept [{}] {} exists but has no loaded members.\n\
              (It may not be a refset, or its members weren't included in the RF2 load.)",
@@ -323,10 +341,12 @@ fn run_info(args: InfoArgs) -> Result<()> {
         );
     }
 
-    if args.json {
+    if out.is_structured() {
         let mut value = serde_json::to_value(&r)?;
         provenance::inject_into_json(&mut value, prov.as_ref(), show_prov);
-        println!("{}", serde_json::to_string_pretty(&value)?);
+        if let Some(s) = out.render(&value)? {
+            println!("{s}");
+        }
         return Ok(());
     }
 
@@ -345,7 +365,8 @@ fn run_members(args: MembersArgs) -> Result<()> {
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
     let conn = open_db(&db)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
-    let mode = if args.json {
+    let out = args.format.or_json_flag(args.json);
+    let mode = if out.is_structured() {
         OutputMode::Json
     } else {
         OutputMode::HumanText
@@ -364,23 +385,26 @@ fn run_members(args: MembersArgs) -> Result<()> {
         return Ok(());
     }
 
-    if rows.is_empty() {
+    if rows.is_empty() && !out.is_structured() {
         println!("No members found for refset {}.", args.id);
         return Ok(());
     }
 
-    if args.json {
-        if show_prov {
-            let mut value = serde_json::json!({ "members": rows });
-            provenance::inject_into_json(&mut value, prov.as_ref(), true);
-            println!("{}", serde_json::to_string_pretty(&value)?);
+    if out.is_structured() {
+        let value = if show_prov {
+            let mut v = serde_json::json!({ "members": rows });
+            provenance::inject_into_json(&mut v, prov.as_ref(), true);
+            v
         } else {
-            println!("{}", serde_json::to_string_pretty(&rows)?);
+            serde_json::to_value(&rows)?
+        };
+        if let Some(s) = out.render(&value)? {
+            println!("{s}");
         }
         return Ok(());
     }
 
-    let format = ConceptFormat::load().with_overrides(args.format, args.format_fsn_suffix);
+    let format = ConceptFormat::load().with_overrides(args.template, args.template_fsn_suffix);
     for m in &rows {
         println!(
             "{}",

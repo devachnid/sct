@@ -9,7 +9,7 @@ Compare two SNOMED CT NDJSON artefacts and report what changed between releases.
 ## Usage
 
 ```
-sct diff --old <NDJSON> --new <NDJSON> [--format summary|ndjson] [--output <FILE>]
+sct diff --old <NDJSON> --new <NDJSON> [-f text|ndjson|json|yaml] [--output <FILE>]
 ```
 
 ## Options
@@ -18,8 +18,8 @@ sct diff --old <NDJSON> --new <NDJSON> [--format summary|ndjson] [--output <FILE
 |---|---|---|
 | `--old <FILE>` | *(required)* | The older NDJSON artefact (baseline). |
 | `--new <FILE>` | *(required)* | The newer NDJSON artefact (comparison target). |
-| `--format <FMT>` | `summary` | Output format: `summary` (human-readable) or `ndjson` (one diff record per change, for scripting). |
-| `--output <FILE>` | stdout | Output file for `--format ndjson`. |
+| `-f, --format <FMT>` | `text` | Output format: `text` (human-readable summary; alias `summary`), `ndjson` (one diff record per line, streaming), `json` (array of all records), or `yaml`. |
+| `--output <FILE>` | stdout | Output file for the structured formats (`ndjson`/`json`/`yaml`). |
 
 ---
 

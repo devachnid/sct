@@ -14,6 +14,7 @@ pub mod commands;
 pub mod ecl;
 pub mod format;
 pub mod index;
+pub mod output;
 pub mod paths;
 pub mod provenance;
 pub mod rf2;

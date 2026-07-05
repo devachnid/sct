@@ -17,7 +17,10 @@ use clap::Parser;
 use rusqlite::params;
 use std::path::PathBuf;
 
+use serde_json::{json, Value};
+
 use crate::format::{ConceptFields, ConceptFormat};
+use crate::output::OutputFormat;
 use crate::provenance::{self, OutputMode, ProvenanceFlags};
 
 #[derive(Parser, Debug)]
@@ -38,19 +41,23 @@ pub struct Args {
     #[arg(long, short, default_value = "10")]
     pub limit: u32,
 
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
     /// Emit only matching SCTIDs (newline-delimited) for piping, e.g.
     /// `sct lexical "asthma" --ids | sct codelist add list.codelist -`.
     #[arg(long)]
     pub ids: bool,
 
-    /// Override the per-concept line template. See `docs/commands/refset.md`
-    /// for the variable list.
+    /// Override the per-concept line template (text output only). See
+    /// `docs/commands/refset.md` for the variable list.
     #[arg(long)]
-    pub format: Option<String>,
+    pub template: Option<String>,
 
     /// Override the FSN suffix template (rendered only when FSN differs from PT).
     #[arg(long)]
-    pub format_fsn_suffix: Option<String>,
+    pub template_fsn_suffix: Option<String>,
 
     #[command(flatten)]
     pub prov: ProvenanceFlags,
@@ -60,7 +67,13 @@ pub fn run(args: Args) -> Result<()> {
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
     let conn = crate::commands::open_db_readonly(&db, None)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
-    let show_prov = provenance::should_show(args.prov, OutputMode::HumanText);
+    let out = args.format;
+    let mode = if out.is_structured() {
+        OutputMode::Json
+    } else {
+        OutputMode::HumanText
+    };
+    let show_prov = provenance::should_show(args.prov, mode);
 
     // Sanitise the FTS5 query: wrap in quotes if it looks like plain text
     // (no FTS5 operators), to avoid parse errors on bare terms with special chars.
@@ -105,12 +118,32 @@ pub fn run(args: Args) -> Result<()> {
         return Ok(());
     }
 
-    if results.is_empty() {
+    if results.is_empty() && !out.is_structured() {
         println!("No results for {:?}", args.query);
         return Ok(());
     }
 
-    let format = ConceptFormat::load().with_overrides(args.format, args.format_fsn_suffix);
+    if out.is_structured() {
+        let items: Vec<Value> = results
+            .iter()
+            .map(|(id, pt, fsn, hier)| {
+                json!({ "id": id, "preferred_term": pt, "fsn": fsn, "hierarchy": hier })
+            })
+            .collect();
+        let value = if show_prov {
+            let mut v = json!({ "results": items });
+            provenance::inject_into_json(&mut v, prov.as_ref(), true);
+            v
+        } else {
+            Value::Array(items)
+        };
+        if let Some(s) = out.render(&value)? {
+            println!("{s}");
+        }
+        return Ok(());
+    }
+
+    let format = ConceptFormat::load().with_overrides(args.template, args.template_fsn_suffix);
     for (id, preferred_term, fsn, hierarchy) in &results {
         println!(
             "{}",

@@ -12,7 +12,7 @@ Compare two NDJSON artefacts to see what changed between SNOMED releases.
 ```bash
 sct diff --old snomed-uk-20240901.ndjson \
          --new snomed-uk-20250301.ndjson \
-         --format summary
+         --format text
 ```
 
 Reports:

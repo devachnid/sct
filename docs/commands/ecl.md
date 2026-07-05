@@ -11,7 +11,7 @@ Evaluate a SNOMED CT [Expression Constraint Language](https://confluence.ihtsdot
 ## Usage
 
 ```
-sct ecl expand <EXPRESSION> [--db <FILE>] [--json]
+sct ecl expand <EXPRESSION> [--db <FILE>] [-f text|json|yaml]
 ```
 
 ## Options
@@ -20,7 +20,7 @@ sct ecl expand <EXPRESSION> [--db <FILE>] [--json]
 |---|---|---|
 | `<EXPRESSION>` | *(required)* | The ECL expression, e.g. `"<<73211009"`. Pass `-` to read the expression from stdin. |
 | `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
-| `--json` | off | Emit a JSON array of SCTID strings instead of newline-delimited ids. |
+| `-f, --format <FMT>` | `text` | Output format: `text` (newline-delimited ids), `json` (array), or `yaml`. (`--json` is a deprecated alias for `--format json`.) |
 
 stdout is the result set (one SCTID per line, or a JSON array). The human-readable match count is written to **stderr**, so it never pollutes a pipe.
 
@@ -37,7 +37,7 @@ sct ecl expand "<<73211009" | sct codelist add diabetes.codelist -
 
 # Pipe into a lookup, or jq, or a file
 sct ecl expand "<<73211009 MINUS <<46635009" > type2.txt
-sct ecl expand "^447562003" --json | jq length
+sct ecl expand "^447562003" -f json | jq length
 
 # Read the expression itself from stdin
 echo "<<404684003 : 363698007 = <<39057004" | sct ecl expand -
@@ -60,8 +60,9 @@ sct ecl compress [<IDS>...] [--codelist <FILE>] [--intensional-only]
 | `--codelist <FILE>` | - | Compress the effective members of a `.codelist` instead of ids. |
 | `--intensional-only` | off | Emit only subsumption/exclusion clauses; do **not** add literal `OR`/`MINUS` residuals. Exits non-zero if the result is not exact. |
 | `--max-exclusions <N>` | `32` | Cap the number of `MINUS <<x` clauses before the remainder falls to literal residuals. |
-| `--pretty` | off | Break the expression across indented lines. |
+| `--pretty` | off | Break the expression across indented lines (text output only). |
 | `--stats` | off | Print clause counts and intensional coverage to stderr. |
+| `-f, --format <FMT>` | `text` | `text` prints the ECL expression; `json`/`yaml` emit a structured object (expression plus include/exclude/residual breakdown). |
 | `--db <FILE>` | discovered | SQLite database. |
 
 By default the result is **exact**: if the subsumption heuristic can't express the set cleanly, literal `OR id` / `MINUS id` residuals are appended so the expression provably reproduces the input (verified by re-expansion). A set with no hierarchical structure degrades gracefully to a list of `OR`ed ids - never to a wrong answer.

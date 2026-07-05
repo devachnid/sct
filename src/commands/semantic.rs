@@ -20,7 +20,10 @@ use clap::Parser;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
+use serde_json::{json, Value};
+
 use crate::format::{ConceptFields, ConceptFormat};
+use crate::output::OutputFormat;
 use crate::provenance::{self, OutputMode, Provenance, ProvenanceFlags};
 
 #[derive(Parser, Debug)]
@@ -45,14 +48,18 @@ pub struct Args {
     #[arg(long, short, default_value = "10")]
     pub limit: usize,
 
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
     /// Emit only matching SCTIDs (newline-delimited) for piping.
     #[arg(long)]
     pub ids: bool,
 
-    /// Override the per-result line template.
+    /// Override the per-result line template (text output only).
     /// Default: `{score} | {id} | {pt}`. See `docs/commands/refset.md`.
     #[arg(long)]
-    pub format: Option<String>,
+    pub template: Option<String>,
 
     #[command(flatten)]
     pub prov: ProvenanceFlags,
@@ -90,7 +97,13 @@ struct EmbedResponse {
 pub fn run(args: Args) -> Result<()> {
     let embeddings = crate::paths::resolve_embeddings(args.embeddings.as_deref())?.path;
     let prov = read_arrow_provenance(&embeddings).unwrap_or(None);
-    let show_prov = provenance::should_show(args.prov, OutputMode::HumanText);
+    let out = args.format;
+    let mode = if out.is_structured() {
+        OutputMode::Json
+    } else {
+        OutputMode::HumanText
+    };
+    let show_prov = provenance::should_show(args.prov, mode);
 
     let results = semantic_search(
         &embeddings,
@@ -110,8 +123,26 @@ pub fn run(args: Args) -> Result<()> {
         return Ok(());
     }
 
-    if results.is_empty() {
+    if results.is_empty() && !out.is_structured() {
         println!("No embeddings found in {}", embeddings.display());
+        return Ok(());
+    }
+
+    if out.is_structured() {
+        let items: Vec<Value> = results
+            .iter()
+            .map(|c| json!({ "score": c.score, "id": c.id, "preferred_term": c.preferred_term }))
+            .collect();
+        let value = if show_prov {
+            let mut v = json!({ "results": items });
+            provenance::inject_into_json(&mut v, prov.as_ref(), true);
+            v
+        } else {
+            Value::Array(items)
+        };
+        if let Some(s) = out.render(&value)? {
+            println!("{s}");
+        }
         return Ok(());
     }
 
@@ -119,7 +150,7 @@ pub fn run(args: Args) -> Result<()> {
         line: "{score} | {id} | {pt}".into(),
         fsn_suffix: String::new(),
     }
-    .with_overrides(args.format, Some(String::new()));
+    .with_overrides(args.template, Some(String::new()));
 
     for ScoredConcept {
         score,

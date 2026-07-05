@@ -14,6 +14,8 @@ use clap::{Parser, Subcommand};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
+use crate::output::OutputFormat;
+
 #[derive(Parser, Debug)]
 pub struct Args {
     #[command(subcommand)]
@@ -39,8 +41,12 @@ struct ExpandArgs {
     #[arg(long)]
     db: Option<PathBuf>,
 
-    /// Emit a JSON array of SCTID strings instead of newline-delimited ids.
-    #[arg(long)]
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    format: OutputFormat,
+
+    /// Deprecated alias for `--format json`.
+    #[arg(long, hide = true)]
     json: bool,
 }
 
@@ -82,6 +88,11 @@ struct CompressArgs {
     #[arg(long)]
     stats: bool,
 
+    /// Output format. `text` prints the ECL expression; `json`/`yaml` emit a
+    /// structured object (expression plus include/exclude/residual breakdown).
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    format: OutputFormat,
+
     /// SNOMED CT SQLite database. See `docs/path-resolution.md` for discovery.
     #[arg(long)]
     db: Option<PathBuf>,
@@ -112,9 +123,8 @@ fn expand(args: ExpandArgs) -> Result<()> {
 
     eprintln!("{} concept(s) matched {expr:?}", ids.len());
 
-    if args.json {
-        println!("{}", serde_json::to_string(&ids)?);
-    } else {
+    let format = args.format.or_json_flag(args.json);
+    if !format.print(&ids)? {
         let mut out = std::io::stdout().lock();
         for id in &ids {
             writeln!(out, "{id}")?;
@@ -208,12 +218,25 @@ fn compress(args: CompressArgs) -> Result<()> {
         eprintln!("; intensional coverage {:.1}%", result.coverage);
     }
 
-    let out_expr = if args.pretty {
-        crate::ecl::compress::prettify(&result.expr)
+    if args.format.is_structured() {
+        let structured = serde_json::json!({
+            "ecl": result.expr,
+            "includes": result.includes,
+            "excludes": result.excludes,
+            "missing": result.missing,
+            "extra": result.extra,
+            "coverage": result.coverage,
+            "exact": result.exact,
+        });
+        args.format.print(&structured)?;
     } else {
-        result.expr.clone()
-    };
-    println!("{out_expr}");
+        let out_expr = if args.pretty {
+            crate::ecl::compress::prettify(&result.expr)
+        } else {
+            result.expr.clone()
+        };
+        println!("{out_expr}");
+    }
 
     // In intensional-only mode a non-exact result is a hard failure: the emitted
     // expression does not reproduce the input, and the user asked us not to fix it.

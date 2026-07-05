@@ -9,7 +9,7 @@ Look up a single SNOMED CT concept by SCTID, or reverse-resolve a CTV3 (Read v3)
 ## Usage
 
 ```
-sct lookup <CODE> [--db <FILE>] [--json]
+sct lookup <CODE> [--db <FILE>] [-f text|json|yaml]
 ```
 
 ## Options
@@ -18,7 +18,7 @@ sct lookup <CODE> [--db <FILE>] [--json]
 |---|---|---|
 | `<CODE>` | *(required)* | A numeric SCTID (e.g. `22298006`), or a CTV3 code (e.g. `XE0Uh`) for reverse lookup via the `concept_maps` table. |
 | `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
-| `--json` | off | Emit the raw concept record as JSON instead of human-readable text. |
+| `-f, --format <FMT>` | `text` | Output format: `text` (human), `json`, or `yaml`. (`--json` is a deprecated alias for `--format json`.) |
 | `--ids` | off | Emit only the resolved SCTID(s), newline-delimited, for piping. With a CTV3 code, prints the mapped SNOMED concept id(s). |
 | `--provenance` / `--no-provenance` | auto | Show or hide the release provenance footer (default: on for an interactive terminal). |
 
@@ -31,7 +31,7 @@ sct lookup <CODE> [--db <FILE>] [--json]
 sct lookup 22298006
 
 # Raw JSON (for scripting / piping to jq)
-sct lookup 22298006 --json | jq '.preferred_term'
+sct lookup 22298006 -f json | jq '.preferred_term'
 
 # Reverse lookup from a CTV3 code (requires a UK Monolith-derived database)
 sct lookup XE0Uh

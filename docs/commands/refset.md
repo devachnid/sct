@@ -20,7 +20,7 @@ Subcommands:
 | `info <ID>` | Show metadata and member count for a single refset. |
 | `members <ID>` | List the concepts belonging to a refset. |
 
-All subcommands accept `--db <PATH>` (auto-discovered when omitted - see [Path resolution](../path-resolution.md)) and `--json` for machine-readable output. `members` also accepts `--ids` to emit just the member SCTIDs (newline-delimited) for piping:
+All subcommands accept `--db <PATH>` (auto-discovered when omitted - see [Path resolution](../path-resolution.md)) and `-f, --format text|json|yaml` for machine-readable output (`--json` is a deprecated alias for `--format json`). `members` also accepts `--ids` to emit just the member SCTIDs (newline-delimited) for piping:
 
 ```bash
 # A whole refset becomes a code list in one line
@@ -80,12 +80,12 @@ When a member's FSN differs from its PT, the FSN is appended after ` - FSN: ` (s
 ### JSON output for scripting
 
 ```bash
-sct refset members 1129631000000105 --json | jq '.[] | .id'
+sct refset members 1129631000000105 -f json | jq '.[] | .id'
 ```
 
 ### Custom format
 
-The per-concept line format is configurable. Override it per-invocation with `--format` (and optionally `--format-fsn-suffix`), or set it globally in `~/.config/sct/config.toml`:
+The per-concept line format is configurable. Override it per-invocation with `--template` (and optionally `--template-fsn-suffix`), or set it globally in `~/.config/sct/config.toml`:
 
 ```toml
 [format]
@@ -106,23 +106,23 @@ Template variables available in both fields:
 | `{module}` | Module SCTID (empty for list-style commands) |
 | `{effective_time}` | Effective time in `YYYYMMDD` |
 
-The `concept_fsn_suffix` template is appended only when the concept's stripped FSN differs from its PT - that's why the default output suppresses it for concepts whose PT and FSN match. Pass an empty string (`--format-fsn-suffix ''`) to suppress it unconditionally. Unknown `{tokens}` are preserved as literal text so typos are visible.
+The `concept_fsn_suffix` template is appended only when the concept's stripped FSN differs from its PT - that's why the default output suppresses it for concepts whose PT and FSN match. Pass an empty string (`--template-fsn-suffix ''`) to suppress it unconditionally. Unknown `{tokens}` are preserved as literal text so typos are visible.
 
 Examples:
 
 ```bash
 # Tab-separated SCTID and PT, no FSN suffix, ready for cut/awk
 sct refset members 1129631000000105 \
-  --format '{id}	{pt}' \
-  --format-fsn-suffix ''
+  --template '{id}	{pt}' \
+  --template-fsn-suffix ''
 
 # SNOMED compositional-style with pipes round the FSN
 sct refset members 1129631000000105 \
-  --format '{id} |{fsn_raw}|' \
-  --format-fsn-suffix ''
+  --template '{id} |{fsn_raw}|' \
+  --template-fsn-suffix ''
 ```
 
-The same `--format` and `--format-fsn-suffix` flags are accepted by `sct lexical`, and the config file applies to both commands.
+The same `--template` and `--template-fsn-suffix` flags are accepted by `sct lexical`, and the config file applies to both commands.
 
 ---
 

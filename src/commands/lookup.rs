@@ -19,6 +19,7 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 
 use crate::builder::strip_semantic_tag;
+use crate::output::OutputFormat;
 use crate::provenance::{self, OutputMode, ProvenanceFlags};
 
 #[derive(Parser, Debug)]
@@ -31,8 +32,12 @@ pub struct Args {
     #[arg(long)]
     pub db: Option<PathBuf>,
 
-    /// Output raw JSON instead of human-readable format.
-    #[arg(long, conflicts_with = "ids")]
+    /// Output format.
+    #[arg(long, short = 'f', value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
+    /// Deprecated alias for `--format json`.
+    #[arg(long, hide = true, conflicts_with = "ids")]
     pub json: bool,
 
     /// Emit only the resolved SCTID(s), newline-delimited, for piping. With a
@@ -48,7 +53,8 @@ pub fn run(args: Args) -> Result<()> {
     let db = crate::paths::resolve_db(args.db.as_deref())?.path;
     let conn = crate::commands::open_db_readonly(&db, None)?;
     let prov = provenance::read_sqlite(&conn).unwrap_or(None);
-    let mode = if args.json {
+    let format = args.format.or_json_flag(args.json);
+    let mode = if format.is_structured() {
         OutputMode::Json
     } else {
         OutputMode::HumanText
@@ -76,7 +82,7 @@ pub fn run(args: Args) -> Result<()> {
     // If the code looks numeric, try SCTID first.
     if code.chars().all(|c| c.is_ascii_digit()) {
         if let Some(concept) = lookup_sctid(&conn, code)? {
-            return print_concept(concept, args.json, prov.as_ref(), show_prov);
+            return print_concept(concept, format, prov.as_ref(), show_prov);
         }
         println!("Concept {code} not found.");
         return Ok(());
@@ -96,7 +102,7 @@ pub fn run(args: Args) -> Result<()> {
         // Single mapping - show full concept detail.
         if let Some(concept) = lookup_sctid(&conn, &mapped[0].0)? {
             println!("CTV3 {code} → SCTID {}\n", mapped[0].0);
-            return print_concept(concept, args.json, prov.as_ref(), show_prov);
+            return print_concept(concept, format, prov.as_ref(), show_prov);
         }
     }
 
@@ -219,13 +225,15 @@ fn lookup_ctv3(conn: &Connection, code: &str) -> Result<Vec<(String, String, Str
 
 fn print_concept(
     mut concept: Value,
-    as_json: bool,
+    format: OutputFormat,
     prov: Option<&provenance::Provenance>,
     show_prov: bool,
 ) -> Result<()> {
-    if as_json {
+    if format.is_structured() {
         provenance::inject_into_json(&mut concept, prov, show_prov);
-        println!("{}", serde_json::to_string_pretty(&concept)?);
+        if let Some(s) = format.render(&concept)? {
+            println!("{s}");
+        }
         return Ok(());
     }
     let concept = &concept;
