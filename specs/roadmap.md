@@ -7,15 +7,11 @@ Outstanding work and next steps. Completed work is removed; see git log for hist
 
 ### TODO
 
-In no particular order
+In no particular order. (Distribution items - code signing, the Docker Hub image, and
+registry submissions - are tracked in detail under [Distribution](#distribution) below,
+not here.)
 
-* [ ] obtain Windows signing key https://ngrok.com/blog/so-you-want-to-sign-for-windows
 * [~] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). FHIR conformance fixtures and a terminology-server runner now exist in `bench/conformance.sh`; remaining work is broader fixture coverage, concurrency/percentile benchmarks, comparator server compose profiles, and published reports.
-* [ ] Docker Hub image for the terminology server. `Dockerfile`, Compose, and docs are shipped;
-      remaining work is publishing/versioning the image and documenting pull-based deployment.
-* [ ] improve distribution - remaining work is signing/notarization and registry submissions;
-      `.dmg`, `.exe`, `.deb`, `.rpm`, shared Homebrew tap, Scoop bucket, shell installers,
-      crates.io, cargo-binstall, and Docker Compose are already shipped.
 * [ ] mermaid diagrams for the architecture and data flow, to visually explain how the different components fit together and how data moves through the system. This would replace the ascii diagrams in the README and make it easier for users to understand the overall design and how the different pieces interact. FST can more easily be explained this way. We should use real SNOMED examples in the diagrams to make them more concrete and relatable.
 * [ ] SNOMED primer - understanding SNOMED basics (concepts, descriptions, relationships, refsets, ECL, etc.) is a barrier to entry for new users. A concise primer that explains these core concepts in plain language, with examples, is needed. It may need to take different approaches for technical vs clinical audiences. It should be in a section of the docs.
 
@@ -28,7 +24,8 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 - [ ] Publish a Docker Hub / GHCR image for `sct serve`, with tags matching `sct` releases
 - [ ] macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users
       don't have to `chmod +x` and bypass Gatekeeper
-- [ ] Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block
+- [ ] Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block.
+      Guide: <https://ngrok.com/blog/so-you-want-to-sign-for-windows>
 - [ ] Submit to `homebrew-core` once project hits 30+ stars and has stable release cadence
       (would enable `brew install sct` without the tap)
 - [ ] Submit to `winget` after Windows signing is in place
@@ -121,7 +118,8 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 
 > **Cross-terminology mapping + DMWB replacement.** The RF2-native terminology/mapping
 > core is now shipped: CTV3 maps, SNOMED CT -> ICD-10 / OPCS-4 ExtendedMap rows,
-> Association-refset history forwarding, `sct transcode`, `sct crosswalk`,
+> Association-refset history forwarding, `sct map` (the unified cross-terminology
+> command; `transcode` and `crosswalk` remain as aliases),
 > codelist `--include-maps`, FHIR `ConceptMap/$translate`, and Read v2 import
 > from the final TRUD item 9 flat-file release. `sct trud download
 > --multi-terminology` now builds a SNOMED/CTV3/Read v2/ICD-10/OPCS-4 workspace
@@ -132,7 +130,7 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 > DMWB walkthrough in the docs site.
 
 - [ ] **History MCP surface** - RF2 Association history is parsed and loaded into
-      `concept_history`, and `sct transcode --forward-history` uses it. Still missing:
+      `concept_history`, and `sct map --forward-history` uses it. Still missing:
       expose the same forwarding through an MCP `snomed_resolve` tool.
 - [~] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
       for Ontoserver, Snowstorm, and the NHS FHIR Terminology Server. Full spec in
@@ -209,7 +207,7 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 - [ ] **First-class ICD-10 / ICD-11 support** - current `sct` support for ICD-10 is
       map-centric: UK/International SNOMED CT -> ICD-10 ExtendedMap rows are
       already imported into `crossmaps` with `sct ndjson --refsets all`, and
-      `sct transcode`, `sct crosswalk`, codelist `--include-maps`, and FHIR
+      `sct map`, codelist `--include-maps`, and FHIR
       `ConceptMap/$translate` can use them. What is missing is ICD itself as a
       searchable/servable code system: code titles, hierarchy, includes/excludes,
       synonyms/index terms, validation, lookup, expansion, and version metadata.
