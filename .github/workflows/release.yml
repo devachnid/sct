@@ -282,13 +282,13 @@ jobs:
               commit -am "bump sct to v${{ steps.vars.outputs.version }}"
           git push
 
-      - name: Update Scoop bucket (pacharanero/scoop-sct)
+      - name: Update Scoop bucket (pacharanero/scoop)
         env:
           GH_TOKEN: ${{ secrets.TAP_REPOS_TOKEN }}
         run: |
           set -eu
           git clone --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/pacharanero/scoop-sct.git" bucket
+            "https://x-access-token:${GH_TOKEN}@github.com/pacharanero/scoop.git" bucket
           cd bucket
 
           cat > bucket/sct.json <<EOF

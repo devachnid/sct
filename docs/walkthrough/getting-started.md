@@ -65,7 +65,7 @@ Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Appl
     **Scoop** (recommended)
 
     ```powershell
-    scoop bucket add sct https://github.com/pacharanero/scoop-sct
+    scoop bucket add pacharanero https://github.com/pacharanero/scoop
     scoop install sct
     ```
 

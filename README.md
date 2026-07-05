@@ -86,7 +86,7 @@ brew install sct
 ### Scoop (Windows)
 
 ```powershell
-scoop bucket add sct https://github.com/pacharanero/scoop-sct
+scoop bucket add pacharanero https://github.com/pacharanero/scoop
 scoop install sct
 ```
 
