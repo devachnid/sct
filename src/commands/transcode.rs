@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! `sct transcode` - map a stream of codes from one terminology to another,
+//! Cross-terminology mapping engine (behind `sct map`, alias `transcode`):
+//! map a stream of codes from one terminology to another,
 //! pivoting through SNOMED CT. The CLI equivalent of the NHS Data Migration
 //! Workbench `TRANSCODE` console function. Composable: reads codes from stdin
 //! (or `--input`), writes TSV (or `--json`) to stdout, diagnostics to stderr.
@@ -11,115 +12,10 @@
 //! Read v2 through the legacy `concept_maps` table.
 
 use anyhow::{bail, Context, Result};
-use clap::Parser;
 use rusqlite::{params, Connection, OptionalExtension};
-use std::io::{BufRead, Write};
-use std::path::PathBuf;
+use std::io::BufRead;
 
-const SYSTEMS: [&str; 5] = ["snomed", "read2", "ctv3", "icd10", "opcs4"];
-
-#[derive(Parser, Debug)]
-pub struct Args {
-    /// Source terminology of the input codes: snomed | read2 | ctv3 | icd10 | opcs4.
-    #[arg(long)]
-    pub from: String,
-
-    /// Target terminology to map to: snomed | read2 | ctv3 | icd10 | opcs4.
-    #[arg(long)]
-    pub to: String,
-
-    /// Read codes from this file (leading token per line) instead of stdin.
-    #[arg(long)]
-    pub input: Option<PathBuf>,
-
-    /// Forward inactive SNOMED pivots to their replacement(s) via concept_history
-    /// (needs a database built with `--refsets all`).
-    #[arg(long)]
-    pub forward_history: bool,
-
-    /// Emit JSON lines instead of TSV.
-    #[arg(long)]
-    pub json: bool,
-
-    /// SNOMED CT SQLite database. Discovered via the usual path-resolution chain
-    /// when omitted (see `docs/path-resolution.md`).
-    #[arg(long)]
-    pub db: Option<PathBuf>,
-}
-
-pub fn run(args: Args) -> Result<()> {
-    let from = args.from.to_lowercase();
-    let to = args.to.to_lowercase();
-    for s in [&from, &to] {
-        if !SYSTEMS.contains(&s.as_str()) {
-            bail!(
-                "unknown terminology {s:?}; expected one of {}",
-                SYSTEMS.join(", ")
-            );
-        }
-    }
-
-    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
-    let conn = crate::commands::open_db_readonly(&db, None)
-        .with_context(|| format!("opening database {}", db.display()))?;
-
-    // ICD-10 / OPCS-4 maps only exist in databases built with `--refsets all`.
-    // Fail fast with a clear message rather than a SQL error.
-    let needs_crossmaps = is_classification(&from) || is_classification(&to);
-    if needs_crossmaps && !table_exists(&conn, "crossmaps") {
-        bail!(
-            "this database has no ICD-10/OPCS-4 maps. Rebuild with \
-             `sct ndjson --rf2 <release> --refsets all` then `sct sqlite`."
-        );
-    }
-    if args.forward_history && !table_exists(&conn, "concept_history") {
-        bail!(
-            "--forward-history needs concept history, absent from this database. \
-             Rebuild with `sct ndjson --refsets all` then `sct sqlite`."
-        );
-    }
-
-    let codes = read_codes(args.input.as_deref())?;
-    let mut out = std::io::stdout().lock();
-    let mut matched = 0usize;
-    let mut unmatched = 0usize;
-
-    for code in &codes {
-        let rows = transcode_one(&conn, &from, code, &to, args.forward_history)?;
-        if rows.is_empty() {
-            unmatched += 1;
-            continue;
-        }
-        matched += 1;
-        for r in rows {
-            if args.json {
-                writeln!(
-                    out,
-                    "{}",
-                    serde_json::json!({
-                        "input": code, "target": r.target,
-                        "snomed": r.snomed, "display": r.display,
-                    })
-                )?;
-            } else {
-                writeln!(
-                    out,
-                    "{}\t{}\t{}\t{}",
-                    code,
-                    r.target,
-                    r.snomed,
-                    r.display.unwrap_or_default()
-                )?;
-            }
-        }
-    }
-
-    eprintln!(
-        "transcode {from} -> {to}: {} input code(s), {matched} mapped, {unmatched} unmapped",
-        codes.len()
-    );
-    Ok(())
-}
+pub(crate) const SYSTEMS: [&str; 5] = ["snomed", "read2", "ctv3", "icd10", "opcs4"];
 
 /// One mapped output: the target code, the SNOMED pivot concept it went through,
 /// and that concept's preferred term (when known).
@@ -300,7 +196,7 @@ fn pt(conn: &Connection, id: &str) -> Option<String> {
     .flatten()
 }
 
-fn table_exists(conn: &Connection, name: &str) -> bool {
+pub(crate) fn table_exists(conn: &Connection, name: &str) -> bool {
     conn.query_row(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?1",
         [name],
@@ -327,7 +223,7 @@ fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
     false
 }
 
-fn is_classification(system: &str) -> bool {
+pub(crate) fn is_classification(system: &str) -> bool {
     matches!(system, "icd10" | "opcs4")
 }
 
@@ -341,7 +237,7 @@ fn collect(conn: &Connection, sql: &str, p: &[&dyn rusqlite::ToSql]) -> Result<V
 /// Read codes from a file or stdin. The leading whitespace-delimited token of
 /// each non-blank, non-`#` line is taken as the code (so `sct ecl expand`,
 /// `cut`, `grep` output pipes straight in).
-fn read_codes(input: Option<&std::path::Path>) -> Result<Vec<String>> {
+pub(crate) fn read_codes(input: Option<&std::path::Path>) -> Result<Vec<String>> {
     let reader: Box<dyn BufRead> = match input {
         Some(p) => Box::new(std::io::BufReader::new(
             std::fs::File::open(p).with_context(|| format!("opening {}", p.display()))?,

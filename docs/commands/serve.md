@@ -132,7 +132,7 @@ The canonical URL of a served list is `{server-base}/ValueSet/{id}`. `$validate-
 
 ### Cross-terminology translation (`ConceptMap/$translate`)
 
-Map a code between SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 using the same maps as [`sct transcode`](transcode.md). `$translate` is advertised in `/metadata` only when the loaded SQLite database has the `crossmaps` table. `sct trud download --multi-terminology` builds the full map set; manually, ICD-10 / OPCS-4 need [`sct ndjson --refsets all`](ndjson.md), and Read v2 needs [`sct read2 import`](read2.md) over TRUD item 9.
+Map a code between SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 using the same maps as [`sct map`](map.md). `$translate` is advertised in `/metadata` only when the loaded SQLite database has the `crossmaps` table. `sct trud download --multi-terminology` builds the full map set; manually, ICD-10 / OPCS-4 need [`sct ndjson --refsets all`](ndjson.md), and Read v2 needs [`sct read2 import`](read2.md) over TRUD item 9.
 
 ```bash
 # SNOMED CT -> ICD-10

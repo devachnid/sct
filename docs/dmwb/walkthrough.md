@@ -39,8 +39,9 @@ The analysis method is:
    retaining `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and source
    release provenance, rather than flattening everything into a bare code ->
    concept lookup.
-4. Expose the same map engine consistently through `transcode`, `crosswalk`,
-   codelist export, FHIR `$translate`, and eventually MCP.
+4. Expose the same map engine consistently through `sct map` (and its
+   `transcode` / `crosswalk` aliases), codelist export, FHIR `$translate`,
+   and eventually MCP.
 
 ---
 
@@ -172,7 +173,7 @@ You do not have to delete any database. Use one of these patterns:
 export SCT_DB="$DB"
 
 # Or pass it explicitly.
-sct crosswalk 22298006 --db "$DB"
+sct map 22298006 --db "$DB"
 
 # Or replace the local convenience filename after you are sure it is old.
 mv ./snomed.db ./snomed.core-only.db
@@ -184,10 +185,10 @@ cp "$DB" ./snomed.db
 ## Browse one code across terminologies
 
 DMWB's `BROWSE` screen shows equivalent codes around a SNOMED CT pivot. In `sct`,
-use [`sct crosswalk`](../commands/crosswalk.md):
+use [`sct map`](../commands/map.md):
 
 ```bash
-sct crosswalk 22298006 --db "$DB"
+sct map 22298006 --db "$DB"
 ```
 
 If you built via `sct trud --pipeline` and did not copy the database to
@@ -207,50 +208,50 @@ Typical output:
 Start from another system when that is the code you have:
 
 ```bash
-sct crosswalk X200E --from ctv3 --db "$DB"
-sct crosswalk I219 --from icd10 --db "$DB"
+sct map X200E --from ctv3 --db "$DB"
+sct map I219 --from icd10 --db "$DB"
 ```
 
 Use JSON when another process needs the result:
 
 ```bash
-sct crosswalk 22298006 --json --db "$DB"
+sct map 22298006 -f json --db "$DB"
 ```
 
 ---
 
 ## Transcode a batch of codes
 
-DMWB's `TRANSCODE` workflow becomes [`sct transcode`](../commands/transcode.md):
+DMWB's `TRANSCODE` workflow becomes [`sct map`](../commands/map.md):
 one input code per line, one output row per mapping.
 
 ```bash
-cat ctv3-codes.txt | sct transcode --from ctv3 --to snomed --db "$DB"
+cat ctv3-codes.txt | sct map --from ctv3 --to snomed --db "$DB"
 ```
 
 Crosswalk via SNOMED CT into ICD-10:
 
 ```bash
-cat ctv3-codes.txt | sct transcode --from ctv3 --to icd10 --db "$DB"
+cat ctv3-codes.txt | sct map --from ctv3 --to icd10 --db "$DB"
 ```
 
 Map SNOMED CT concepts to ICD-10:
 
 ```bash
 printf '22298006\n73211009\n' \
-  | sct transcode --from snomed --to icd10 --db "$DB"
+  | sct map --from snomed --to icd10 --db "$DB"
 ```
 
 Emit JSON lines for a downstream script:
 
 ```bash
 cat ctv3-codes.txt \
-  | sct transcode --from ctv3 --to icd10 --json --db "$DB"
+  | sct map --from ctv3 --to icd10 -f json --db "$DB"
 ```
 
 ```bash
 cat read2-code-term-keys.txt \
-  | sct transcode --from read2 --to snomed --forward-history --db "$DB"
+  | sct map --from read2 --to snomed --forward-history --db "$DB"
 ```
 
 The recommended Read v2 input key is the seven-character ReadCode+TermCode
@@ -266,7 +267,7 @@ release. Build with `--refsets all --include-inactive`, then add
 
 ```bash
 cat old-sctids.txt \
-  | sct transcode --from snomed --to snomed --forward-history --db "$DB"
+  | sct map --from snomed --to snomed --forward-history --db "$DB"
 ```
 
 The forwarding data comes from the RF2 Association refsets, so it is sourced from
@@ -339,8 +340,8 @@ import` using TRUD item 9's flat files, and the RF2-native maps loaded by
 
 | DMWB need | `sct` route | Status |
 |---|---|---|
-| Browse equivalent codes around a concept | `sct crosswalk` | Shipped |
-| Batch terminology migration | `sct transcode` | Shipped |
+| Browse equivalent codes around a concept | `sct map` | Shipped |
+| Batch terminology migration | `sct map --to` | Shipped |
 | SNOMED CT -> ICD-10 / OPCS-4 maps | `sct ndjson --refsets all` + `sct sqlite` | Shipped |
 | CTV3 <-> SNOMED CT maps | UK RF2 SimpleMap -> `crossmaps` | Shipped |
 | Inactive concept forwarding | RF2 Association refsets + `--forward-history` | Shipped |

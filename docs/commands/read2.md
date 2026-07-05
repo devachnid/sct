@@ -67,8 +67,8 @@ sct read2 import \
   --db snomed.db
 
 # Use the imported maps
-echo '0111.00' | sct transcode --from read2 --to snomed --db snomed.db
-sct crosswalk 0111.00 --from read2 --db snomed.db
+echo '0111.00' | sct map --from read2 --to snomed --db snomed.db
+sct map 0111.00 --from read2 --db snomed.db
 ```
 
 ## Notes

@@ -235,6 +235,12 @@ sct read2 import --archive nhs_datamigration_29.0.0_20200401000001.zip [--db sno
 
 ## 7. Query surface (CLI)
 
+> **Note (v0.15.0):** the two commands below are now unified under **`sct map`**,
+> with `transcode` and `crosswalk` kept as aliases. `sct map --from X --to Y` is
+> the transcode behaviour; `sct map <code>` (no `--to`) is the crosswalk
+> behaviour. Output honours the standard `-f, --format text|tsv|csv|json`
+> (the old `--json` is a deprecated alias). See [`docs/commands/map.md`](../docs/commands/map.md).
+
 ### 7.1 `sct transcode` - DMWB's `TRANSCODE`, composable
 
 ```

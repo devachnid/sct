@@ -65,11 +65,9 @@ enum Command {
     /// Build a transitive closure table over the IS-A hierarchy in an existing SQLite database.
     Tct(commands::tct::Args),
 
-    /// Map a stream of codes from one terminology to another (SNOMED/Read v2/CTV3/ICD-10/OPCS-4).
-    Transcode(commands::transcode::Args),
-
-    /// Show all cross-terminology equivalents of a single code (SNOMED/Read v2/CTV3/ICD-10/OPCS-4).
-    Crosswalk(commands::crosswalk::Args),
+    /// Map codes between terminologies (SNOMED/Read v2/CTV3/ICD-10/OPCS-4). Aliases: transcode, crosswalk.
+    #[command(alias = "transcode", alias = "crosswalk")]
+    Map(commands::map::Args),
 
     /// Download SNOMED CT RF2 releases via the NHS TRUD API.
     Trud(commands::trud::Args),
@@ -141,8 +139,7 @@ fn main() -> Result<()> {
         Command::Refset(args) => commands::refset::run(args),
         Command::Read2(args) => commands::read2::run(args),
         Command::Tct(args) => commands::tct::run(args),
-        Command::Transcode(args) => commands::transcode::run(args),
-        Command::Crosswalk(args) => commands::crosswalk::run(args),
+        Command::Map(args) => commands::map::run(args),
         Command::Trud(args) => commands::trud::run(args),
         Command::Paths(args) => commands::paths::run(args),
         Command::Lookup(args) => commands::lookup::run(args),

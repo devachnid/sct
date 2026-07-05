@@ -14,6 +14,7 @@ pub mod fst;
 pub mod info;
 pub mod lexical;
 pub mod lookup;
+pub mod map;
 pub mod markdown;
 pub mod mcp;
 pub mod ndjson;

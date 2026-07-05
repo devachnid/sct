@@ -1,39 +1,13 @@
 # sct crosswalk
 
-Show **all** cross-terminology equivalents of a single code at once - the text equivalent of the NHS Data Migration Workbench's tri-terminology BROWSE view. Where [`sct transcode`](transcode.md) maps a stream of codes from one terminology to one other, `sct crosswalk` takes one code and shows its equivalents in every terminology.
+> **Renamed.** `sct crosswalk` is now an **alias** of [`sct map`](map.md). The command still works unchanged; the documentation moved to keep one page for cross-terminology mapping.
 
-Built on the same maps as `sct transcode` (see [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md)). `sct trud download --multi-terminology` builds the full workspace. ICD-10 / OPCS-4 columns need a database built with [`sct ndjson --refsets all`](ndjson.md); without it they show `(none)`. CTV3 works from UK RF2 SimpleMap rows. Read v2 comes from [`sct read2 import`](read2.md) over TRUD item 9.
-
-## Usage
+`sct crosswalk <CODE>` shows **all** cross-terminology equivalents of a single code at once. That is exactly `sct map <CODE>` today (with no `--to`):
 
 ```bash
-sct crosswalk <CODE> [--from <SYSTEM>] [--json] [--db <FILE>]
-```
-
-| Option | Default | Description |
-|---|---|---|
-| `<CODE>` | | The code to crosswalk. |
-| `--from <SYSTEM>` | `snomed` | Terminology of `<CODE>`: `snomed`, `read2`, `ctv3`, `icd10`, `opcs4`. |
-| `--json` | off | Emit JSON instead of human-readable text. |
-| `--db <FILE>` | auto | SNOMED CT database. |
-
-## Examples
-
-```bash
-# A SNOMED concept and all its equivalents
+# These are equivalent
 sct crosswalk 22298006
-# 22298006  Myocardial infarction
-#   read2:  (none)
-#   ctv3:   X200E
-#   icd10:  I219
-#   opcs4:  (none)
-
-# Start from a legacy code - resolves to SNOMED, then shows the rest
-sct crosswalk X200E --from ctv3
-
-# Start from a Read v2 ReadCode+TermCode key
-sct crosswalk 0111.00 --from read2
-
-# Machine-readable
-sct crosswalk 22298006 --json
+sct map       22298006
 ```
+
+See [`sct map`](map.md) for the full, current reference (including the new `-f, --format text|tsv|csv|json` option; `--json` is still accepted as a deprecated alias for `--format json`).
