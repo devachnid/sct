@@ -1,0 +1,5 @@
+# name	code_a	code_b	expected_outcome
+type-2-subsumed-by-diabetes	44054006	73211009	subsumed-by
+diabetes-subsumes-type-2	73211009	44054006	subsumes
+diabetes-equivalent	73211009	73211009	equivalent
+asthma-not-mi	195967001	22298006	not-subsumed

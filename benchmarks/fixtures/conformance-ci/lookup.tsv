@@ -1,0 +1,4 @@
+# name	code	display_contains	expected_parent
+myocardial-infarction	22298006	Myocardial infarction	-
+diabetes-mellitus	73211009	Diabetes mellitus	-
+type-2-diabetes	44054006	Type 2 diabetes	73211009

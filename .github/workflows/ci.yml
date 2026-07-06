@@ -52,6 +52,14 @@ jobs:
       - name: cargo test (serve feature)
         run: cargo test --features serve
 
+      - name: Install FHIR conformance tooling
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends jq sqlite3 curl
+
+      - name: FHIR conformance gate (sct serve vs committed RF2 fixture)
+        run: |
+          cargo build --bin sct
+          SCT_BIN=target/debug/sct benchmarks/conformance-ci.sh
+
   reuse:
     name: REUSE compliance
     runs-on: ubuntu-latest

@@ -46,7 +46,19 @@ It uses fixture matrices under `benchmarks/fixtures/conformance/` to assert:
 - `ConceptMap/$translate` works when the server advertises it
 - invalid requests return FHIR `OperationOutcome`
 
-Run it against any candidate server before using the benchmark numbers:
+### CI regression gate
+
+`benchmarks/conformance-ci.sh` runs this suite on every push: it builds the
+committed synthetic RF2 fixture (`tests/fixtures/rf2/`), starts `sct serve` over
+it, and asserts a minimal fixture set matched to that 22-concept fixture
+(`benchmarks/fixtures/conformance-ci/`). It exits non-zero on any failure, so a
+conformance regression breaks the build. Run it locally too:
+
+```bash
+cargo build --bin sct && benchmarks/conformance-ci.sh
+```
+
+Run the full suite against any candidate server before using the benchmark numbers:
 
 ```bash
 benchmarks/conformance.sh --server http://localhost:8080/fhir

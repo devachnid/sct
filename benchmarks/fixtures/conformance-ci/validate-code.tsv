@@ -1,0 +1,5 @@
+# name	code	expected_result	display
+known-mi	22298006	true	-
+unknown-code	999999999999	false	-
+display-match	22298006	true	Myocardial infarction
+display-mismatch	22298006	false	Wrong display text
