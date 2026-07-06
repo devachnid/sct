@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Run a local Snowstorm Lite - SNOMED International's FHIR R4 terminology
+# server - as a comparator for `sct serve` conformance and benchmark testing.
+# Snowstorm Lite is the FHIR-native, single-container edition (no Elasticsearch),
+# so it is the apt, lightweight comparison for `sct serve`.
+#
+#   s/snowstorm-lite up                              pull + start, wait for health
+#   s/snowstorm-lite load <rf2.zip> --version-uri <uri>   load a SNOMED release
+#   s/snowstorm-lite status                          health check
+#   s/snowstorm-lite logs                            follow container logs
+#   s/snowstorm-lite down                            stop + remove (keeps the volume)
+#   s/snowstorm-lite url                             print the FHIR base URL
+#
+# Once it is up and a release is loaded, point the bench tooling at it:
+#   bench/conformance.sh --server "$(s/snowstorm-lite url)"
+#   bench/bench.sh --db snomed.db --server "$(s/snowstorm-lite url)" --write-benchmarks
+#
+# Memory: Snowstorm Lite needs a large Java heap (default Xmx 16g, Xms half of
+# that). Give Docker at least ~20 GB RAM or it will OOM on a full edition. On a
+# smaller machine, load a Clinical Edition and drop the heap: `up --heap 8g`.
+#
+# Overridable via env: SNOWSTORM_PORT, SNOWSTORM_HEAP, SNOWSTORM_ADMIN_PASSWORD.
+
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+IMAGE="snomedinternational/snowstorm-lite"
+NAME="snowstorm-lite"
+VOLUME="snowstorm-lite-data"
+PORT="${SNOWSTORM_PORT:-8080}"
+HEAP="${SNOWSTORM_HEAP:-16g}"
+ADMIN_PW="${SNOWSTORM_ADMIN_PASSWORD:-snowstorm}"
+VERSION_URI=""
+HEALTH_TIMEOUT=300
+
+cmd="${1:-up}"
+shift || true
+
+if [[ "$cmd" == "-h" || "$cmd" == "--help" ]]; then
+  sed -n '5,25p' "$0" | sed 's/^# \{0,1\}//'
+  exit 0
+fi
+
+LOAD_FILE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --port)        PORT="$2"; shift 2 ;;
+    --heap)        HEAP="$2"; shift 2 ;;
+    --password)    ADMIN_PW="$2"; shift 2 ;;
+    --version-uri) VERSION_URI="$2"; shift 2 ;;
+    -h|--help)     sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*)            echo "unknown option: $1" >&2; exit 1 ;;
+    *)
+      if [[ "$cmd" == "load" && -z "$LOAD_FILE" ]]; then LOAD_FILE="$1"; shift
+      else echo "unexpected argument: $1" >&2; exit 1; fi ;;
+  esac
+done
+
+base_url="http://localhost:${PORT}/fhir"
+admin_url="http://localhost:${PORT}/fhir-admin"
+
+require_docker() {
+  command -v docker >/dev/null 2>&1 || {
+    echo "error: docker not found. Install Docker: https://docs.docker.com/get-docker/" >&2; exit 1; }
+  docker info >/dev/null 2>&1 || {
+    echo "error: the Docker daemon is not running. Start Docker Desktop, or run 'sudo systemctl start docker'." >&2; exit 1; }
+}
+
+is_running() { [[ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" == "true" ]]; }
+exists()     { docker inspect "$NAME" >/dev/null 2>&1; }
+
+wait_healthy() {
+  printf 'waiting for Snowstorm Lite at %s/metadata ' "$base_url"
+  local start=$SECONDS
+  until curl -fsS "$base_url/metadata" >/dev/null 2>&1; do
+    if (( SECONDS - start > HEALTH_TIMEOUT )); then
+      printf '\nerror: not healthy after %ss. Inspect with: s/snowstorm-lite logs\n' "$HEALTH_TIMEOUT" >&2
+      exit 1
+    fi
+    printf '.'; sleep 3
+  done
+  printf ' ready\n'
+}
+
+case "$cmd" in
+  up)
+    require_docker
+    # Best-effort RAM sanity check (Linux).
+    if command -v free >/dev/null 2>&1 && [[ "$HEAP" =~ ^([0-9]+)g$ ]]; then
+      heap_gb="${BASH_REMATCH[1]}"
+      total_gb=$(free -g | awk '/^Mem:/{print $2}')
+      if [[ "$total_gb" =~ ^[0-9]+$ ]] && (( total_gb < heap_gb + 4 )); then
+        echo "warning: host has ${total_gb} GB RAM but the heap is ${HEAP}; Snowstorm Lite may OOM." >&2
+        echo "         lower it for a Clinical Edition with: s/snowstorm-lite up --heap 8g" >&2
+      fi
+    fi
+
+    if is_running; then
+      echo "Snowstorm Lite is already running."
+    elif exists; then
+      echo "starting the existing container..."
+      docker start "$NAME" >/dev/null
+    else
+      xms="${HEAP%g}"; xms=$(( xms / 2 )); (( xms < 1 )) && xms=1
+      echo "pulling + starting Snowstorm Lite (Xms ${xms}g / Xmx ${HEAP}, port ${PORT})..."
+      docker run -d --name "$NAME" \
+        -p "${PORT}:8080" \
+        -v "${VOLUME}:/app/lucene-index" \
+        -e JAVA_TOOL_OPTIONS="-Xms${xms}g -Xmx${HEAP}" \
+        "$IMAGE" \
+        --index.path=lucene-index/data \
+        --admin.password="$ADMIN_PW" >/dev/null
+    fi
+    wait_healthy
+    cat <<EOF
+
+Snowstorm Lite is up:  ${base_url}   (admin user: admin / password: ${ADMIN_PW})
+
+Next steps:
+  1. Load a SNOMED release if you have not already (builds a Lucene index):
+       s/snowstorm-lite load <release.zip> \\
+         --version-uri "http://snomed.info/sct/<moduleId>/version/<YYYYMMDD>"
+     e.g. UK Clinical Edition:
+       --version-uri "http://snomed.info/sct/83821000000107/version/20260311"
+  2. Prove correctness before timing anything:
+       bench/conformance.sh --server ${base_url}
+  3. Benchmark against local SQLite:
+       bench/bench.sh --db snomed.db --server ${base_url} --write-benchmarks
+EOF
+    ;;
+
+  load)
+    require_docker
+    is_running || { echo "error: Snowstorm Lite is not running. Run: s/snowstorm-lite up" >&2; exit 1; }
+    [[ -n "$LOAD_FILE" ]] || { echo "usage: s/snowstorm-lite load <release.zip> --version-uri <uri>" >&2; exit 1; }
+    [[ -f "$LOAD_FILE" ]] || { echo "error: file not found: $LOAD_FILE" >&2; exit 1; }
+    [[ -n "$VERSION_URI" ]] || {
+      echo "error: --version-uri is required, e.g." >&2
+      echo "       --version-uri \"http://snomed.info/sct/83821000000107/version/20260311\"" >&2
+      exit 1; }
+    echo "loading ${LOAD_FILE} (this builds a Lucene index and can take several minutes)..."
+    curl -u "admin:${ADMIN_PW}" \
+      --form file=@"${LOAD_FILE}" \
+      --form version-uri="${VERSION_URI}" \
+      "${admin_url}/load-package"
+    echo
+    echo "load submitted. Follow progress with: s/snowstorm-lite logs"
+    ;;
+
+  status)
+    if curl -fsS "$base_url/metadata" >/dev/null 2>&1; then
+      echo "healthy: ${base_url}"
+    else
+      echo "not responding at ${base_url} (is it up? try: s/snowstorm-lite up)"; exit 1
+    fi
+    ;;
+
+  logs)
+    require_docker
+    exec docker logs -f "$NAME"
+    ;;
+
+  down)
+    require_docker
+    echo "stopping + removing ${NAME} (the ${VOLUME} volume is kept)..."
+    docker rm -f "$NAME" >/dev/null 2>&1 || true
+    echo "done. To delete the loaded data too: docker volume rm ${VOLUME}"
+    ;;
+
+  url)
+    echo "$base_url"
+    ;;
+
+  *)
+    echo "usage: s/snowstorm-lite [up|load|status|logs|down|url]" >&2
+    exit 1 ;;
+esac

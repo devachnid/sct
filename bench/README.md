@@ -112,36 +112,29 @@ stratified: common concepts, deep hierarchy concepts, high-fanout parents,
 invalid codes, ECL expressions, refsets and cross-terminology mappings. The
 goal is a production-shaped request matrix, not a handful of easy examples.
 
-## Run a local instance of Snowstorm Lite (FHIR terminology server) for testing
+## Run a local Snowstorm Lite comparator
 
-You can run a local instance of Snowstorm Lite in Docker for testing against a real terminology server. Make sure to allocate enough memory (at least 16Gb) to the Java heap to avoid out-of-memory errors, especially with larger SNOMED CT releases.
-
-Run Snowstorm Lite in Docker with the following command:
-
-```bash
-docker run -p 8080:8080 --name=snowstorm-lite \
-  -v snowstorm-lite-volume:/app/lucene-index \
-  -e JAVA_TOOL_OPTIONS="-Xms8g -Xmx16g" \
-  snomedinternational/snowstorm-lite \
-  --index.path=lucene-index/data \
-  --admin.password=yourAdminPassword
-```
-
-Load in the Clinical Edition RF2 release (or the full UK Monolith if you can get it to work!) through the Snowstorm Lite admin interface:
+Snowstorm Lite is SNOMED International's FHIR-native, single-container terminology
+server - the apt lightweight comparator for `sct serve`. The one-command wrapper
+[`s/snowstorm-lite`](../s/snowstorm-lite) handles the Docker run, health-wait, and
+release load (allocate at least ~20 GB RAM to Docker; the default Java heap is
+`-Xmx16g`):
 
 ```bash
-curl -u admin:yourAdminPassword \
-  --form file=@uk_sct2cl_41.6.0_20260311000001Z.zip \
-  --form version-uri="http://snomed.info/sct/83821000000107/version/20260311" \
-  http://localhost:8080/fhir-admin/load-package
+s/snowstorm-lite up                    # pull + start, wait for health
+
+# Load the Clinical Edition (or the full UK Monolith if you can get it to work!)
+s/snowstorm-lite load uk_sct2cl_41.6.0_20260311000001Z.zip \
+  --version-uri "http://snomed.info/sct/83821000000107/version/20260311"
+
+# Prove correctness first, then benchmark
+bench/conformance.sh --server "$(s/snowstorm-lite url)"
+bench/bench.sh --db snomed.db --server "$(s/snowstorm-lite url)" --write-benchmarks
+
+s/snowstorm-lite down                  # stop when finished (keeps the loaded data)
 ```
 
-Then pass in `--server http://localhost:8080/fhir` to the benchmark script.
-
-```bash
-bench/bench.sh --db snomed.db --server http://localhost:8080/fhir \
-  --write-benchmarks
-```
+Run `s/snowstorm-lite --help` for all subcommands (`status`, `logs`, `--heap`, `--port`).
 
 ## Notes
 
