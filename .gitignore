@@ -15,7 +15,7 @@ snomed-concepts/
 snomed-hierarchies/
 
 # Benchmark results (generated data - commit selectively, not automatically)
-benchmarks/reports/*.md
+benchmarks/reports/
 
 # OS / editor
 .DS_Store
