@@ -57,11 +57,26 @@ The runner is HL7-aligned because it exercises the FHIR R4 terminology
 operations, but it is not an official HL7 certification suite. A future
 Touchstone/FHIR `TestScript` suite would complement it.
 
+## Two comparison modes
+
+The **sct side** is either its native SQLite path or sct serve over FHIR; the
+**comparator** is always a FHIR server. This gives two comparisons:
+
+```bash
+# sct native (local SQLite) vs a FHIR server
+benchmarks/bench.sh --sct-sqlite snomed.db --vs "$(s/snowstorm-lite url)" --write-benchmarks
+
+# sct serve vs a FHIR server - like-for-like, FHIR to FHIR
+sct serve --db snomed.db --port 8081 --fhir-base /fhir &
+benchmarks/bench.sh --sct-fhir http://localhost:8081/fhir --vs "$(s/snowstorm-lite url)" --write-benchmarks
+```
+
 ## Options
 
 ```
---server URL        FHIR base URL (required for remote comparison)
---db PATH           path to snomed.db (default: ./snomed.db)
+--sct-sqlite PATH   sct's native SQLite path (default: ./snomed.db; alias --db)
+--sct-fhir URL      sct serve, over FHIR (e.g. http://localhost:8081/fhir)
+--vs URL            comparator FHIR server (alias --server)
 --runs N            timed iterations per operation (default: 5)
 --warmup N          warmup iterations before timing (default: 1)
 --operations LIST   comma-separated subset to run:

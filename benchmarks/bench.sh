@@ -11,8 +11,15 @@
 #   benchmarks/bench.sh [OPTIONS]
 #
 # Options:
-#   --server URL        FHIR base URL  e.g. https://terminology.myserver.org/fhir
-#   --db PATH           snomed.db path (default: ./snomed.db)
+#   The sct side is one of (default: --sct-sqlite ./snomed.db):
+#     --sct-sqlite PATH   sct's native SQLite path (alias: --db)
+#     --sct-fhir URL      sct serve, over FHIR  e.g. http://localhost:8081/fhir
+#   The comparator is always a FHIR server:
+#     --vs URL            comparator FHIR base URL (alias: --server)
+#                         e.g. https://terminology.myserver.org/fhir
+#
+#   So: --sct-sqlite <db> --vs <snowstorm>   → sct native vs a FHIR server
+#       --sct-fhir <url>  --vs <snowstorm>   → sct serve vs a FHIR server (like-for-like)
 #   --runs N            timed iterations per operation (default: 5)
 #   --warmup N          warmup iterations before timing (default: 1)
 #   --operations LIST   comma-separated subset: lookup,search,children,
@@ -29,7 +36,11 @@ set -uo pipefail
 BENCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── defaults ──────────────────────────────────────────────────────────────────
+# The "sct side" is either its native SQLite path (--sct-sqlite <db>, default) or
+# sct serve over FHIR (--sct-fhir <url>). The comparator is always a FHIR server
+# (--vs / --server). SCT_FHIR non-empty selects FHIR mode for the sct side.
 BENCH_DB="./snomed.db"
+SCT_FHIR=""
 BENCH_SERVER=""
 BENCH_RUNS=5
 BENCH_WARMUP=1
@@ -49,8 +60,9 @@ _show_help() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --server)            BENCH_SERVER="$2"; shift 2 ;;
-    --db)                BENCH_DB="$2"; shift 2 ;;
+    --server|--vs)       BENCH_SERVER="$2"; shift 2 ;;
+    --db|--sct-sqlite)   BENCH_DB="$2"; shift 2 ;;
+    --sct-fhir)          SCT_FHIR="$2"; shift 2 ;;
     --runs)              BENCH_RUNS="$2"; shift 2 ;;
     --warmup)            BENCH_WARMUP="$2"; shift 2 ;;
     --operations)        BENCH_OPERATIONS="$2"; shift 2 ;;
@@ -99,6 +111,26 @@ source "${BENCH_DIR}/lib/fhir.sh"
 # shellcheck source=lib/report.sh
 source "${BENCH_DIR}/lib/report.sh"
 
+# ── sct side: native SQLite, or sct serve over FHIR ───────────────────────────
+if [[ -n "$SCT_FHIR" ]]; then
+  BENCH_SCT_LABEL="sct (fhir)"
+  SCT_FHIR="${SCT_FHIR%/}"
+  # Point the sct-side timers at sct's own FHIR endpoint instead of SQLite. Each
+  # temporarily swaps BENCH_SERVER (which fhir.sh reads) to the sct URL, so the
+  # sct side runs the identical FHIR operations as the comparator - a fair
+  # server-to-server comparison with no operation code duplicated.
+  local_time_lookup()    { local _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR; fhir_time_lookup "$@"; BENCH_SERVER=$_s; }
+  local_time_search()    { local _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR; fhir_time_search "$@"; BENCH_SERVER=$_s; }
+  local_time_children()  { local _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR; fhir_time_children "$@"; BENCH_SERVER=$_s; }
+  local_time_subsumes()  { local _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR; fhir_time_subsumes "$@"; BENCH_SERVER=$_s; }
+  local_time_ancestors() { local _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR; fhir_time_ancestors_iterative "$@"; BENCH_SERVER=$_s; }
+  local_time_bulk()      { local _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR; fhir_time_bulk "$@"; BENCH_SERVER=$_s; }
+  local_concept_depth()  { echo "?"; }
+  local_snomed_info()    { :; }   # no local DB to introspect in FHIR mode
+else
+  BENCH_SCT_LABEL="sct (sqlite)"
+fi
+
 # ── shared result accumulator ─────────────────────────────────────────────────
 # Columns (tab-separated): op | label | local_ms | local_sd | remote_ms | remote_sd | notes
 BENCH_TMPDIR=$(mktemp -d /tmp/bench_XXXXXX)
@@ -116,20 +148,26 @@ append_result() {
 
 # ── main ──────────────────────────────────────────────────────────────────────
 _check_deps
-_check_db
+[[ -n "$SCT_FHIR" ]] || _check_db
 
 printf 'sct benchmark - %s\n' "$BENCH_DATE" >&2
-printf 'db: %s\n' "$(realpath "$BENCH_DB" 2>/dev/null || printf '%s' "$BENCH_DB")" >&2
+if [[ -n "$SCT_FHIR" ]]; then
+  printf 'sct side: %s (FHIR)\n' "$SCT_FHIR" >&2
+  # Verify the sct FHIR endpoint is up (check_fhir_server reads BENCH_SERVER).
+  _s=$BENCH_SERVER; BENCH_SERVER=$SCT_FHIR
+  check_fhir_server >/dev/null 2>&1 || _die "sct FHIR endpoint unreachable: $SCT_FHIR"
+  BENCH_SERVER=$_s
+else
+  printf 'sct side: %s (SQLite)\n' "$(realpath "$BENCH_DB" 2>/dev/null || printf '%s' "$BENCH_DB")" >&2
+  # Resolve DB to absolute path for consistent display in report.
+  BENCH_DB="$(realpath "$BENCH_DB" 2>/dev/null || printf '%s' "$BENCH_DB")"
+  # Collect SNOMED metadata from the DB.
+  local_snomed_info
+  printf 'snomed version: %s (%s active concepts)\n' \
+    "${SNOMED_VERSION:-?}" "${SNOMED_CONCEPT_COUNT:-?}" >&2
+fi
 
-# Resolve DB to absolute path for consistent display in report.
-BENCH_DB="$(realpath "$BENCH_DB" 2>/dev/null || printf '%s' "$BENCH_DB")"
-
-# Collect SNOMED metadata from the DB.
-local_snomed_info
-printf 'snomed version: %s (%s active concepts)\n' \
-  "${SNOMED_VERSION:-?}" "${SNOMED_CONCEPT_COUNT:-?}" >&2
-
-# Check remote server connectivity.
+# Check comparator server connectivity.
 FHIR_PING_MS=0
 if [[ -n "$BENCH_SERVER" ]]; then
   printf 'checking remote: %s ...\n' "$BENCH_SERVER" >&2

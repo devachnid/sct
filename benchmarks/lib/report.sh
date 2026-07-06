@@ -93,12 +93,16 @@ render_table() {
 
   # Header
   printf '\nsct benchmark - %s\n' "$BENCH_DATE"
-  printf '  local db  : %s' "$BENCH_DB"
-  [[ -n "$SNOMED_CONCEPT_COUNT" && "$SNOMED_CONCEPT_COUNT" != "?" ]] && \
-    printf ' (%s concepts, v%s)' \
-      "$(printf '%s' "$SNOMED_CONCEPT_COUNT" | sed ':a;s/\B[0-9]\{3\}\b/,&/;ta')" \
-      "${SNOMED_VERSION:-?}"
-  printf '\n'
+  if [[ -n "$SCT_FHIR" ]]; then
+    printf '  sct       : %s (FHIR)\n' "$SCT_FHIR"
+  else
+    printf '  sct       : %s' "$BENCH_DB"
+    [[ -n "$SNOMED_CONCEPT_COUNT" && "$SNOMED_CONCEPT_COUNT" != "?" ]] && \
+      printf ' (%s concepts, v%s)' \
+        "$(printf '%s' "$SNOMED_CONCEPT_COUNT" | sed ':a;s/\B[0-9]\{3\}\b/,&/;ta')" \
+        "${SNOMED_VERSION:-?}"
+    printf '\n'
+  fi
   if [[ -n "$BENCH_SERVER" ]]; then
     printf '  remote    : %s' "$BENCH_SERVER"
     [[ -n "$FHIR_PING_MS" && "$FHIR_PING_MS" != "0" ]] && \
@@ -114,7 +118,7 @@ render_table() {
   # Table header
   printf '%-*s  %*s  %*s  %*s  %*s  %*s\n' \
     "$w_op" "operation" \
-    "$w_l"  "sct (local)" \
+    "$w_l"  "${BENCH_SCT_LABEL:-sct (local)}" \
     "$w_sd" "±" \
     "$w_r"  "$remote_label" \
     "$w_rsd" "±" \
