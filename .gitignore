@@ -15,7 +15,7 @@ snomed-concepts/
 snomed-hierarchies/
 
 # Benchmark results (generated data - commit selectively, not automatically)
-benchmarks/*.md
+benchmarks/reports/*.md
 
 # OS / editor
 .DS_Store
@@ -35,3 +35,6 @@ site/
 node_modules/
 
 .config/sct/
+
+# private files
+.private/

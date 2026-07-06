@@ -1,7 +1,7 @@
 # Benchmarking Suite
 
 A set of Bash scripts that provide a reproducible, automated, fair comparison between `sct`
-(local SQLite) and any FHIR R4 terminology server. Lives in `bench/` at the repository root.
+(local SQLite) and any FHIR R4 terminology server. Lives in `benchmarks/` at the repository root.
 Requires only `bash`, `curl`, `sqlite3`, `jq`, and `bc`/`awk` - no Rust build required.
 [`hyperfine`](https://github.com/sharkdp/hyperfine) is an optional dependency for
 statistically-rigorous timing.
@@ -20,7 +20,7 @@ statistically-rigorous timing.
 ## Repository layout
 
 ```
-bench/
+benchmarks/
   bench.sh              ← entry point; orchestrates all operations
   conformance.sh        ← FHIR R4 terminology conformance runner
   lib/
@@ -39,6 +39,8 @@ bench/
     concepts.txt        ← fixed SCTIDs used as lookup/hierarchy fixtures
     search_terms.txt    ← free-text queries used for search fixtures
     conformance/        ← TSV fixture matrices for FHIR response assertions
+  fst_bench.rs          ← Cargo (criterion) FST microbenchmark; wired via [[bench]] in Cargo.toml
+  reports/              ← generated benchmark reports (--write-benchmarks); gitignored
   README.md
 ```
 
@@ -47,7 +49,7 @@ bench/
 ## Conformance entry point
 
 ```bash
-bench/conformance.sh --server http://localhost:8080/fhir
+benchmarks/conformance.sh --server http://localhost:8080/fhir
 ```
 
 The conformance runner is a prerequisite for serious benchmark comparisons.
@@ -56,7 +58,7 @@ operation outcomes and representative semantics before any latency numbers are
 used. It is aligned with the HL7 FHIR terminology operations, but is not an
 official certification suite.
 
-Fixture files live in `bench/fixtures/conformance/`:
+Fixture files live in `benchmarks/fixtures/conformance/`:
 
 | file | purpose |
 |---|---|
@@ -77,7 +79,7 @@ publish the failure alongside the timing numbers.
 ## Entry point
 
 ```bash
-bench/bench.sh [OPTIONS]
+benchmarks/bench.sh [OPTIONS]
 
 Options:
   --server URL      Base URL of FHIR terminology server (e.g. https://terminology.myserver.org/fhir)
@@ -97,7 +99,7 @@ Options:
 
 If you think you know of better fixtures I could use, then please let me know by creating an Issue. The goal is to have a fixed set of queries that are representative of real-world usage, and that can be used to track performance over time. The current fixtures are:
 
-**`bench/fixtures/concepts.txt`**
+**`benchmarks/fixtures/concepts.txt`**
 
 ```
 22298006    # Myocardial infarction (disorder)
@@ -117,7 +119,7 @@ If you think you know of better fixtures I could use, then please let me know by
 59282003    # Pulmonary embolism (disorder)
 ```
 
-**`bench/fixtures/search_terms.txt`**
+**`benchmarks/fixtures/search_terms.txt`**
 
 ```
 heart attack

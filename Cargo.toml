@@ -135,4 +135,5 @@ criterion = "0.8"
 
 [[bench]]
 name = "fst_bench"
+path = "benchmarks/fst_bench.rs"
 harness = false

@@ -15,8 +15,8 @@ timings. Run the FHIR conformance harness first, then benchmark only servers
 that pass the relevant profile:
 
 ```bash
-bench/conformance.sh --server http://localhost:8080/fhir
-bench/bench.sh --db snomed.db --server http://localhost:8080/fhir --runs 20 --warmup 5
+benchmarks/conformance.sh --server http://localhost:8080/fhir
+benchmarks/bench.sh --db snomed.db --server http://localhost:8080/fhir --runs 20 --warmup 5
 ```
 
 See [FHIR Conformance And Benchmarks](fhir-conformance-benchmarks.md) for the

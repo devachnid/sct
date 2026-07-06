@@ -15,8 +15,8 @@
 #   s/snowstorm-lite url                             print the FHIR base URL
 #
 # Once it is up and a release is loaded, point the bench tooling at it:
-#   bench/conformance.sh --server "$(s/snowstorm-lite url)"
-#   bench/bench.sh --db snomed.db --server "$(s/snowstorm-lite url)" --write-benchmarks
+#   benchmarks/conformance.sh --server "$(s/snowstorm-lite url)"
+#   benchmarks/bench.sh --db snomed.db --server "$(s/snowstorm-lite url)" --write-benchmarks
 #
 # Memory: Snowstorm Lite needs a large Java heap (default Xmx 16g, Xms half of
 # that). Give Docker at least ~20 GB RAM or it will OOM on a full edition. On a
@@ -126,9 +126,9 @@ Next steps:
      e.g. UK Clinical Edition:
        --version-uri "http://snomed.info/sct/83821000000107/version/20260311"
   2. Prove correctness before timing anything:
-       bench/conformance.sh --server ${base_url}
+       benchmarks/conformance.sh --server ${base_url}
   3. Benchmark against local SQLite:
-       bench/bench.sh --db snomed.db --server ${base_url} --write-benchmarks
+       benchmarks/bench.sh --db snomed.db --server ${base_url} --write-benchmarks
 EOF
     ;;
 

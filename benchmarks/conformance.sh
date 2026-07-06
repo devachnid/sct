@@ -24,11 +24,11 @@ _die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 _show_help() {
   cat <<'USAGE'
 Usage:
-  bench/conformance.sh --server URL [OPTIONS]
+  benchmarks/conformance.sh --server URL [OPTIONS]
 
 Options:
   --server URL        FHIR R4 terminology server base URL, e.g. http://localhost:8080/fhir
-  --fixtures DIR      Fixture directory (default: bench/fixtures/conformance)
+  --fixtures DIR      Fixture directory (default: benchmarks/fixtures/conformance)
   --operations LIST   Comma-separated subset:
                       metadata,lookup,validate-code,expand,subsumes,
                       valueset-validate,translate,errors

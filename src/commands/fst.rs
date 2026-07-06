@@ -10,7 +10,7 @@
 //! `build` mirrors `sct sqlite` / `sct parquet`: it consumes the canonical
 //! NDJSON and emits a single artefact (default `snomed.fst`). `search` is here
 //! so the prefix/fuzzy/word capabilities can be exercised from the CLI; the
-//! benchmark (`benches/fst_bench.rs`) drives the same query paths in-process.
+//! benchmark (`benchmarks/fst_bench.rs`) drives the same query paths in-process.
 //!
 //! See `specs/commands/fst.md`.
 

@@ -157,7 +157,7 @@ memmap2 = "<latest>"     # not currently used anywhere in sct
 New dev dependency:
 
 ```toml
-criterion = "<latest>"   # benchmarks live under bench/
+criterion = "<latest>"   # benchmarks live under benchmarks/
 ```
 
 Already present and reused: `serde_json` (read NDJSON), `unicode-normalization` is *not* yet a dep - add it if NFC normalisation needs it, otherwise `to_lowercase` + whitespace collapse may suffice for v0; decide when implementing. Pin every version to whatever `cargo add` reports as current - do not write versions from memory.
@@ -280,7 +280,7 @@ TF/IDF ranking is out of scope for the benchmark slice; note where it would slot
 
 ## 6. The benchmark - what it must produce
 
-This is the actual deliverable. The harness (criterion under `bench/`, plus a small table-printer) runs the FST against the **real local `snomed.ndjson` / `snomed.db`** already in the repo and emits:
+This is the actual deliverable. The harness (criterion under `benchmarks/`, plus a small table-printer) runs the FST against the **real local `snomed.ndjson` / `snomed.db`** already in the repo and emits:
 
 1. **Size.** `snomed.fst` total, and its `descriptions.fst` + `postings` + `words` + `word_postings` sections individually, versus the **FTS5 shadow tables specifically** - i.e. the `concepts_fts_*` tables measured via `dbstat`, *not* the whole 1.8 GB `snomed.db`. This is the apples-to-apples lexical-index comparison.
 2. **Build time.** NDJSON → `snomed.fst` wall-clock.
@@ -345,7 +345,7 @@ Resist shipping everything at once. Slice 1 is about the format, the build API, 
 
 ## 10. Benchmark results (first run)
 
-Measured on the local artefacts: an **831,132-concept** edition (UK Monolith-scale; far larger than International's ~350k), `snomed.ndjson` (1.1 GB) and `snomed.db` (1.8 GB). Built with `sct fst build` in **16.3 s**, producing **160.4 MB** of `snomed.fst` (1,949,665 terms → 1,252,590 distinct keys, 177,261 word tokens, 59 semantic tags). Query latency from `benches/fst_bench.rs` (criterion, in-process, warm); FTS5 from SQLite's statement timer (warm).
+Measured on the local artefacts: an **831,132-concept** edition (UK Monolith-scale; far larger than International's ~350k), `snomed.ndjson` (1.1 GB) and `snomed.db` (1.8 GB). Built with `sct fst build` in **16.3 s**, producing **160.4 MB** of `snomed.fst` (1,949,665 terms → 1,252,590 distinct keys, 177,261 word tokens, 59 semantic tags). Query latency from `benchmarks/fst_bench.rs` (criterion, in-process, warm); FTS5 from SQLite's statement timer (warm).
 
 ### Size - closer than the spec guessed
 

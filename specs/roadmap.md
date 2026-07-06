@@ -11,7 +11,7 @@ In no particular order. (Distribution items - code signing, the Docker Hub image
 registry submissions - are tracked in detail under [Distribution](#distribution) below,
 not here.)
 
-* [~] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). FHIR conformance fixtures and a terminology-server runner now exist in `bench/conformance.sh`; remaining work is broader fixture coverage, concurrency/percentile benchmarks, comparator server compose profiles, and published reports.
+* [~] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). FHIR conformance fixtures and a terminology-server runner now exist in `benchmarks/conformance.sh`; remaining work is broader fixture coverage, concurrency/percentile benchmarks, comparator server compose profiles, and published reports.
 * [~] mermaid diagrams for the architecture and data flow, to visually explain how the different components fit together and how data moves through the system. **Shipped:** the RF2 → NDJSON → artefacts data-flow diagram now renders as Mermaid in the README (GitHub) and the walkthrough overview, and Mermaid is wired into the docs site (`pymdownx.superfences` custom fence). Remaining: a dedicated FST / search-internals diagram (FST is easier to explain visually), and worked diagrams that use real SNOMED examples to make the concepts concrete. The other ASCII blocks in the docs (file-tree layouts, `sct paths` output, the TUI wireframe, `sct diagram` tree output) are intentionally left as literal text - Mermaid would represent them worse.
 * [ ] SNOMED primer - understanding SNOMED basics (concepts, descriptions, relationships, refsets, ECL, etc.) is a barrier to entry for new users. A concise primer that explains these core concepts in plain language, with examples, is needed. It may need to take different approaches for technical vs clinical audiences. It should be in a section of the docs.
 
@@ -491,7 +491,7 @@ being the next concrete pieces of work.
       - **Data + metric are already in our orbit.** Ground truth is MIMIC-IV-Note
         discharge summaries on PhysioNet (the same corpus as the MIMIC crosswalk item
         below); scoring is macro-averaged **character-level IoU**. Both are tractable to
-        wire into `bench/`. Constraint: MIMIC needs PhysioNet credentialled access, and
+        wire into `benchmarks/`. Constraint: MIMIC needs PhysioNet credentialled access, and
         the annotated challenge set has its own DUA - do not redistribute either in `sct`.
 
       Pointers: podcast/announcement

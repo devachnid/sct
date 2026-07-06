@@ -8,7 +8,7 @@
 # six operations and renders a fair, like-for-like timing report.
 #
 # Usage:
-#   bench/bench.sh [OPTIONS]
+#   benchmarks/bench.sh [OPTIONS]
 #
 # Options:
 #   --server URL        FHIR base URL  e.g. https://terminology.myserver.org/fhir
@@ -21,7 +21,7 @@
 #   --no-remote         skip FHIR calls entirely
 #   --timeout SECS      per-request curl timeout (default: 30)
 #   --output FILE       write report to FILE in addition to stdout
-#   --write-benchmarks  write results to benchmarks.md in the current directory
+#   --write-benchmarks  write a timestamped report to benchmarks/reports/
 #   --help              show this message
 
 set -uo pipefail
@@ -177,10 +177,10 @@ if [[ -n "$BENCH_OUTPUT_FILE" ]]; then
 fi
 
 # Write benchmarks file if requested.
-# Filename: benchmarks/YYYY-MM-DDTHHMMSS-<server-slug>.md
-# (or benchmarks/YYYY-MM-DDTHHMMSS-local.md when no server is configured)
+# Filename: benchmarks/reports/YYYY-MM-DDTHHMMSS-<server-slug>.md
+# (or benchmarks/reports/YYYY-MM-DDTHHMMSS-local.md when no server is configured)
 if $BENCH_WRITE_BENCHMARKS; then
-  mkdir -p benchmarks
+  mkdir -p "${BENCH_DIR}/reports"
   if [[ -n "$BENCH_SERVER" ]]; then
     # Derive a filesystem-safe slug from the server URL:
     # strip scheme, replace non-alphanumeric runs with hyphens, trim trailing dash
@@ -191,7 +191,7 @@ if $BENCH_WRITE_BENCHMARKS; then
   else
     _server_slug="local"
   fi
-  _bench_outfile="benchmarks/${BENCH_DATETIME}-${_server_slug}.md"
+  _bench_outfile="${BENCH_DIR}/reports/${BENCH_DATETIME}-${_server_slug}.md"
   render_markdown "$BENCH_RESULTS_TSV" "$_bench_outfile"
 fi
 

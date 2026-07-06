@@ -521,7 +521,7 @@ SNOMED CT target rows. ICD-10 / OPCS-4 rows are represented as SNOMED CT source
 
 ## Benchmarking integration
 
-`bench/bench.sh --server http://localhost:8080` already works against any FHIR R4 server.
+`benchmarks/bench.sh --server http://localhost:8080` already works against any FHIR R4 server.
 Once `sct serve` is running, the same benchmark suite measures it head-to-head against
 Ontoserver or any other target. No changes to the benchmark scripts are needed.
 
@@ -549,7 +549,7 @@ Deliverables:
 
 Acceptance criteria:
 
-- `bench/bench.sh --server http://localhost:8080` completes all operations
+- `benchmarks/bench.sh --server http://localhost:8080` completes all operations
 - HL7 FHIR validator reports no structural errors on sample responses
 - `sct serve` passes all existing bench fixture queries against `sct`'s own SQLite DB
 
@@ -566,7 +566,7 @@ Deliverables:
 
 Acceptance criteria:
 
-- `bench/bench.sh` children and ancestors operations work via FHIR ECL
+- `benchmarks/bench.sh` children and ancestors operations work via FHIR ECL
 - A FHIR client (e.g. HAPI FHIR test suite) can perform a full terminology operation cycle
 
 ### Phase 3 - Refsets + ConceptMap

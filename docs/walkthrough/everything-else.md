@@ -70,7 +70,7 @@ network. See `benchmarks.md` for full methodology and results.
 Run the benchmarking suite yourself:
 
 ```bash
-bench/bench.sh \
+benchmarks/bench.sh \
   --server https://your-fhir-server/fhir \
   --db snomed.db \
   --runs 10 \

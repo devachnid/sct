@@ -43,7 +43,7 @@ sct serve --db snomed.db --host 127.0.0.1 --port 8080 --fhir-base /fhir
 Then run:
 
 ```bash
-bench/conformance.sh --server http://localhost:8080/fhir
+benchmarks/conformance.sh --server http://localhost:8080/fhir
 ```
 
 The runner checks:
@@ -62,7 +62,7 @@ The runner checks:
 Write machine-readable output for CI or later reporting:
 
 ```bash
-bench/conformance.sh \
+benchmarks/conformance.sh \
   --server http://localhost:8080/fhir \
   --output reports/sct-conformance.jsonl
 ```
@@ -76,7 +76,7 @@ are expected to support the full `sct` surface.
 After conformance passes:
 
 ```bash
-bench/bench.sh \
+benchmarks/bench.sh \
   --db snomed.db \
   --server http://localhost:8080/fhir \
   --runs 20 \
@@ -103,7 +103,7 @@ To make a credible public claim:
 1. Load the same SNOMED CT release into every server.
 2. Run each server on the same hardware class.
 3. Warm the filesystem, JVM, Elasticsearch/Lucene and SQLite caches.
-4. Run `bench/conformance.sh` first.
+4. Run `benchmarks/conformance.sh` first.
 5. Only publish benchmark results for servers that pass the relevant
    conformance profile.
 6. Record exact versions, heap settings, database size, disk type, CPU, RAM,
@@ -113,16 +113,16 @@ Example:
 
 ```bash
 # sct
-bench/conformance.sh --server http://localhost:8080/fhir
-bench/bench.sh --db snomed.db --server http://localhost:8080/fhir --runs 20 --warmup 5
+benchmarks/conformance.sh --server http://localhost:8080/fhir
+benchmarks/bench.sh --db snomed.db --server http://localhost:8080/fhir --runs 20 --warmup 5
 
 # Snowstorm Lite
-bench/conformance.sh --server http://localhost:8081/fhir
-bench/bench.sh --db snomed.db --server http://localhost:8081/fhir --runs 20 --warmup 5
+benchmarks/conformance.sh --server http://localhost:8081/fhir
+benchmarks/bench.sh --db snomed.db --server http://localhost:8081/fhir --runs 20 --warmup 5
 
 # Ontoserver or another FHIR terminology server
-bench/conformance.sh --server http://localhost:8082/fhir
-bench/bench.sh --db snomed.db --server http://localhost:8082/fhir --runs 20 --warmup 5
+benchmarks/conformance.sh --server http://localhost:8082/fhir
+benchmarks/bench.sh --db snomed.db --server http://localhost:8082/fhir --runs 20 --warmup 5
 ```
 
 The conformance checks are deliberately fixture based so the same request
