@@ -1,71 +1,199 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Usage: s/version++ [patch|minor|major] [--pr|--direct] [--auto-merge]
+#   default bump: patch
+#   default mode: auto-detect from whether `main` is branch-protected
+#
+# The one release action. Gates the tree, bumps Cargo.toml, regenerates
+# CHANGELOG.md (git-cliff), commits the release, and lands it on `main`. The
+# landing IS the release: it triggers the auto-tag cascade
+# (.github/workflows/auto-tag.yml), which creates the matching v<version> tag
+# and invokes the hand-rolled release workflow (.github/workflows/release.yml)
+# via workflow_call - binaries, GitHub Release, crates.io, Homebrew/Scoop taps.
+#
+# Landing on `main` happens two ways, chosen automatically from whether `main`
+# is branch-protected (probed via `gh`), or forced with --pr / --direct (or the
+# SCT_RELEASE_VIA_PR=1 env var):
+#
+#   - direct: commit on `main` and `git push origin main`.
+#   - pr:     branch `release/vX.Y.Z` off `main`, push it, `gh pr create`.
+#             Merging the PR lands the bump on `main` and fires auto-tag.yml.
+#             --auto-merge queues `gh pr merge --merge --auto` once CI is green.
+#
+# Branch protection (no direct pushes to `main`) is the canonical reason to use
+# pr mode: the cascade was designed for it - release authority lives in CI, not
+# on a maintainer's laptop. See ~/code/house-style/distribution.md.
+#
+# sct uses the CI auto-tag cascade (the documented exception in
+# ~/code/house-style/distribution.md), NOT the dsc local-tag default. This
+# script never tags locally; the workflow tags after the bump lands on `main`.
+#
+# Commit your feature work FIRST, with a conventional-commit message
+# (`feat(...)`, `fix:`, `docs:`, `chore(deps):`, ...). git-cliff reads
+# *committed* history, so anything uncommitted won't appear in the new
+# CHANGELOG.md section; this script makes only the release commit.
+#
+# Requires `cargo-set-version` and `git-cliff`; `gh` for pr mode / detection:
+#   cargo install cargo-edit --locked
+#   cargo install git-cliff --locked
+#   gh auth login   # https://cli.github.com
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-CARGO_TOML="Cargo.toml"
-
 usage() {
-  echo "Usage: s/version++ [patch|minor|major]" >&2
+  cat >&2 <<'EOF'
+Usage: s/version++ [patch|minor|major] [--pr|--direct] [--auto-merge]
+  bump defaults to patch; mode auto-detects from main branch protection.
+  --pr / --direct force the landing mode; --auto-merge queues the PR merge on green CI.
+EOF
 }
 
-if [[ $# -gt 1 ]]; then
-  usage
-  exit 2
-fi
+# ── Args ─────────────────────────────────────────────────────────────────────
+bump="patch"; mode=""; auto_merge=false
+for arg in "$@"; do
+  case "$arg" in
+    patch|minor|major) bump="$arg" ;;
+    --pr) mode="pr" ;;
+    --direct) mode="direct" ;;
+    --auto-merge) auto_merge=true ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage; echo "Unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
 
-bump="${1:-patch}"
-case "$bump" in
-  patch|minor|major) ;;
-  *)
-    usage
-    echo "Invalid bump: $bump" >&2
-    exit 2
-    ;;
-esac
-
-# Read current version
-current=$(grep -E '^version\s*=' "$CARGO_TOML" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-echo "Current version: $current"
-
-# Parse semver parts
-IFS='.' read -r major minor patch <<< "$current"
-if [[ ! "$major" =~ ^[0-9]+$ || ! "$minor" =~ ^[0-9]+$ || ! "$patch" =~ ^[0-9]+$ ]]; then
-  echo "Cannot bump non-simple SemVer version: $current" >&2
+# ── Gate: on main, clean tree, tooling present ───────────────────────────────
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$branch" != "main" ]]; then
+  echo "On '$branch', not 'main'. Releases are cut from main." >&2
   exit 1
 fi
 
-case "$bump" in
-  major)
-    next="$((major + 1)).0.0"
-    ;;
-  minor)
-    next="${major}.$((minor + 1)).0"
-    ;;
-  patch)
-    next="${major}.${minor}.$((patch + 1))"
-    ;;
-esac
+# The release commit must contain only the bump + changelog, so the tree must
+# be clean (feature work already committed).
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Working tree not clean. Commit your feature work first, then release." >&2
+  exit 1
+fi
 
-echo "Bumping $bump: $current -> $next"
+need() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "$1 is required by s/version++ but isn't installed." >&2
+    echo "  $2" >&2
+    exit 1
+  fi
+}
+need cargo-set-version "cargo install cargo-edit --locked"
+need git-cliff "cargo install git-cliff --locked"
 
-# Update Cargo.toml
-sed -i "0,/^version\s*=/{s/^version\s*=\s*\"${current}\"/version = \"${next}\"/}" "$CARGO_TOML"
+# Keep main up to date before bumping (fast-forward only). Aborts if local main
+# has diverged from origin/main - resolve that before releasing.
+git pull --ff-only
 
-# Regenerate Cargo.lock
-cargo generate-lockfile --manifest-path "$CARGO_TOML"
+# ── Release mode: auto-detect branch protection if not forced ────────────────
+if [ -z "$mode" ]; then
+  if [ -n "${SCT_RELEASE_VIA_PR:-}" ]; then
+    mode="pr"
+  elif command -v gh >/dev/null 2>&1 \
+       && gh repo view --json nameWithOwner -q .nameWithOwner >/dev/null 2>&1; then
+    repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+    if gh api "repos/$repo/branches/main/protection" >/dev/null 2>&1; then
+      mode="pr"
+    else
+      mode="direct"
+    fi
+  else
+    mode="direct"
+    echo "Note: 'gh' not available; assuming direct push to main (no branch-protection check)." >&2
+  fi
+fi
+echo "Release mode: $mode"
 
-# Commit
-git add "$CARGO_TOML" Cargo.lock
-git commit -m "bump version to ${next}"
+# ── Pre-release checks: mirror .github/workflows/ci.yml ──────────────────────
+# The release workflow builds but does not run the test suite, and auto-tag.yml
+# creates the tag the moment the bump lands on main - so a red tree would ship.
+# Run the same gate CI does, before anything is modified, so a failure aborts
+# cleanly with no version bump left behind. In --pr mode CI also runs on the PR
+# before merge; this is belt-and-braces, kept uniform across modes for safety.
+echo "Pre-release checks (mirror .github/workflows/ci.yml): fmt + clippy + tests..."
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo clippy --features serve --all-targets -- -D warnings
+cargo clippy --features dmwb --all-targets -- -D warnings
+cargo test
+cargo test --features serve
 
-# Push. The auto-tag GitHub Actions workflow (.github/workflows/auto-tag.yml)
-# detects the Cargo.toml change on main, creates the matching v<version>
-# tag, and invokes release.yml. Tagging used to happen here; do not re-add
-# it - a local tag plus the CI-created tag would race and produce noisy
-# duplicate-tag failures on push.
-git push
+# ── Bump ─────────────────────────────────────────────────────────────────────
+# cargo set-version updates both Cargo.toml and Cargo.lock's sct-rs version; it
+# does NOT touch external deps, so the release commit stays free of unrelated
+# transitive-dependency churn (unlike `cargo update --workspace`).
+cargo set-version --bump "$bump"
+version="$(awk -F\" '/^version[[:space:]]*=/ {print $2; exit}' Cargo.toml)"
+tag="v$version"
 
-echo "Pushed bump to ${next}. CI will create the v${next} tag and release."
+if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+  echo "Tag $tag already exists." >&2
+  exit 1
+fi
+
+# In pr mode, move the (still-uncommitted) bump onto a release branch so the
+# only thing on the PR is the release commit. `git checkout -b` carries the
+# working-tree changes across; main is left clean and untouched.
+if [ "$mode" = "pr" ]; then
+  relbranch="release/$tag"
+  if git rev-parse -q --verify "refs/heads/$relbranch" >/dev/null \
+     || git rev-parse -q --verify "refs/remotes/origin/$relbranch" >/dev/null; then
+    echo "Branch $relbranch already exists locally or on origin; delete it first." >&2
+    exit 1
+  fi
+  git checkout -b "$relbranch"
+fi
+
+# ── Changelog ─────────────────────────────────────────────────────────────────
+# Render the in-progress section under the new tag + date. Creates CHANGELOG.md
+# on first run. cliff.toml is sct-adapted from dsc; unlike dsc we keep
+# non-conventional commits (filter_unconventional = false, with an "Other"
+# catch-all) because much of sct's history predates the conventional-commits
+# convention and would otherwise vanish from the changelog.
+git-cliff --tag "$tag" -o CHANGELOG.md
+
+# ── Commit + land on main ─────────────────────────────────────────────────────
+git add Cargo.toml Cargo.lock CHANGELOG.md
+git commit -m "chore(release): $tag"
+
+if [ "$mode" = "direct" ]; then
+  git push origin main
+  echo
+  echo "Pushed $tag bump to main. auto-tag.yml will create the tag and invoke"
+  echo "release.yml (binaries, GitHub Release, crates.io, Homebrew/Scoop taps)."
+else
+  git push -u origin "$relbranch"
+  pr_url=""
+  if command -v gh >/dev/null 2>&1; then
+    pr_url="$(gh pr create --base main --head "$relbranch" \
+      --title "chore(release): $tag" \
+      --body "Release bump generated by \`s/version++\`. Merging triggers auto-tag.yml -> release.yml (binaries, GitHub Release, crates.io, taps)." \
+      2>/dev/null || true)"
+  fi
+  if [ -n "$pr_url" ] && [ "$auto_merge" = true ]; then
+    # Queue the merge for when CI goes green. Requires auto-merge enabled on the
+    # repo; if it isn't, this is a no-op and the PR is left for manual merge.
+    gh pr merge "$pr_url" --merge --auto --delete-branch 2>/dev/null || true
+    echo
+    echo "PR opened and queued to auto-merge on green CI: $pr_url"
+    echo "On merge, auto-tag.yml creates $tag and invokes release.yml."
+  elif [ -n "$pr_url" ]; then
+    echo
+    echo "PR opened: $pr_url"
+    echo "Merge it (CI runs on the PR); auto-tag.yml then creates $tag and"
+    echo "invokes release.yml (binaries, GitHub Release, crates.io, taps)."
+  else
+    repo="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo 'OWNER/REPO')"
+    echo
+    echo "Pushed $relbranch. Open and merge a PR against main:"
+    echo "  https://github.com/$repo/compare/main...$relbranch"
+    echo "On merge, auto-tag.yml creates $tag and invokes release.yml."
+  fi
+fi
