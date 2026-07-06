@@ -19,9 +19,14 @@ run_ancestors() {
   local_time_ancestors "$code" >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
-  # Depth from local DB (used in notes only; FHIR discovers it during traversal)
+  # Depth: from the local DB (SQLite mode), or from the IS-A hop count the sct-side
+  # FHIR walk just discovered (FHIR mode - there is no local DB to introspect).
   local depth
-  depth=$(local_concept_depth "$code")
+  if [[ -n "${SCT_FHIR:-}" ]]; then
+    depth="${FHIR_ANCESTOR_HOPS:-?}"
+  else
+    depth=$(local_concept_depth "$code")
+  fi
 
   local rms="-" rsd="-" notes=""
   if [[ -n "$BENCH_SERVER" ]]; then
