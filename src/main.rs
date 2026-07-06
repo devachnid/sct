@@ -95,7 +95,7 @@ enum Command {
     #[cfg(feature = "gui")]
     Gui(commands::gui::Args),
 
-    /// Start a FHIR R4 terminology server over the SQLite database (requires --features serve).
+    /// Start a FHIR R4 terminology server over the SQLite database.
     #[cfg(feature = "serve")]
     Serve(commands::serve::Args),
 

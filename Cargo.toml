@@ -81,7 +81,7 @@ assets = [
 ]
 
 [features]
-default = []
+default = ["serve"]
 tui = ["dep:ratatui", "dep:crossterm"]
 gui = ["dep:axum", "dep:tokio", "dep:open"]
 serve = ["dep:axum", "dep:tokio"]

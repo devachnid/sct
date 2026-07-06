@@ -2,8 +2,8 @@
 
 Run a **FHIR R4 terminology server** over a SNOMED CT SQLite database - a lightweight, local, drop-in alternative to hosted services (Ontoserver, Snowstorm, the NHS FHIR Terminology Server) for development, testing, and small-scale production.
 
-!!! note "Optional feature"
-    `sct serve` is gated behind the `serve` Cargo feature (it pulls in an async HTTP stack). Build with `cargo install sct-rs --features serve`, or `cargo build --features serve`. It is also included in `--features full`.
+!!! note "Included by default"
+    `sct serve` is compiled in by default (the `serve` Cargo feature is part of `default`), so it is present in the released binaries, `cargo install sct-rs`, and `s/install`. For a minimal build without the async HTTP stack, use `--no-default-features`.
 
 **When to use:** a FHIR client (EHR, HL7 validator, SMART app, integration engine) needs `$lookup` / `$validate-code` / `$subsumes` / `$expand` and you want sub-millisecond, offline, single-binary terminology with no Elasticsearch, JVM, or Docker. The entire server is backed by one inspectable `snomed.db` file.
 
