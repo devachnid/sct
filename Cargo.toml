@@ -137,3 +137,17 @@ criterion = "0.8"
 name = "fst_bench"
 path = "benchmarks/fst_bench.rs"
 harness = false
+
+[[bench]]
+name = "ecl_bench"
+path = "benchmarks/ecl_bench.rs"
+harness = false
+
+# Optimised build that keeps debug symbols, so a sampling profiler (perf +
+# flamegraph) or valgrind/callgrind shows real function names instead of `??`.
+# Build/run with: `cargo build --profile profiling` /
+# `cargo flamegraph --profile profiling ...`. See benchmarks/profile.sh.
+[profile.profiling]
+inherits = "release"
+debug = true          # line-level DWARF; does not affect codegen/opt-level
+strip = false
