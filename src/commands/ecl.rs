@@ -163,18 +163,20 @@ fn compress(args: CompressArgs) -> Result<()> {
         "no SCTIDs to compress (pass ids as arguments, on stdin, or via --codelist)"
     );
 
-    // Keep only ids that exist and are active; report the rest.
+    // Keep only ids that exist and are active; report the rest. An id that
+    // does not parse as u64 cannot be a valid SCTID, so it drops with the
+    // unknowns rather than erroring the whole run.
     let mut target = crate::ecl::eval::IdSet::new();
     let mut dropped = Vec::new();
     {
         let mut stmt =
             conn.prepare_cached("SELECT 1 FROM concepts WHERE id = ?1 AND active = 1")?;
         for id in &requested {
-            let ok = stmt.query_row([id], |_| Ok(())).is_ok();
-            if ok {
-                target.insert(id.clone());
-            } else {
-                dropped.push(id.clone());
+            match id.parse::<u64>() {
+                Ok(v) if stmt.query_row([id], |_| Ok(())).is_ok() => {
+                    target.insert(v);
+                }
+                _ => dropped.push(id.clone()),
             }
         }
     }

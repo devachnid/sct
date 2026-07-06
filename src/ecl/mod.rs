@@ -27,17 +27,22 @@ pub use eval::IdSet;
 pub use parse::parse;
 
 /// Parse and evaluate an ECL expression against the database, returning the
+/// matching SCTIDs as an [`IdSet`]. Prefer this over [`expand`] when the
+/// caller does set algebra on the result - it skips the string formatting.
+pub fn expand_set(conn: &Connection, ecl: &str) -> Result<IdSet> {
+    let expr = parse(ecl).with_context(|| format!("parsing ECL {ecl:?}"))?;
+    eval::evaluate(conn, &expr).context("evaluating ECL")
+}
+
+/// Parse and evaluate an ECL expression against the database, returning the
 /// matching concept SCTIDs (ascending, deduplicated).
 pub fn expand(conn: &Connection, ecl: &str) -> Result<Vec<String>> {
-    let expr = parse(ecl).with_context(|| format!("parsing ECL {ecl:?}"))?;
-    let set = eval::evaluate(conn, &expr).context("evaluating ECL")?;
-    let mut ids: Vec<String> = set.into_iter().collect();
-    // Numeric SCTID order rather than lexical.
-    ids.sort_by(|a, b| match (a.parse::<u128>(), b.parse::<u128>()) {
-        (Ok(x), Ok(y)) => x.cmp(&y),
-        _ => a.cmp(b),
-    });
-    Ok(ids)
+    // IdSet is a BTreeSet<u64>, so iteration is already in ascending numeric
+    // SCTID order - formatting is the only work left.
+    Ok(expand_set(conn, ecl)?
+        .into_iter()
+        .map(|id| id.to_string())
+        .collect())
 }
 
 /// Open a SNOMED CT SQLite database read-only and [`expand`] an ECL expression

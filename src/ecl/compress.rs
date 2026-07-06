@@ -58,52 +58,49 @@ pub(crate) fn compress(
 ) -> Result<CompressResult> {
     anyhow::ensure!(!target.is_empty(), "cannot compress an empty set");
 
+    // Ordering note: `IdSet` is a `BTreeSet<u64>`, so every iteration below is
+    // already in ascending numeric SCTID order - the Vecs it feeds need no sort.
+
     // 1. Include roots = maximal elements of the target (no proper ancestor in it).
-    let mut includes = Vec::new();
-    for c in target {
+    let mut includes: Vec<u64> = Vec::new();
+    for &c in target {
         let anc = ancestors(conn, c)?;
         if anc.is_disjoint(target) {
-            includes.push(c.clone());
+            includes.push(c);
         }
     }
-    sort_numeric(&mut includes);
 
     // 2. Cover from above, then the over-inclusion E = cover \ target.
     let mut cover = IdSet::new();
-    for m in &includes {
+    for &m in &includes {
         cover.extend(descendants_or_self(conn, m)?);
     }
-    let e: IdSet = cover.difference(target).cloned().collect();
+    let e: IdSet = cover.difference(target).copied().collect();
 
     // 3. Clean elements of E: subtrees wholly disjoint from the target, so
     //    `MINUS <<x` removes only unwanted concepts. Then keep the maximal ones.
     let mut clean = IdSet::new();
-    for x in &e {
+    for &x in &e {
         if descendants_or_self(conn, x)?.is_disjoint(target) {
-            clean.insert(x.clone());
+            clean.insert(x);
         }
     }
-    let mut excludes = Vec::new();
-    for x in &clean {
+    let mut excludes: Vec<u64> = Vec::new();
+    for &x in &clean {
         let anc = ancestors(conn, x)?;
         if anc.is_disjoint(&clean) {
-            excludes.push(x.clone());
+            excludes.push(x);
         }
     }
-    sort_numeric(&mut excludes);
     let dropped_exclusions = excludes.len().saturating_sub(max_exclusions);
     excludes.truncate(max_exclusions);
 
     // 4. Build the intensional expression and measure what it gets wrong.
     let intensional_expr = build_intensional(&includes, &excludes);
-    let produced: IdSet = crate::ecl::expand(conn, &intensional_expr)
-        .context("re-expanding the intensional expression for verification")?
-        .into_iter()
-        .collect();
-    let mut missing: Vec<String> = target.difference(&produced).cloned().collect();
-    let mut extra: Vec<String> = produced.difference(target).cloned().collect();
-    sort_numeric(&mut missing);
-    sort_numeric(&mut extra);
+    let produced: IdSet = crate::ecl::expand_set(conn, &intensional_expr)
+        .context("re-expanding the intensional expression for verification")?;
+    let missing: Vec<u64> = target.difference(&produced).copied().collect();
+    let extra: Vec<u64> = produced.difference(target).copied().collect();
 
     let coverage = (target.len() - missing.len()) as f64 / target.len() as f64 * 100.0;
 
@@ -113,10 +110,8 @@ pub(crate) fn compress(
     let (expr, verified_exact) = if exact {
         let e = append_residuals(&intensional_expr, &missing, &extra);
         let ok = if verify {
-            let check: IdSet = crate::ecl::expand(conn, &e)
-                .context("verifying the compressed expression")?
-                .into_iter()
-                .collect();
+            let check: IdSet =
+                crate::ecl::expand_set(conn, &e).context("verifying the compressed expression")?;
             &check == target
         } else {
             true
@@ -131,20 +126,25 @@ pub(crate) fn compress(
 
     Ok(CompressResult {
         expr,
-        includes,
-        excludes,
-        missing,
-        extra,
+        includes: to_strings(&includes),
+        excludes: to_strings(&excludes),
+        missing: to_strings(&missing),
+        extra: to_strings(&extra),
         coverage,
         exact: verified_exact,
         dropped_exclusions,
     })
 }
 
+/// Render SCTIDs for the string-facing [`CompressResult`] fields.
+fn to_strings(ids: &[u64]) -> Vec<String> {
+    ids.iter().map(u64::to_string).collect()
+}
+
 /// `<<a` for one root, `(<<a OR <<b …)` for several, then ` MINUS <<x` per
 /// exclusion. The parenthesised include group keeps `MINUS` (which binds tighter
 /// than `OR` in this parser) from associating with only the last include.
-fn build_intensional(includes: &[String], excludes: &[String]) -> String {
+fn build_intensional(includes: &[u64], excludes: &[u64]) -> String {
     let inc = if includes.len() == 1 {
         format!("<<{}", includes[0])
     } else {
@@ -162,7 +162,7 @@ fn build_intensional(includes: &[String], excludes: &[String]) -> String {
 /// wrongly-included one. The whole expression is parenthesised before the
 /// `MINUS` residuals so the final subtractions apply to the entire set rather
 /// than binding to the nearest `OR` term (`MINUS` binds tighter than `OR`).
-fn append_residuals(base: &str, missing: &[String], extra: &[String]) -> String {
+fn append_residuals(base: &str, missing: &[u64], extra: &[u64]) -> String {
     let mut expr = base.to_string();
     for m in missing {
         expr = format!("{expr} OR {m}");
@@ -174,13 +174,6 @@ fn append_residuals(base: &str, missing: &[String], extra: &[String]) -> String 
         }
     }
     expr
-}
-
-fn sort_numeric(v: &mut [String]) {
-    v.sort_by(|a, b| match (a.parse::<u128>(), b.parse::<u128>()) {
-        (Ok(x), Ok(y)) => x.cmp(&y),
-        _ => a.cmp(b),
-    });
 }
 
 /// Render `expr` across multiple indented lines by breaking at each top-level
@@ -231,14 +224,11 @@ mod tests {
     }
 
     fn set(ids: &[&str]) -> IdSet {
-        ids.iter().map(|s| s.to_string()).collect()
+        ids.iter().map(|s| s.parse().unwrap()).collect()
     }
 
     fn expand(conn: &Connection, expr: &str) -> IdSet {
-        crate::ecl::expand(conn, expr)
-            .unwrap()
-            .into_iter()
-            .collect()
+        crate::ecl::expand_set(conn, expr).unwrap()
     }
 
     #[test]
