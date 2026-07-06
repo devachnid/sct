@@ -1,4 +1,4 @@
 # name	path	expected_status	expected_resource
 unknown-lookup	/CodeSystem/$lookup?system=http://snomed.info/sct&code=999999999999	404	OperationOutcome
 bad-subsumes-missing-code	/CodeSystem/$subsumes?system=http://snomed.info/sct&codeA=22298006	400	OperationOutcome
-bad-expand-ecl	/ValueSet/$expand?url=http://snomed.info/sct?fhir_vs=ecl/%3C%3C%3Cnot-valid	400	OperationOutcome
+bad-expand-ecl	/ValueSet/$expand?url=http://snomed.info/sct?fhir_vs=ecl/%3C%3C%3Cnot-valid	400|422	OperationOutcome

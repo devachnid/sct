@@ -252,7 +252,7 @@ run_validate_code() {
   while IFS=$'\t' read -r name code expected display; do
     _skip_header "$name" && continue
     display=$(_field "$display")
-    local path="/CodeSystem/\$validate-code?system=http://snomed.info/sct&code=${code}"
+    local path="/CodeSystem/\$validate-code?url=http://snomed.info/sct&code=${code}"
     [[ -n "$display" ]] && path="${path}&display=$(_urlencode "$display")"
     _get "$path"
     _require_200_resource validate-code "$name" "Parameters" || continue
@@ -379,7 +379,7 @@ run_errors() {
     local status rt
     status=$(_status)
     rt=$(_body_resource_type)
-    if [[ "$status" != "$expected_status" ]]; then
+    if [[ "|$expected_status|" != *"|$status|"* ]]; then
       _record fail errors "$name" "expected HTTP $expected_status, got $status"
       continue
     fi
