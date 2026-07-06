@@ -17,7 +17,7 @@
 #   --warmup N          warmup iterations before timing (default: 1)
 #   --operations LIST   comma-separated subset: lookup,search,children,
 #                       ancestors,subsumption,bulk  (default: all)
-#   --format FORMAT     table (default) | json | csv
+#   --format FORMAT     table (default) | json | csv | chart
 #   --no-remote         skip FHIR calls entirely
 #   --timeout SECS      per-request curl timeout (default: 30)
 #   --output FILE       write report to FILE in addition to stdout
@@ -163,7 +163,8 @@ case "$BENCH_FORMAT" in
   table) render_table "$BENCH_RESULTS_TSV" ;;
   json)  render_json  "$BENCH_RESULTS_TSV" ;;
   csv)   render_csv   "$BENCH_RESULTS_TSV" ;;
-  *)     _die "unknown format: $BENCH_FORMAT (use table, json, or csv)" ;;
+  chart) render_chart "$BENCH_RESULTS_TSV" ;;
+  *)     _die "unknown format: $BENCH_FORMAT (use table, json, csv, or chart)" ;;
 esac
 
 # Write to --output FILE if requested.
@@ -172,6 +173,7 @@ if [[ -n "$BENCH_OUTPUT_FILE" ]]; then
     table) render_table "$BENCH_RESULTS_TSV" > "$BENCH_OUTPUT_FILE" ;;
     json)  render_json  "$BENCH_RESULTS_TSV" > "$BENCH_OUTPUT_FILE" ;;
     csv)   render_csv   "$BENCH_RESULTS_TSV" > "$BENCH_OUTPUT_FILE" ;;
+    chart) render_chart "$BENCH_RESULTS_TSV" > "$BENCH_OUTPUT_FILE" ;;
   esac
   printf '\nwrote report to %s\n' "$BENCH_OUTPUT_FILE" >&2
 fi

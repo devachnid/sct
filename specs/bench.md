@@ -87,7 +87,7 @@ Options:
   --runs N          Timed iterations per operation (default: 10)
   --warmup N        Warmup runs before timing (default: 2)
   --operations LIST Comma-separated: lookup,search,children,ancestors,subsumption,bulk (default: all)
-  --format FORMAT   Output format: table (default), json, csv
+  --format FORMAT   Output format: table (default), chart, json, csv
   --no-remote       Benchmark local operations only
   --timeout SECS    Per-request timeout for remote calls (default: 30)
   --output FILE     Write report to file in addition to stdout

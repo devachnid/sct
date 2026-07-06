@@ -48,6 +48,36 @@ _pm_fmt() {
   printf '±%s' "$(_time_fmt "$us")"
 }
 
+# _verdict LOCAL REMOTE - human "N× faster" / "N× slower" / "about the same" / "-"
+_verdict() {
+  local lms="$1" rms="$2"
+  if [[ "$rms" == "-" || "$lms" == "-" || "$lms" -le 0 || "$rms" -le 0 ]]; then
+    echo "-"; return
+  fi
+  awk -v l="$lms" -v r="$rms" 'BEGIN {
+    if (r >= l) { x = r/l; dir="faster" } else { x = l/r; dir="slower" }
+    if (x < 1.05)     { print "about the same"; exit }
+    if (x >= 10)       printf "%d× %s", int(x + 0.5), dir
+    else               printf "%.1f× %s", x, dir
+  }'
+}
+
+# _bar VALUE MAXVAL WIDTH - a unicode block bar with eighth-block resolution,
+# so even a tiny value shows a visible sliver.
+_bar() {
+  local val="$1" maxval="$2" width="$3"
+  [[ "$val" == "-" || "$maxval" -le 0 ]] && return
+  local eighths=$(( val * width * 8 / maxval ))
+  (( eighths < 0 )) && eighths=0
+  local full=$(( eighths / 8 )) rem=$(( eighths % 8 ))
+  local parts=(▏ ▎ ▍ ▌ ▋ ▊ ▉)   # 1/8 .. 7/8
+  local bar="" i
+  for (( i = 0; i < full; i++ )); do bar+="█"; done
+  (( rem > 0 )) && bar+="${parts[rem-1]}"
+  [[ -z "$bar" && "$val" -gt 0 ]] && bar="▏"
+  printf '%s' "$bar"
+}
+
 # _footnotes - collect and de-duplicate footnote notes
 _footnotes=()
 _add_footnote() {
@@ -188,94 +218,62 @@ render_csv() {
   done < "$tsv"
 }
 
-# render_markdown TSV OUTPUT_FILE
-# Writes a benchmarks.md file suitable for committing to the repository.
-render_markdown() {
-  local tsv="$1" outfile="$2"
-  local remote_label="fhir (remote)"
-  [[ -z "$BENCH_SERVER" ]] && remote_label="not measured"
+render_chart() {
+  local tsv="$1"
+  local width=36
+  local rlabel="fhir"
+  [[ -z "$BENCH_SERVER" ]] && rlabel="remote"
 
-  _footnotes=()
-  local fnidx=0
-
-  # Collect rows into arrays for two-pass (need footnotes before writing table)
-  local -a row_ops=() row_labels=() row_lms=() row_lsd=()
-  local -a row_rms=() row_rsd=() row_notes=() row_sp=()
-  local total_lms=0 total_rms=0 total_rms_valid=true
+  printf '\nsct vs %s - median latency (each pair scaled to the slower of the two)\n\n' "$rlabel"
 
   while IFS=$'\t' read -r op label lms lsd rms rsd notes; do
     [[ -z "$op" ]] && continue
-    row_ops+=("$op"); row_labels+=("$label")
-    row_lms+=("$lms"); row_lsd+=("$lsd")
-    row_rms+=("$rms"); row_rsd+=("$rsd")
-    row_notes+=("$notes")
-    row_sp+=("$(_speedup "$lms" "$rms")")
-    [[ "$lms" != "-" ]] && (( total_lms += lms ))
-    if [[ "$rms" != "-" ]]; then (( total_rms += rms )); else total_rms_valid=false; fi
+    local verdict; verdict=$(_verdict "$lms" "$rms")
+    # Scale both bars to the slower (longer) of the pair so the ratio is visible.
+    local maxval="$lms"
+    [[ "$rms" != "-" ]] && (( rms > lms )) && maxval="$rms"
+
+    printf '%s' "$label"
+    [[ "$verdict" != "-" ]] && printf '   (%s)' "$verdict"
+    printf '\n'
+    printf '  %-6s %8s  %s\n' "sct" "$(_ms_fmt "$lms")" "$(_bar "$lms" "$maxval" "$width")"
+    [[ "$rms" != "-" ]] && \
+      printf '  %-6s %8s  %s\n' "$rlabel" "$(_ms_fmt "$rms")" "$(_bar "$rms" "$maxval" "$width")"
+    printf '\n'
   done < "$tsv"
+}
+
+# render_markdown TSV OUTPUT_FILE
+# Writes a report leading with the speed-comparison bar chart, followed by the
+# aligned detail table - both code-fenced so the raw file is readable and it
+# still renders cleanly on GitHub.
+render_markdown() {
+  local tsv="$1" outfile="$2"
 
   {
-    printf '# benchmarks\n\n'
+    printf '# sct benchmark - %s\n\n' "$BENCH_DATE"
 
-    printf '## environment\n\n'
-    printf '| | |\n|:---|:---|\n'
-    printf '| date | %s |\n' "$BENCH_DATE"
-    printf '| sct version | %s |\n' \
-      "$(command -v sct >/dev/null 2>&1 && sct --version 2>/dev/null | head -1 || echo "n/a")"
-    printf '| snomed version | %s |\n' "${SNOMED_VERSION:-?}"
-    printf '| concept count | %s |\n' \
-      "$(printf '%s' "${SNOMED_CONCEPT_COUNT:-?}" | sed ':a;s/\B[0-9]\{3\}\b/,&/;ta')"
-    printf '| sqlite3 version | %s |\n' "$(sqlite3 --version 2>/dev/null | cut -d' ' -f1)"
-    printf '| os | %s |\n' "$(uname -sr)"
-    printf '\n'
+    # One-line environment summary.
+    printf '**Environment:** %s' \
+      "$(command -v sct >/dev/null 2>&1 && sct --version 2>/dev/null | head -1 || echo "sct n/a")"
+    [[ -n "$SNOMED_VERSION" && "$SNOMED_VERSION" != "?" ]] && printf ' · SNOMED %s' "$SNOMED_VERSION"
+    [[ -n "$SNOMED_CONCEPT_COUNT" && "$SNOMED_CONCEPT_COUNT" != "?" ]] && \
+      printf ' · %s concepts' \
+        "$(printf '%s' "$SNOMED_CONCEPT_COUNT" | sed ':a;s/\B[0-9]\{3\}\b/,&/;ta')"
+    printf ' · %s\n\n' "$(uname -sr)"
 
-    printf '## results\n\n'
-    printf '| operation | sct (local) | ± | %s | ± | speedup |\n' "$remote_label"
-    printf '|:---|---:|---:|---:|---:|:---|\n'
-    local i
-    for (( i=0; i<${#row_ops[@]}; i++ )); do
-      local note_marker=""
-      if [[ -n "${row_notes[$i]}" ]]; then
-        (( fnidx++ ))
-        _add_footnote "[${fnidx}] ${row_notes[$i]}"
-        note_marker=" [${fnidx}]"
-      fi
-      local sp_cell="${row_sp[$i]}"
-      [[ "$sp_cell" != "-" ]] && sp_cell="**${sp_cell} faster**"
-      printf '| %s | %s | %s | %s%s | %s | %s |\n' \
-        "${row_labels[$i]}" \
-        "$(_ms_fmt "${row_lms[$i]}")" \
-        "$(_pm_fmt "${row_lsd[$i]}")" \
-        "$(_ms_fmt "${row_rms[$i]}")" \
-        "$note_marker" \
-        "$(_pm_fmt "${row_rsd[$i]}")" \
-        "$sp_cell"
-    done
+    # Headline: the bar chart. Code-fenced so alignment survives raw and rendered.
+    printf '## Speed comparison\n\n'
+    printf '```text'
+    render_chart "$tsv"
+    printf '```\n\n'
 
-    # Totals
-    local total_sp="-"
-    $total_rms_valid && total_sp=$(_speedup "$total_lms" "$total_rms")
-    [[ "$total_sp" != "-" ]] && total_sp="**${total_sp} faster**"
-    local total_rms_str="-"
-    $total_rms_valid && total_rms_str="$(_ms_fmt "$total_rms")"
-    printf '| **total** | **%s** | | **%s** | | %s |\n\n' \
-      "$(_ms_fmt "$total_lms")" "$total_rms_str" "$total_sp"
-
-    if [[ -n "$BENCH_SERVER" ]]; then
-      printf 'remote: %s' "$BENCH_SERVER"
-      [[ -n "$FHIR_PING_MS" && "$FHIR_PING_MS" != "0" ]] && \
-        printf ' | ping: %s ms' "$FHIR_PING_MS"
-      printf ' | %s runs (+%s warmup) | %s\n\n' \
-        "$BENCH_RUNS" "$BENCH_WARMUP" "$(timing_tool_name)"
-    fi
-
-    if (( ${#_footnotes[@]} > 0 )); then
-      printf '## notes\n\n'
-      for fn in "${_footnotes[@]}"; do printf '%s\n' "- ${fn}"; done
-      printf '\n'
-    fi
-
-    printf '_times are wall-clock median (us = microseconds); local times include sqlite3 process startup._\n'
+    # Detail: the aligned monospace table (its own header carries db/remote/timing,
+    # footnotes, and the caveat line).
+    printf '## Detail\n\n'
+    printf '```text'
+    render_table "$tsv"
+    printf '\n```\n'
   } > "$outfile"
 
   printf 'wrote %s\n' "$outfile" >&2

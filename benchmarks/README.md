@@ -67,11 +67,11 @@ Touchstone/FHIR `TestScript` suite would complement it.
 --operations LIST   comma-separated subset to run:
                     lookup,search,children,ancestors,subsumption,bulk
                     (default: all six)
---format FORMAT     table (default) | json | csv
+--format FORMAT     table (default) | chart | json | csv
 --no-remote         benchmark local operations only
 --timeout SECS      per-request curl timeout (default: 30)
 --output FILE       write report to FILE in addition to stdout
---write-benchmarks  write results to ./benchmarks.md
+--write-benchmarks  write a timestamped report (bar chart + table) to benchmarks/reports/
 ```
 
 ## Operations
