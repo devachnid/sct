@@ -7,11 +7,12 @@
 #
 #   --serve   sct serve   - FHIR R4 terminology server
 #   --tui     sct tui     - terminal UI
-#   --gui     sct gui      - browser UI
-#   --dmwb    sct dmwb     - NHS Data Migration Workbench .mdb reader
-#   --full    tui + gui + serve (does not include dmwb)
+#   --gui     sct gui     - browser UI
+#   --dmwb    sct dmwb    - NHS Data Migration Workbench .mdb reader
+#   --full    everything above: serve + tui + gui + dmwb
 #
-# Combine as needed, e.g.  s/install --serve --tui  or  s/install --full --dmwb
+# A bare `s/install` builds the core CLI only (no sct serve). The resolved
+# feature set is printed before building, so you can see exactly what you get.
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -23,15 +24,18 @@ for arg in "$@"; do
     --tui)   features+=("tui") ;;
     --gui)   features+=("gui") ;;
     --dmwb)  features+=("dmwb") ;;
-    --full)  features+=("full") ;;
-    -h|--help) sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --full)  features+=("serve" "tui" "gui" "dmwb") ;;
+    -h|--help) sed -n '5,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $arg (try: --serve --tui --gui --dmwb --full)" >&2; exit 1 ;;
   esac
 done
 
 if [[ ${#features[@]} -gt 0 ]]; then
-  feature_list=$(IFS=,; echo "${features[*]}")
+  # De-duplicate (e.g. `--full --serve`) and sort for a stable message.
+  feature_list=$(printf '%s\n' "${features[@]}" | sort -u | paste -sd,)
+  echo "Installing sct with features: ${feature_list}" >&2
   exec cargo install --path . --features "$feature_list"
 else
+  echo "Installing sct (core CLI only - no sct serve/tui/gui/dmwb; add --serve or --full)" >&2
   exec cargo install --path .
 fi
