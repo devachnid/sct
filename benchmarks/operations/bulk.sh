@@ -23,7 +23,7 @@ run_bulk() {
   printf '  → bulk lookup (%d concepts) ...\n' "$n" >&2
 
   local lms lsd
-  lms=$(local_time_bulk "${ids[@]}")
+  local_time_bulk "${ids[@]}" >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
   local rms="-" rsd="-" notes=""

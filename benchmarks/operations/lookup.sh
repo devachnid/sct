@@ -13,13 +13,13 @@ run_lookup() {
   printf '  → concept lookup (%s) ...\n' "$code" >&2
 
   local lms lsd
-  lms=$(local_time_lookup "$code")
+  local_time_lookup "$code" >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
   local rms="-" rsd="-" notes=""
   if [[ -n "$BENCH_SERVER" ]]; then
-    if rms=$(fhir_time_lookup "$code" 2>/dev/null); then
-      rsd=$TIMING_STDDEV
+    if fhir_time_lookup "$code" >/dev/null 2>&1; then
+      rms=$TIMING_MEDIAN; rsd=$TIMING_STDDEV
     else
       rms="-"; rsd="-"; notes="fhir call failed"
     fi

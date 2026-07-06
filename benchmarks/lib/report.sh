@@ -153,10 +153,10 @@ render_table() {
 
   done < "$tsv"
 
-  # Totals row
+  # Totals row - a sum of heterogeneous operations. We deliberately do NOT show
+  # a speedup ratio here: it would over-state the result (it's dominated by the
+  # multi-round-trip ops). The per-operation rows are the real comparison.
   printf '%s\n' "$(printf '─%.0s' $(seq 1 $(( w_op + w_l + w_sd + w_r + w_rsd + w_sp + 12 ))))"
-  local total_sp="-"
-  $total_rms_valid && total_sp=$(_speedup "$total_lms" "$total_rms")
   local total_rms_str="-"
   $total_rms_valid && total_rms_str="$(_ms_fmt "$total_rms")"
   printf '%-*s  %*s  %*s  %*s  %*s  %*s\n' \
@@ -165,13 +165,16 @@ render_table() {
     "$w_sd" "" \
     "$w_r"  "$total_rms_str" \
     "$w_rsd" "" \
-    "$w_sp" "$total_sp"
+    "$w_sp" "-"
 
   if (( ${#_footnotes[@]} > 0 )); then
     printf '\n'
     for fn in "${_footnotes[@]}"; do printf '%s\n' "$fn"; done
   fi
   printf '\ntimes are wall-clock median (us = microseconds); local times include sqlite3 process startup.\n'
+  printf 'the single-query rows (lookup, search, children) are the like-for-like comparison. ancestor-chain\n'
+  printf 'and bulk lookup also count the sequential FHIR calls a client must issue (see notes), so their\n'
+  printf 'ratios reflect round-trip count as well as per-query speed; the total is a sum, not an overall ratio.\n'
 }
 
 render_json() {
@@ -224,7 +227,9 @@ render_chart() {
   local rlabel="fhir"
   [[ -z "$BENCH_SERVER" ]] && rlabel="remote"
 
-  printf '\nsct vs %s - median latency (each pair scaled to the slower of the two)\n\n' "$rlabel"
+  printf '\nsct vs %s - median latency (each pair scaled to the slower of the two)\n' "$rlabel"
+  printf 'single-query ops (lookup, search, children) are the like-for-like number; ancestor/bulk\n'
+  printf 'ratios also reflect the N sequential FHIR calls a client must make (see the detail notes).\n\n'
 
   while IFS=$'\t' read -r op label lms lsd rms rsd notes; do
     [[ -z "$op" ]] && continue

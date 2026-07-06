@@ -13,13 +13,13 @@ run_search() {
   printf '  → text search ("%s") ...\n' "$term" >&2
 
   local lms lsd
-  lms=$(local_time_search "$term" 10)
+  local_time_search "$term" 10 >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
   local rms="-" rsd="-" notes=""
   if [[ -n "$BENCH_SERVER" ]]; then
-    if rms=$(fhir_time_search "$term" 10 2>/dev/null); then
-      rsd=$TIMING_STDDEV
+    if fhir_time_search "$term" 10 >/dev/null 2>&1; then
+      rms=$TIMING_MEDIAN; rsd=$TIMING_STDDEV
     else
       rms="-"; rsd="-"; notes="fhir call failed"
     fi

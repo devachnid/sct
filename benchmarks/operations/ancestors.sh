@@ -16,7 +16,7 @@ run_ancestors() {
   printf '  → ancestor chain (%s) ...\n' "$code" >&2
 
   local lms lsd
-  lms=$(local_time_ancestors "$code")
+  local_time_ancestors "$code" >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
   # Depth from local DB (used in notes only; FHIR discovers it during traversal)

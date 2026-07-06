@@ -24,13 +24,13 @@ run_subsumption() {
   local child="44054006" parent="73211009"
 
   local lms lsd
-  lms=$(local_time_subsumes "$child" "$parent")
+  local_time_subsumes "$child" "$parent" >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
   local rms="-" rsd="-" notes=""
   if [[ -n "$BENCH_SERVER" ]]; then
-    if rms=$(fhir_time_subsumes "$child" "$parent" 2>/dev/null); then
-      rsd=$TIMING_STDDEV
+    if fhir_time_subsumes "$child" "$parent" >/dev/null 2>&1; then
+      rms=$TIMING_MEDIAN; rsd=$TIMING_STDDEV
       notes="positive case (T2DM subsumes DM); false cases are similar cost"
     else
       rms="-"; rsd="-"; notes="fhir call failed"

@@ -13,13 +13,13 @@ run_children() {
   printf '  → direct children (%s) ...\n' "$parent" >&2
 
   local lms lsd
-  lms=$(local_time_children "$parent")
+  local_time_children "$parent" >/dev/null; lms=$TIMING_MEDIAN
   lsd=$TIMING_STDDEV
 
   local rms="-" rsd="-" notes=""
   if [[ -n "$BENCH_SERVER" ]]; then
-    if rms=$(fhir_time_children "$parent" 2>/dev/null); then
-      rsd=$TIMING_STDDEV
+    if fhir_time_children "$parent" >/dev/null 2>&1; then
+      rms=$TIMING_MEDIAN; rsd=$TIMING_STDDEV
     else
       rms="-"; rsd="-"; notes="fhir call failed"
     fi
