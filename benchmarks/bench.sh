@@ -42,6 +42,10 @@ BENCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BENCH_DB="./snomed.db"
 SCT_FHIR=""
 BENCH_SERVER=""
+# Bound so `set -u` never trips when there is no local DB to introspect
+# (--sct-fhir mode); local_snomed_info overwrites these in SQLite mode.
+SNOMED_VERSION=""
+SNOMED_CONCEPT_COUNT=""
 BENCH_RUNS=5
 BENCH_WARMUP=1
 BENCH_TIMEOUT=30
