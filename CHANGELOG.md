@@ -5,6 +5,12 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.17.1] - 2026-07-07
+
+### Bug fixes
+
+- **build**: Make optional deps available on Windows; add Windows CI check ([a8ac793](https://github.com/pacharanero/sct/commit/a8ac7934a1bba4b6f0620aeba6a708939d948300))
+
 ## [0.17.0] - 2026-07-06
 
 ### Build
