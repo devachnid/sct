@@ -96,11 +96,11 @@ async fn serve(
     let app = Router::new()
         .route("/", get(serve_index))
         .route("/api/search", get(api_search))
-        .route("/api/concept/:id", get(api_concept))
-        .route("/api/children/:id", get(api_children))
-        .route("/api/parents/:id", get(api_parents))
+        .route("/api/concept/{id}", get(api_concept))
+        .route("/api/children/{id}", get(api_children))
+        .route("/api/parents/{id}", get(api_parents))
         .route("/api/hierarchy", get(api_hierarchy))
-        .route("/api/graph/:id", get(api_graph))
+        .route("/api/graph/{id}", get(api_graph))
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

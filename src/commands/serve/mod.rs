@@ -173,8 +173,8 @@ fn build_router(state: AppState, base: &str) -> Router {
             get(vs_validate_code).post(vs_validate_code),
         )
         .route("/ValueSet", get(valueset_search))
-        .route("/ValueSet/:id", get(valueset_read))
-        .route("/ValueSet/:id/$expand", get(valueset_expand_id))
+        .route("/ValueSet/{id}", get(valueset_read))
+        .route("/ValueSet/{id}/$expand", get(valueset_expand_id))
         .route("/ConceptMap/$translate", get(translate).post(translate))
         .with_state(state);
     if base.is_empty() {

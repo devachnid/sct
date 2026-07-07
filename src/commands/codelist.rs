@@ -712,7 +712,14 @@ fn fetch_url_codelist(url: &str, refresh: bool) -> Result<PathBuf> {
         .with_context(|| format!("creating cache dir {}", cache_dir.display()))?;
     let mut hasher = Sha256::new();
     hasher.update(url.as_bytes());
-    let cached = cache_dir.join(format!("{:x}.codelist", hasher.finalize()));
+    // sha2 0.11's finalize() output type dropped its LowerHex impl; format
+    // byte-by-byte instead of relying on the hasher's return type.
+    let hex: String = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let cached = cache_dir.join(format!("{hex}.codelist"));
     if refresh || !cached.exists() {
         let body = ureq::get(url)
             .call()

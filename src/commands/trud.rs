@@ -591,7 +591,7 @@ fn run_download(mut args: DownloadArgs) -> Result<()> {
         ));
 
         // Verify SHA-256 before committing the file
-        let computed = format!("{:X}", hasher.finalize());
+        let computed = hex_upper(&hasher.finalize());
         if !computed.eq_ignore_ascii_case(&release.archive_file_sha256) {
             std::fs::remove_file(&tmp_path).ok();
             anyhow::bail!(
@@ -799,7 +799,7 @@ fn download_release(release: &TrudRelease, dest: &Path) -> Result<()> {
             human_size(downloaded)
         ));
 
-        let computed = format!("{:X}", hasher.finalize());
+        let computed = hex_upper(&hasher.finalize());
         if !computed.eq_ignore_ascii_case(&release.archive_file_sha256) {
             std::fs::remove_file(&tmp_path).ok();
             anyhow::bail!(
@@ -1051,6 +1051,13 @@ fn fetch_releases(api_key: &str, item_id: u32, latest_only: bool) -> Result<Vec<
 // Helpers
 // ---------------------------------------------------------------------------
 
+/// Uppercase hex, matching TRUD's `archiveFileSha256` casing. sha2 0.11's
+/// `finalize()` output type dropped its `UpperHex`/`LowerHex` impls, so format
+/// byte-by-byte rather than relying on the hasher's return type.
+fn hex_upper(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02X}")).collect()
+}
+
 fn sha256_of_file(path: &Path) -> Result<String> {
     let mut file = std::fs::File::open(path)
         .with_context(|| format!("opening {} for checksum verification", path.display()))?;
@@ -1063,7 +1070,7 @@ fn sha256_of_file(path: &Path) -> Result<String> {
         }
         hasher.update(&buf[..n]);
     }
-    Ok(format!("{:X}", hasher.finalize()))
+    Ok(hex_upper(&hasher.finalize()))
 }
 
 // ---------------------------------------------------------------------------
