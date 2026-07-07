@@ -128,7 +128,7 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 > in one command. The Access `.mdb` path remains intentionally documented as
 > historical analysis only: `jetdb` cannot decode DMWB's Binary `SCUI` column,
 > and item 9 is the cleaner authoritative source. See
-> [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) and the
+> [`spec/cross-terminology-mapping.md`](cross-terminology-mapping.md) and the
 > DMWB walkthrough in the docs site.
 
 ### Performance internals (potential, not committed)
@@ -166,7 +166,7 @@ profile, but neither has cleared a "worth the surface area / risk" bar yet.
       expose the same forwarding through an MCP `snomed_resolve` tool.
 - [~] **`sct serve`** - HTTP FHIR R4 terminology server backed by SQLite. Drop-in replacement
       for Ontoserver, Snowstorm, and the NHS FHIR Terminology Server. Full spec in
-      [`specs/commands/serve.md`](commands/serve.md); user docs in
+      [`spec/commands/serve.md`](commands/serve.md); user docs in
       [`docs/commands/serve.md`](../docs/commands/serve.md).
 
   **Phase 1 - Core operations** ✅ **shipped** (feature-gated `serve`): `/metadata`,
@@ -312,7 +312,7 @@ they'd be. Source: <https://bitbucket.org/cheethame2017/sct/src/development/>.
       views in `tree` / `dot` / `mermaid`, with SVG→PNG/JPG conversion recipes. Remaining:
       primitive/defined node styling (needs a `definition_status` schema column), DOT
       attribute-group clusters, and a built-in `svg` format via `layout-rs`. Spec + user
-      docs: [`specs/commands/diagram.md`](diagram.md), [`docs/commands/diagram.md`](../docs/commands/diagram.md).
+      docs: [`spec/commands/diagram.md`](diagram.md), [`docs/commands/diagram.md`](../docs/commands/diagram.md).
 
 - [~] **Set → minimal ECL refactoring (`sct ecl compress`)** - given a raw set of SCTIDs
       (e.g. a `.codelist`), synthesise the *smallest* equivalent ECL expression: collapse
@@ -325,7 +325,7 @@ they'd be. Source: <https://bitbucket.org/cheethame2017/sct/src/development/>.
       `--intensional-only`, `--max-exclusions`, `--pretty`, `--stats`. Remaining:
       straddling-exclusion push-down for tighter expressions, `^refset` cover clauses,
       and `sct codelist export --format ecl` wiring. Spec + user docs:
-      [`specs/commands/ecl-compress.md`](ecl-compress.md), [`docs/commands/ecl.md`](../docs/commands/ecl.md).
+      [`spec/commands/ecl-compress.md`](ecl-compress.md), [`docs/commands/ecl.md`](../docs/commands/ecl.md).
 
 - [ ] **Proximal primitive supertypes (`sct pps <id>`)** - compute a fully-defined
       concept's proximal primitive parents (the classification/normal-form operation

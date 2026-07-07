@@ -307,7 +307,7 @@ countries via MLDS or national licence).
    on HuggingFace provide pre-computed SNOMED embeddings. `sct` could publish an
    official pre-built `.arrow` embeddings file alongside each NDJSON release (for
    distributions where SNOMED CT licensing permits), saving users the Ollama step
-   entirely. See `specs/roadmap.md` - IPS Free Set bundling is already flagged as a
+   entirely. See `spec/roadmap.md` - IPS Free Set bundling is already flagged as a
    future item.
 
 4. **MedCAT v2 is complementary, not competing.** MedCAT maps free clinical text → SNOMED

@@ -416,7 +416,7 @@ body to disk in chunks rather than loading the entire multi-GB zip into memory.
 
 `--pipeline` invokes `ndjson::run()` and `sqlite::run()` directly as Rust function calls, not
 as subprocess forks. This requires those functions to be callable as library functions -
-consistent with the refactor described in [`specs/library-rs.md`](../library-rs.md). If the
+consistent with the refactor described in [`spec/library-rs.md`](../library-rs.md). If the
 library refactor has not yet landed, `--pipeline` can spawn `sct ndjson` / `sct sqlite` as
 child processes as a temporary measure, with a `// TODO: replace with direct call after
 library-rs refactor` comment.

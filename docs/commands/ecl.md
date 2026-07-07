@@ -4,7 +4,7 @@ Evaluate a SNOMED CT [Expression Constraint Language](https://confluence.ihtsdot
 
 **When to use:** you want the *set* of concepts a query selects - to pipe into another command, build a code list, feed a script, or paste into a SQL `IN (…)`. ECL `<<73211009` means "Diabetes mellitus and all its subtypes".
 
-`sct ecl` is the reusable engine behind [`sct codelist add --ecl`](codelist.md). Because it writes plain SCTIDs to stdout, it composes with everything else (see the [composability principle](https://github.com/pacharanero/sct/blob/main/specs/spec.md)).
+`sct ecl` is the reusable engine behind [`sct codelist add --ecl`](codelist.md). Because it writes plain SCTIDs to stdout, it composes with everything else (see the [composability principle](https://github.com/pacharanero/sct/blob/main/spec/spec.md)).
 
 ---
 
@@ -78,7 +78,7 @@ printf '73211009\n44054006\n' | sct ecl compress - --stats  # => <<73211009 MINU
 sct ecl compress --codelist diabetes.codelist | sct ecl expand -
 ```
 
-This is a greedy heuristic, not a proof of minimum size; `--stats` reports how much was expressed intensionally. See [`specs/commands/ecl-compress.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/ecl-compress.md).
+This is a greedy heuristic, not a proof of minimum size; `--stats` reports how much was expressed intensionally. See [`spec/commands/ecl-compress.md`](https://github.com/pacharanero/sct/blob/main/spec/commands/ecl-compress.md).
 
 ---
 
@@ -95,4 +95,4 @@ This is a greedy heuristic, not a proof of minimum size; `--stats` reports how m
 | Boolean | `A AND B`, `A OR B`, `A MINUS B` | intersection / union / difference |
 | Refinement | `<<404684003 : 363698007 = <<39057004` | attribute constraint (comma-conjoined, `{ }` groups, `!=`) |
 
-Optional `|term|` annotations are accepted and ignored. **Attribute refinement** (the `:` operator) needs a database built with schema v4+ (which adds the `concept_relationships` table); hierarchy and refset queries work on any database. Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes. See [`specs/ecl.md`](https://github.com/pacharanero/sct/blob/main/specs/ecl.md).
+Optional `|term|` annotations are accepted and ignored. **Attribute refinement** (the `:` operator) needs a database built with schema v4+ (which adds the `concept_relationships` table); hierarchy and refset queries work on any database. Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes. See [`spec/ecl.md`](https://github.com/pacharanero/sct/blob/main/spec/ecl.md).

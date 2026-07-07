@@ -5,7 +5,7 @@
 //!
 //! Phase 1: `/metadata` (CapabilityStatement), `CodeSystem/$lookup`,
 //! `$validate-code`, `$subsumes`, and `ValueSet/$expand` (text filter + full
-//! ECL via [`crate::ecl`]). See `specs/commands/serve.md`. The operation logic
+//! ECL via [`crate::ecl`]). See `spec/commands/serve.md`. The operation logic
 //! lives in [`ops`] as pure functions; the handlers here are thin transport.
 
 pub mod fhir;

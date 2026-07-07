@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Refactor an explicit set of SCTIDs into a compact ECL expression - the
-//! inverse of [`crate::ecl::expand`]. See `specs/commands/ecl-compress.md`.
+//! inverse of [`crate::ecl::expand`]. See `spec/commands/ecl-compress.md`.
 //!
 //! Strategy (a greedy heuristic, not a proof of global minimality):
 //!   1. cover the set from above with `<<root` clauses over its maximal elements;

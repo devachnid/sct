@@ -1,8 +1,8 @@
 # Cross-terminology mapping, history, and the DMWB replacement
 
 Status: **design spec** (June 2026). Drives a multi-phase build. Companion to
-[`specs/roadmap.md`](roadmap.md) (the `sct serve`, `--refsets all`, history, and
-concept-map items) and [`specs/commands/serve.md`](commands/serve.md).
+[`spec/roadmap.md`](roadmap.md) (the `sct serve`, `--refsets all`, history, and
+concept-map items) and [`spec/commands/serve.md`](commands/serve.md).
 
 ## 1. Context and goal
 

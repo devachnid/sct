@@ -111,7 +111,7 @@ SNOMED CT → ICD-10 / OPCS-4 rows and require `sct ndjson --refsets all`.
 Known source-specific semantics such as assurance and target description IDs
 have nullable relational columns; `metadata_json` is reserved for low-use
 provenance details.
-See [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md).
+See [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/spec/cross-terminology-mapping.md).
 
 ```sql
 CREATE TABLE crossmaps (

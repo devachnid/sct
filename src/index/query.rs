@@ -66,7 +66,7 @@ pub struct Index {
 
 /// Upper bound on FST keys visited by a single prefix/fuzzy stream, so a very
 /// broad query (e.g. a one-character prefix) cannot run unbounded. See
-/// `specs/commands/fst.md` §6.
+/// `spec/commands/fst.md` §6.
 const STREAM_VISIT_CAP: usize = 50_000;
 
 impl Index {

@@ -14,7 +14,7 @@ ECL is the only standardised query language for SNOMED CT. Every terminology ser
 
 1. **Codelists.** `sct codelist add --ecl "<<73211009"` expands an ECL expression into concrete concepts and appends them - far more powerful than the existing `--include-descendants` flag, and the natural way clinicians and researchers specify intent.
 2. **`sct serve`.** The roadmap's FHIR terminology server phases ECL into `ValueSet/$expand` (Phase 2 hierarchy, Phase 3 `^` refset, Phase 4 attribute filters). The evaluator built here is exactly that engine.
-3. **SCT-QL.** The friendly query language in `specs/sct-ql-spec.md` is designed to *compile to ECL*. So ECL is the **intermediate representation** the whole query stack converges on: SCT-QL → ECL AST → SQL. Building ECL first is the foundation, not a detour.
+3. **SCT-QL.** The friendly query language in `spec/sct-ql-spec.md` is designed to *compile to ECL*. So ECL is the **intermediate representation** the whole query stack converges on: SCT-QL → ECL AST → SQL. Building ECL first is the foundation, not a detour.
 
 This document covers the ECL **engine** - parser plus evaluator. SCT-QL sugar and the FHIR HTTP surface are separate, downstream.
 
@@ -49,7 +49,7 @@ AST  (src/ecl/ast.rs)
 Set<SCTID>
 ```
 
-A **hand-written recursive-descent parser** rather than a grammar-generator dependency: ECL has no operator-precedence puzzles or left-recursion once factored, the project carries no parser crate today, and hand-rolling gives precise error messages (`expected '=' after attribute name at position 14`). `specs/sct-ql-spec.md` recommends `pest` for SCT-QL; that remains an option there, but ECL's surface is small enough to not warrant the build-time proc-macro.
+A **hand-written recursive-descent parser** rather than a grammar-generator dependency: ECL has no operator-precedence puzzles or left-recursion once factored, the project carries no parser crate today, and hand-rolling gives precise error messages (`expected '=' after attribute name at position 14`). `spec/sct-ql-spec.md` recommends `pest` for SCT-QL; that remains an option there, but ECL's surface is small enough to not warrant the build-time proc-macro.
 
 The evaluator computes **sets of SCTIDs** bottom-up. For v1 the set algebra runs in Rust (`BTreeSet<u64>`) with hierarchy/refset membership pulled from SQLite via recursive CTEs. This is correct and fast for the fixture tests and for realistically-sized codelist queries. The eventual scale story - compiling a whole AST to a single SQL recursive-CTE query (per `sct-ql-spec.md`) - is a later optimisation, noted but not built now.
 
@@ -167,5 +167,5 @@ Later: cardinality and grouped semantics; reverse/dotted attributes; whole-AST S
 ## 10. References
 
 - SNOMED International, [Expression Constraint Language - Specification and Guide](https://confluence.ihtsdotools.org/display/DOCECL).
-- `specs/sct-ql-spec.md` - the friendly language that compiles to this ECL engine.
-- `specs/roadmap.md` - `sct serve` phasing (ECL Phase 2/3/4).
+- `spec/sct-ql-spec.md` - the friendly language that compiles to this ECL engine.
+- `spec/roadmap.md` - `sct serve` phasing (ECL Phase 2/3/4).

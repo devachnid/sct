@@ -309,7 +309,7 @@ EOF
 
 ### SCT-QL compiler integration
 
-The SCT-QL query compiler (see `specs/sct-ql-spec.md`) detects TCT presence at compile time by querying the database schema:
+The SCT-QL query compiler (see `spec/sct-ql-spec.md`) detects TCT presence at compile time by querying the database schema:
 
 ```sql
 SELECT name FROM sqlite_master WHERE type='table' AND name='concept_ancestors'

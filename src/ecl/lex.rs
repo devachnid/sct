@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Tokeniser for the supported ECL subset. See `specs/ecl.md` §5.
+//! Tokeniser for the supported ECL subset. See `spec/ecl.md` §5.
 //!
 //! Whitespace is skipped. `|term|` annotations after a concept id are consumed
 //! and discarded (they carry no semantics). Constructs outside the slice 1

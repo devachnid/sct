@@ -6,7 +6,7 @@ Embeddings are produced by a local [Ollama](https://ollama.com) instance - no bu
 
 `sct embed` is the only `sct` subcommand that requires an external process (Ollama). All others work fully offline.
 
-Design rationale and model-selection notes live in [`specs/commands/embed.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/embed.md).
+Design rationale and model-selection notes live in [`spec/commands/embed.md`](https://github.com/pacharanero/sct/blob/main/spec/commands/embed.md).
 
 ---
 

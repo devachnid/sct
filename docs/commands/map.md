@@ -7,7 +7,7 @@ Map clinical codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4, pivotin
 
 `transcode` and `crosswalk` remain as **aliases**, so existing scripts keep working.
 
-Built on the maps described in [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md). `sct trud download --multi-terminology` builds the full workspace. ICD-10 / OPCS-4 need a database built with [`sct ndjson --refsets all`](ndjson.md); CTV3 works from UK RF2 SimpleMap rows; Read v2 comes from [`sct read2 import`](read2.md) over TRUD item 9.
+Built on the maps described in [cross-terminology mapping](https://github.com/pacharanero/sct/blob/main/spec/cross-terminology-mapping.md). `sct trud download --multi-terminology` builds the full workspace. ICD-10 / OPCS-4 need a database built with [`sct ndjson --refsets all`](ndjson.md); CTV3 works from UK RF2 SimpleMap rows; Read v2 comes from [`sct read2 import`](read2.md) over TRUD item 9.
 
 ---
 
@@ -76,4 +76,4 @@ sct ecl expand "<<73211009" | sct map --to icd10 -f tsv
 
 Legacy `sct transcode …` and `sct crosswalk …` invocations continue to work unchanged (they are aliases of `sct map`). The old `--json` flag is accepted as a deprecated alias for `--format json`.
 
-See [`specs/cross-terminology-mapping.md`](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md) for how the maps are built and stored.
+See [`spec/cross-terminology-mapping.md`](https://github.com/pacharanero/sct/blob/main/spec/cross-terminology-mapping.md) for how the maps are built and stored.

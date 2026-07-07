@@ -327,7 +327,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
 
         -- Typed attribute relationships (non-IS-A), preserving the attribute
         -- type SCTID and relationship group. Backs ECL attribute refinement
-        -- (`<<X : type = value`). See specs/ecl.md §4.
+        -- (`<<X : type = value`). See spec/ecl.md §4.
         CREATE TABLE IF NOT EXISTS concept_relationships (
             source_id      TEXT NOT NULL,
             type_id        TEXT NOT NULL,
@@ -386,7 +386,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
         -- from the RF2 Association refsets (loaded with `--refsets all`, via the
         -- `<stem>.history.ndjson` sidecar). Lets old records referencing retired
         -- SCTIDs be forwarded. `source_id` is usually inactive and absent from
-        -- `concepts`. See specs/cross-terminology-mapping.md.
+        -- `concepts`. See spec/cross-terminology-mapping.md.
         CREATE TABLE IF NOT EXISTS concept_history (
             source_id    TEXT NOT NULL,   -- the inactivated concept
             association  TEXT NOT NULL,   -- 'replaced_by' | 'same_as' | ...

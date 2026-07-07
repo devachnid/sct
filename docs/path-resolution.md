@@ -4,7 +4,7 @@
 
 If you ever wonder *which* file the next command will pick, run `sct paths` - it prints every resolved location and the rule that won.
 
-> Full specification: [`specs/path-resolution.md`](https://github.com/pacharanero/sct/blob/main/specs/path-resolution.md).
+> Full specification: [`spec/path-resolution.md`](https://github.com/pacharanero/sct/blob/main/spec/path-resolution.md).
 
 ---
 

@@ -245,7 +245,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribut
 
 ## Roadmap
 
-See the [ROADMAP](specs/roadmap.md) for planned features, improvements, and long-term vision for the project.
+See the [ROADMAP](spec/roadmap.md) for planned features, improvements, and long-term vision for the project.
 
 ## Trademarks and Copyright
 

@@ -12,7 +12,7 @@
 //! so the prefix/fuzzy/word capabilities can be exercised from the CLI; the
 //! benchmark (`benchmarks/fst_bench.rs`) drives the same query paths in-process.
 //!
-//! See `specs/commands/fst.md`.
+//! See `spec/commands/fst.md`.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};

@@ -76,7 +76,7 @@ Ontoserver's commercial value is largely its Expression Constraint Language (ECL
 **Update (resolved):** the ECL engine was built (`src/ecl/`, `crate::ecl`) and `$expand` now uses
 it directly, so the rows above are supported. The remaining ECL gaps are the genuinely rare
 constructs the engine defers (cardinality `[1..*]`, reverse `R`, dotted attributes) - see
-[`specs/ecl.md`](../ecl.md) §5. `sct serve` is no longer blocked from replacing Ontoserver on ECL
+[`spec/ecl.md`](../ecl.md) §5. `sct serve` is no longer blocked from replacing Ontoserver on ECL
 grounds for the common-to-advanced subset.
 
 ### 2. Reference set membership - partial support

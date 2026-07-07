@@ -197,7 +197,7 @@ Supported operators: `<` `<<` `>` `>>` (descendants/ancestors, with/without self
 
 Hierarchy and refset expressions work on any database built by `sct sqlite`. **Attribute refinement** (the `:` operator) requires a database built with a current `sct` (schema v4+), which adds the `concept_relationships` table - rebuild with `sct ndjson` then `sct sqlite` if you see a message to that effect.
 
-Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes, and group-cardinality semantics. See [`specs/ecl.md`](https://github.com/pacharanero/sct/blob/main/specs/ecl.md).
+Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes, and group-cardinality semantics. See [`spec/ecl.md`](https://github.com/pacharanero/sct/blob/main/spec/ecl.md).
 
 ### `sct codelist remove <file> <sctid>`
 

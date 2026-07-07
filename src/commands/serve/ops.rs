@@ -3,7 +3,7 @@
 
 //! FHIR terminology operations as pure functions over a `rusqlite::Connection`,
 //! returning `serde_json::Value` FHIR resources (or [`FhirError`]). The HTTP
-//! layer in `mod.rs` is a thin wrapper around these. See `specs/commands/serve.md`.
+//! layer in `mod.rs` is a thin wrapper around these. See `spec/commands/serve.md`.
 
 use rusqlite::Connection;
 use serde_json::{json, Value};

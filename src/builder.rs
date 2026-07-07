@@ -281,7 +281,7 @@ pub fn build_records(
         // --- Attributes (non-IS-A relationships) ---
         // Two representations from the same triples: `attr_map` is the
         // display-oriented, label-keyed view; `relationships` preserves the
-        // type SCTID and group for ECL refinement (see specs/ecl.md §4).
+        // type SCTID and group for ECL refinement (see spec/ecl.md §4).
         let mut relationships: Vec<crate::schema::Relationship> = Vec::new();
         let mut attr_map: IndexMap<String, Vec<ConceptRef>> = IndexMap::new();
         if let Some(attrs) = dataset.attributes.get(concept_id) {

@@ -351,4 +351,4 @@ import` using TRUD item 9's flat files, and the RF2-native maps loaded by
 | DMWB EPR DATA / casemix analytics | Out of scope | Not planned |
 
 For the design history and remaining Read v2 options, see the
-[cross-terminology mapping spec](https://github.com/pacharanero/sct/blob/main/specs/cross-terminology-mapping.md).
+[cross-terminology mapping spec](https://github.com/pacharanero/sct/blob/main/spec/cross-terminology-mapping.md).

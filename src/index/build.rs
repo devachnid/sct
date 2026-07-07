@@ -3,7 +3,7 @@
 
 //! Build a `snomed.fst` artefact from `sct`'s canonical NDJSON.
 //!
-//! See `specs/commands/fst.md` §5.2. The builder is one-shot per SNOMED release. It
+//! See `spec/commands/fst.md` §5.2. The builder is one-shot per SNOMED release. It
 //! reads the per-concept NDJSON (the same input `sct sqlite` / `sct parquet`
 //! consume), groups terms by their normalised form, and emits the single-file
 //! container defined in [`crate::index::format`].
@@ -36,7 +36,7 @@ pub struct BuildOptions {
     /// Write the display side-tables (concept SCTID → preferred term). On by
     /// default so a standalone index can render labels. Turn off to shave the
     /// largest non-search sections when labels will be resolved elsewhere (e.g.
-    /// from the SQLite `concepts` table). See `specs/commands/fst.md` §4.5.
+    /// from the SQLite `concepts` table). See `spec/commands/fst.md` §4.5.
     pub include_terms: bool,
 }
 
@@ -84,7 +84,7 @@ impl Accumulator {
     }
 
     /// Resolve (allocating on first sight) a tag id for a tag string. Caps at
-    /// 255 distinct tags - SNOMED has well under 256 (see `specs/commands/fst.md` §4.2);
+    /// 255 distinct tags - SNOMED has well under 256 (see `spec/commands/fst.md` §4.2);
     /// anything beyond is folded to "no tag" rather than corrupting the byte.
     fn tag_id(&mut self, tag: &str) -> u8 {
         if let Some(&id) = self.tag_ids.get(tag) {

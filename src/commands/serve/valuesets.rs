@@ -4,7 +4,7 @@
 //! Stored/named FHIR ValueSets backed by `.codelist` files. At startup the
 //! server scans a registry directory, resolves each list's effective member set
 //! (composition included), and serves them as ValueSet resources. See
-//! `specs/commands/serve.md`.
+//! `spec/commands/serve.md`.
 
 use serde_json::{json, Value};
 use std::collections::HashMap;

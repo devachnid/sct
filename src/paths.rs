@@ -4,7 +4,7 @@
 //! Path & config resolution shared across every `sct` command.
 //!
 //! The conventions defined here are specified in
-//! [`specs/path-resolution.md`](../../specs/path-resolution.md). In short:
+//! [`spec/path-resolution.md`](../../spec/path-resolution.md). In short:
 //!
 //! * Databases (`--db`) and embeddings (`--embeddings`) are auto-discovered
 //!   through a five-step chain: explicit env var → CWD → config → canonical
@@ -169,7 +169,7 @@ pub struct CodelistsConfig {
     pub dir: Option<String>,
 }
 
-/// `[trud]` section - see `specs/commands/trud.md`.
+/// `[trud]` section - see `spec/commands/trud.md`.
 #[derive(Deserialize, Default, Debug, Clone)]
 #[serde(default)]
 pub struct TrudConfig {
@@ -316,7 +316,7 @@ impl Kind {
 }
 
 /// Resolve a database path through the five-step chain. See
-/// `specs/path-resolution.md`.
+/// `spec/path-resolution.md`.
 pub fn resolve_db(arg: Option<&Path>) -> Result<Resolved> {
     resolve(Kind::Db, arg, &load_config())
 }

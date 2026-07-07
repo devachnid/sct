@@ -4,7 +4,7 @@ Build and query a **Finite State Transducer (FST)-backed lexical index** - a sin
 
 !!! warning "Experimental"
 
-    `sct fst` is an experimental feature. It does not replace or change any existing command - [`sct lexical`](lexical.md) (SQLite FTS5) remains the default keyword-search path. `sct fst` exists to evaluate a finite-state-transducer index as a lighter-weight, typo-tolerant alternative. See [`specs/commands/fst.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/fst.md) for the design and benchmark results.
+    `sct fst` is an experimental feature. It does not replace or change any existing command - [`sct lexical`](lexical.md) (SQLite FTS5) remains the default keyword-search path. `sct fst` exists to evaluate a finite-state-transducer index as a lighter-weight, typo-tolerant alternative. See [`spec/commands/fst.md`](https://github.com/pacharanero/sct/blob/main/spec/commands/fst.md) for the design and benchmark results.
 
 **When to use:** you want sub-millisecond prefix/autocomplete or **fuzzy (typo-tolerant)** matching that FTS5 can't do, or a lexical index you can mmap without opening the full database. For ranked BM25 keyword search, [`sct lexical`](lexical.md) is still the main tool.
 
@@ -111,7 +111,7 @@ Normalisation is deliberately **lossless** with respect to accents and punctuati
 | Start-up | single mmap | open SQLite DB |
 | Status | experimental | stable, the default |
 
-On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms`, delta-varint posting compression) is **~72 MB - roughly 30% smaller** than the FTS5 inverted index (~103 MB); with display labels it is ~133 MB, still an order of magnitude below the full ~1.8 GB `snomed.db`. Query latency is one to two orders of magnitude lower than warm FTS5, and it adds fuzzy and prefix matching. The headline trade-offs are **speed and typo-tolerance**; FTS5 still wins on BM25 ranking. Full numbers are in [`specs/commands/fst.md` §10](https://github.com/pacharanero/sct/blob/main/specs/commands/fst.md).
+On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms`, delta-varint posting compression) is **~72 MB - roughly 30% smaller** than the FTS5 inverted index (~103 MB); with display labels it is ~133 MB, still an order of magnitude below the full ~1.8 GB `snomed.db`. Query latency is one to two orders of magnitude lower than warm FTS5, and it adds fuzzy and prefix matching. The headline trade-offs are **speed and typo-tolerance**; FTS5 still wins on BM25 ranking. Full numbers are in [`spec/commands/fst.md` §10](https://github.com/pacharanero/sct/blob/main/spec/commands/fst.md).
 
 ---
 

@@ -5,7 +5,7 @@
 //!
 //! A single-file, mmap-able terminology index built from `sct`'s canonical
 //! NDJSON, offering exact / prefix / fuzzy / word-intersection lookup. See
-//! `specs/commands/fst.md` for the design, rationale, and the benchmark this is meant to
+//! `spec/commands/fst.md` for the design, rationale, and the benchmark this is meant to
 //! settle (FST vs the existing SQLite FTS5 path).
 //!
 //! - [`build`] - NDJSON → `snomed.fst`

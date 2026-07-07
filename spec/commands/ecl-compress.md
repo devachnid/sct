@@ -1,6 +1,6 @@
 # `sct ecl compress` - refactor a concept set into minimal ECL
 
-**Status:** ✅ Shipped (slice 1: include roots + clean exclusions + exactness residual net + verification + `--stats` + `--codelist` input). Deferred: straddling-exclusion push-down (§4.2 step 4-5), `^refset` cover clauses, `codelist export --format ecl` wiring (§7 slices 2-3). Anticipated by `specs/ecl.md §9`.
+**Status:** ✅ Shipped (slice 1: include roots + clean exclusions + exactness residual net + verification + `--stats` + `--codelist` input). Deferred: straddling-exclusion push-down (§4.2 step 4-5), `^refset` cover clauses, `codelist export --format ecl` wiring (§7 slices 2-3). Anticipated by `spec/ecl.md §9`.
 **Scope:** Given an explicit set of SCTIDs (a codelist), synthesise a compact **ECL expression** that expands to *exactly* that set - the inverse of `ValueSet/$expand`. Runs against the local `sct` SQLite database.
 **Audience:** A coding agent (and Marcus) implementing this in the `sct` repo.
 **Provenance:** Idea harvested from the prior-art Python toolchain `cheethame2017/sct` (Apache-2.0), whose ECL/set browser can "refactor" a raw set of concepts into include/exclude constraints. Clean-room Rust reimplementation - ideas only, no code.
@@ -138,7 +138,7 @@ Input: every subtype of *Diabetes mellitus* (`<<73211009`) **except** the *Type 
 
 ## 8. References
 
-- `specs/ecl.md` - the ECL engine (`expand`) this inverts and reuses for verification; §9 anticipates this "ECL output" work.
-- `specs/roadmap.md` - "Ideas harvested from prior-art Python tooling" (source of this item) and the `.codelist` / `sct serve` consumers.
+- `spec/ecl.md` - the ECL engine (`expand`) this inverts and reuses for verification; §9 anticipates this "ECL output" work.
+- `spec/roadmap.md` - "Ideas harvested from prior-art Python tooling" (source of this item) and the `.codelist` / `sct serve` consumers.
 - SNOMED International, [ECL Specification and Guide](https://confluence.ihtsdotools.org/display/DOCECL).
 - Prior art: `cheethame2017/sct` - <https://bitbucket.org/cheethame2017/sct/src/development/>.

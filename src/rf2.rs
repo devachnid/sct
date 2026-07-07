@@ -138,7 +138,7 @@ pub const REFSET_CTV3_SIMPLE_MAP: &str = "900000000000497000";
 /// Classify a SNOMED CT ExtendedMap refset SCTID into its target classification
 /// (`icd10` | `opcs4`). Seeded with the known UK + International maps; a row
 /// whose refset is not listed here is skipped (and counted) by the loader.
-/// Refinable as new map refsets appear. See `specs/cross-terminology-mapping.md`.
+/// Refinable as new map refsets appear. See `spec/cross-terminology-mapping.md`.
 pub fn extended_map_system(refset_id: &str) -> Option<&'static str> {
     match refset_id {
         "1126441000000105" => Some("opcs4"), // UK SNOMED CT → OPCS-4

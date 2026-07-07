@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Abstract syntax tree for the supported subset of SNOMED CT Expression
-//! Constraint Language (ECL). See `specs/ecl.md` §5.
+//! Constraint Language (ECL). See `spec/ecl.md` §5.
 
 /// A focus operator applied to a sub-expression.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,6 +67,6 @@ pub enum Refinement {
     /// Disjunction (`OR`).
     Or(Box<Refinement>, Box<Refinement>),
     /// An attribute group `{ … }`. Evaluated as a flat conjunction in v1
-    /// (group cardinality is deferred - see `specs/ecl.md` §5).
+    /// (group cardinality is deferred - see `spec/ecl.md` §5).
     Group(Box<Refinement>),
 }

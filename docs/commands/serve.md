@@ -161,7 +161,7 @@ Errors are FHIR `OperationOutcome` resources with the appropriate status (`404` 
 
 ## Scope and limitations
 
-This is **Phase 1**. Known boundaries (see [`specs/commands/serve.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/serve.md) for the full picture):
+This is **Phase 1**. Known boundaries (see [`spec/commands/serve.md`](https://github.com/pacharanero/sct/blob/main/spec/commands/serve.md) for the full picture):
 
 - **Single edition / single version** per process - the server serves whatever is in `--db`; a `version` parameter is accepted and logged but not used for routing.
 - **Stored ValueSets** come from `.codelist` files (read-only, served from `--codelists`); there is no write/CRUD API for ValueSets, and no stored `ConceptMap` resources. `$closure`, multi-version routing, and FHIR R5 are later phases.

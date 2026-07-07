@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! FHIR R4 response builders and the error type, hand-rolled with `serde_json`
-//! (no FHIR model crate). See `specs/commands/serve.md`.
+//! (no FHIR model crate). See `spec/commands/serve.md`.
 
 use serde_json::{json, Value};
 

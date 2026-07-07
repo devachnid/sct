@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Evaluate an ECL [`Expr`] against a SNOMED CT SQLite database, returning the
-//! set of matching concept SCTIDs. See `specs/ecl.md` §6.
+//! set of matching concept SCTIDs. See `spec/ecl.md` §6.
 //!
 //! Set algebra runs in Rust over `BTreeSet<u64>`; hierarchy and refset
 //! membership are pulled from SQLite via recursive CTEs. This is correct and
@@ -402,7 +402,7 @@ fn eval_attr(
         }
         None => {
             // Wildcard attribute type - full scan. Acceptable at codelist scale;
-            // see specs/ecl.md §6 on the eventual SQL-compilation path.
+            // see spec/ecl.md §6 on the eventual SQL-compilation path.
             let mut stmt = conn.prepare_cached(
                 "SELECT CAST(source_id AS INTEGER), CAST(destination_id AS INTEGER)
                  FROM concept_relationships",

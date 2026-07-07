@@ -37,7 +37,7 @@ sct diagram <concept> [--view VIEW] [--format FMT] [--depth N]
 - `-o, --output FILE` - write to a file (extension is *not* used to infer format; `--format` is authoritative). Default: stdout.
 - `--db PATH` - database; omitted → standard discovery order (`docs/path-resolution.md`).
 
-Composability (per `specs/spec.md`): `tree`/`dot`/`mermaid`/`svg` all write plain text to stdout, so `sct diagram 73211009 --format dot | dot -Tpng -o dm.png` just works. The human-readable summary (node/edge counts, truncation notice) goes to **stderr**, keeping stdout clean.
+Composability (per `spec/spec.md`): `tree`/`dot`/`mermaid`/`svg` all write plain text to stdout, so `sct diagram 73211009 --format dot | dot -Tpng -o dm.png` just works. The human-readable summary (node/edge counts, truncation notice) goes to **stderr**, keeping stdout clean.
 
 ---
 
@@ -46,7 +46,7 @@ Composability (per `specs/spec.md`): `tree`/`dot`/`mermaid`/`svg` all write plai
 | Need | Backing data | Status |
 |---|---|---|
 | IS-A edges (ancestors/descendants/parents) | `concept_isa(child_id, parent_id)`; optional fast path via `concept_ancestors` (TCT) | **exists** |
-| Defining attribute edges | `concept_relationships(source_id, type_id, destination_id, group_num)` | **exists** (needs a DB built by the ECL-era pipeline; see `specs/ecl.md §4`) |
+| Defining attribute edges | `concept_relationships(source_id, type_id, destination_id, group_num)` | **exists** (needs a DB built by the ECL-era pipeline; see `spec/ecl.md §4`) |
 | Node captions | `concepts(id, fsn, preferred_term, active)` | **exists** |
 | **Primitive vs fully-defined** styling | `definitionStatusId` (900000000000074008 primitive / …073002 defined) | **NOT persisted - prerequisite** |
 
@@ -157,8 +157,8 @@ Guidance to include: use **PNG** for diagrams (sharp edges/text; lossless), rese
 
 ## 8. References
 
-- `specs/ecl.md` - the `concept_relationships` substrate (§4) this reuses.
-- `specs/roadmap.md` - "Ideas harvested from prior-art Python tooling" (source of this item) and the Observable/D3 viewer it complements.
+- `spec/ecl.md` - the `concept_relationships` substrate (§4) this reuses.
+- `spec/roadmap.md` - "Ideas harvested from prior-art Python tooling" (source of this item) and the Observable/D3 viewer it complements.
 - `layout-rs` - <https://github.com/nadavrot/layout> (pure-Rust DOT→SVG).
 - Graphviz DOT language - <https://graphviz.org/doc/info/lang.html>.
 - Mermaid flowchart syntax - <https://mermaid.js.org/syntax/flowchart.html>.

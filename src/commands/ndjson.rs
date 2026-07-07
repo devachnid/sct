@@ -50,7 +50,7 @@ pub struct Args {
     /// Which reference sets to include. `simple` (default) loads concept-level
     /// Simple refsets such as SCR exclusion; `none` skips them; `all` additionally
     /// loads the ExtendedMap (ICD-10/OPCS-4) and Association (history) refsets for
-    /// cross-terminology mapping. See `specs/cross-terminology-mapping.md`.
+    /// cross-terminology mapping. See `spec/cross-terminology-mapping.md`.
     #[arg(long, value_enum, default_value_t = RefsetMode::default())]
     pub refsets: RefsetMode,
 }

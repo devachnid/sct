@@ -3,7 +3,7 @@
 
 //! Integration tests for the FST index: build a `snomed.fst` from a synthetic
 //! NDJSON fixture and round-trip exact / prefix / fuzzy / word queries through
-//! it. No real SNOMED release is touched (see `specs/commands/fst.md` §8).
+//! it. No real SNOMED release is touched (see `spec/commands/fst.md` §8).
 
 use sct_rs::index::{self, Index};
 use std::io::Cursor;

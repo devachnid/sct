@@ -1,6 +1,6 @@
 # Specifications
 
-`specs/` is for durable design records: architecture, data contracts, rationale,
+`spec/` is for durable design records: architecture, data contracts, rationale,
 and future-facing plans that would still be useful if `sct` were reimplemented in
 another language.
 
@@ -23,7 +23,7 @@ only repeats those sources, trim it or replace it with a link.
 
 ## Maintenance Rules
 
-- Keep command-specific implementation plans under `specs/commands/`.
+- Keep command-specific implementation plans under `spec/commands/`.
 - Keep cross-cutting models at the root.
 - Prefer links to `docs/commands/` for usage examples once a command has shipped.
 - Keep design rationale that is not obvious from the final code.

@@ -31,7 +31,7 @@ pub struct ConceptRef {
 /// A typed attribute relationship, with all parts kept as SCTIDs (plus the
 /// relationship group number). Unlike the display-oriented `attributes` map,
 /// this preserves the attribute *type* SCTID and group, which ECL refinement
-/// needs. See `specs/ecl.md` §4.
+/// needs. See `spec/ecl.md` §4.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relationship {
     /// Attribute type SCTID, e.g. `363698007` (Finding site).
@@ -45,7 +45,7 @@ pub struct Relationship {
 /// A SNOMED CT → external classification map target (ICD-10, OPCS-4), parsed
 /// from the RF2 ExtendedMap reference sets. Preserves the map group / priority /
 /// rule / advice so the full map context survives into the SQLite `crossmaps`
-/// table. See `specs/cross-terminology-mapping.md`.
+/// table. See `spec/cross-terminology-mapping.md`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrossMapEntry {
     /// Target classification system: `icd10` | `opcs4`.
@@ -74,7 +74,7 @@ pub struct CrossMapEntry {
 /// `<stem>.history.ndjson` artefact and loaded into the SQLite `concept_history`
 /// table. Kept separate from `ConceptRecord` because the `source` is usually an
 /// *inactive* concept, absent from the active concept stream. See
-/// `specs/cross-terminology-mapping.md`.
+/// `spec/cross-terminology-mapping.md`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryRecord {
     /// The (usually inactive) source concept SCTID.

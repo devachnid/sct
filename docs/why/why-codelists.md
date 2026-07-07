@@ -53,7 +53,7 @@ A `.codelist` is a UTF-8 file with two parts: **YAML front-matter** (id, title, 
     sct refset members 447562003 --ids | sct codelist add copy.codelist -
     ```
 
-    Composing a list **out of other lists** - building "cardiovascular disease" from "myocardial infarction" + "stroke" + "peripheral arterial disease" - is the next step on this same road (work in progress; see the [roadmap](https://github.com/pacharanero/sct/blob/main/specs/roadmap.md)). The same principle that makes ECL and refsets powerful, but expressed *legibly, in plain text*.
+    Composing a list **out of other lists** - building "cardiovascular disease" from "myocardial infarction" + "stroke" + "peripheral arterial disease" - is the next step on this same road (work in progress; see the [roadmap](https://github.com/pacharanero/sct/blob/main/spec/roadmap.md)). The same principle that makes ECL and refsets powerful, but expressed *legibly, in plain text*.
 
 - It carries **intent, not just members**. The `--ecl` form knows the *expression* that generated a set, which a bare list of ids cannot - the foundation for storing a code list as a re-expandable rule (an *intensional* definition) rather than only a frozen snapshot of members.
 

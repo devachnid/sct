@@ -51,7 +51,7 @@ Two later additions sit alongside this model rather than inside it: an optional 
 index** (`sct fst`, built from the NDJSON) offers a mmap-able, typo-tolerant alternative to the
 Layer 2 FTS5 search; and an **ECL engine** (`src/ecl/`) evaluates SNOMED Expression Constraint
 Language queries against the Layer 2 SQLite database (powering `sct codelist add --ecl` and
-`sct serve`). See [`specs/commands/fst.md`](commands/fst.md) and [`ecl.md`](ecl.md).
+`sct serve`). See [`spec/commands/fst.md`](commands/fst.md) and [`ecl.md`](ecl.md).
 
 ---
 

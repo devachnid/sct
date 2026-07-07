@@ -3,7 +3,7 @@
 
 //! `sct diagram` - render a concept's logical definition, ancestry, or
 //! descendants as a `tree`-style terminal view, Graphviz DOT, or Mermaid.
-//! See `specs/commands/diagram.md`.
+//! See `spec/commands/diagram.md`.
 //!
 //! All three formats are plain text on stdout (pipe `--format dot` into
 //! `dot -Tpng` for an image); the node/edge summary goes to stderr.

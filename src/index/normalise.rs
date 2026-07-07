@@ -4,7 +4,7 @@
 //! Term normalisation and semantic-tag handling for the FST index.
 //!
 //! Normalisation is deliberately *lossless* with respect to accents and
-//! punctuation - see `specs/commands/fst.md` §7. We accept a larger index in exchange
+//! punctuation - see `spec/commands/fst.md` §7. We accept a larger index in exchange
 //! for not collapsing clinically distinct terms. The transform is fixed and
 //! MUST stay stable across releases: changing it silently would invalidate any
 //! stored queries downstream.

@@ -4,7 +4,7 @@
 //! `sct dmwb` - read NHS Data Migration Workbench `.mdb` (Microsoft Access)
 //! files via the pure-Rust `jetdb` reader. Source of the DMWB-unique maps that
 //! are not in standard RF2 (chiefly the Read v2 cross-maps). Feature-gated on
-//! `dmwb`. See `specs/cross-terminology-mapping.md`.
+//! `dmwb`. See `spec/cross-terminology-mapping.md`.
 //!
 //! NHS terminology/map data is Crown Copyright under the Open Government Licence;
 //! `sct` reads the user's own TRUD-acquired files locally and never redistributes
@@ -96,7 +96,7 @@ fn dump(mdb: &std::path::Path, table: &str, limit: usize) -> Result<()> {
         eprintln!(
             "note: column(s) {} are Binary; jetdb 0.3 does not decode Binary cells \
              (returns empty). DMWB stores the Read v2 code in a Binary `SCUI` column, \
-             so it is not yet importable this way - see specs/cross-terminology-mapping.md.",
+             so it is not yet importable this way - see spec/cross-terminology-mapping.md.",
             binary_cols.join(", ")
         );
     }

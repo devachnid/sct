@@ -44,7 +44,7 @@ const TRUD_HEALTH_URL: &str = "https://isd.digital.nhs.uk/trud/users/guest/filte
 // ---------------------------------------------------------------------------
 //
 // Directory layout, env vars, and config schema are defined in
-// `crate::paths` and `specs/path-resolution.md`. This module only re-exports
+// `crate::paths` and `spec/path-resolution.md`. This module only re-exports
 // the data-dir subdirectory constants for write-side use.
 
 use crate::paths::{DATA_SUBDIR, RELEASES_SUBDIR};

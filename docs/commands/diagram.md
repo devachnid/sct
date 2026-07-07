@@ -98,4 +98,4 @@ If you produced an SVG (`… -Tsvg` above, or a future `--format svg`), convert 
 
 ---
 
-See [`specs/commands/diagram.md`](https://github.com/pacharanero/sct/blob/main/specs/commands/diagram.md) for the design record.
+See [`spec/commands/diagram.md`](https://github.com/pacharanero/sct/blob/main/spec/commands/diagram.md) for the design record.

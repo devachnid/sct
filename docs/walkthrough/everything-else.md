@@ -127,4 +127,4 @@ flag selects GB English preferred terms from the UK language reference set.
 - `sct codelist search` - interactive FTS5 search → include/exclude (coming)
 - `sct codelist import` / `sct codelist publish` - import from OpenCodelists, publish back (coming)
 
-See `specs/roadmap.md` for the full list of planned features.
+See `spec/roadmap.md` for the full list of planned features.

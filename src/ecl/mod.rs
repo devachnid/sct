@@ -3,7 +3,7 @@
 
 //! SNOMED CT Expression Constraint Language (ECL).
 //!
-//! A parser and evaluator for the supported ECL subset (`specs/ecl.md`). ECL is
+//! A parser and evaluator for the supported ECL subset (`spec/ecl.md`). ECL is
 //! the intermediate representation the query stack converges on: it backs
 //! `sct codelist add --ecl`, the future `sct serve` `$expand`, and is the
 //! compile target for SCT-QL.
