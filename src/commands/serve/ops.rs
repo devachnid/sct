@@ -440,7 +440,10 @@ fn body_sql(op: Op, tct: bool) -> (String, String) {
         (Op::DescendantOf | Op::DescendantOrSelfOf, true) => (
             "SELECT COUNT(*) FROM concept_ancestors WHERE ancestor_id = ?1 AND descendant_id != ?1"
                 .into(),
-            "SELECT descendant_id FROM concept_ancestors
+            // concept_ancestors.descendant_id is INTEGER; CAST back to TEXT so
+            // the row reader (shared with the TEXT concept_isa CTE path) sees a
+            // string. ORDER BY is on the INTEGER column, so paging is numeric.
+            "SELECT CAST(descendant_id AS TEXT) FROM concept_ancestors
              WHERE ancestor_id = ?1 AND descendant_id != ?1
              ORDER BY descendant_id LIMIT ?2 OFFSET ?3"
                 .into(),
@@ -458,7 +461,9 @@ fn body_sql(op: Op, tct: bool) -> (String, String) {
         (Op::AncestorOf | Op::AncestorOrSelfOf, true) => (
             "SELECT COUNT(*) FROM concept_ancestors WHERE descendant_id = ?1 AND ancestor_id != ?1"
                 .into(),
-            "SELECT ancestor_id FROM concept_ancestors
+            // See the descendant case: CAST INTEGER id back to TEXT for the
+            // shared row reader; ORDER BY stays on the INTEGER column.
+            "SELECT CAST(ancestor_id AS TEXT) FROM concept_ancestors
              WHERE descendant_id = ?1 AND ancestor_id != ?1
              ORDER BY ancestor_id LIMIT ?2 OFFSET ?3"
                 .into(),

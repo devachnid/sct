@@ -79,10 +79,16 @@ pub fn build(conn: &mut Connection, include_self: bool) -> Result<()> {
             );
         }
     } else {
+        // INTEGER id columns: SCTIDs are numeric, so the three indexes built
+        // below sort integers (cheap) instead of TEXT. On the full UK Monolith
+        // that TEXT sort during index creation was the single largest cost of
+        // this step (profiled: ~21% of instructions in vdbeSorterCompareText +
+        // its memcmp). This is an internal derived table - nothing JOINs it to
+        // the TEXT `concepts.id` - so the INTEGER affinity stays self-contained.
         conn.execute_batch(
             "CREATE TABLE concept_ancestors (
-                ancestor_id   TEXT NOT NULL,
-                descendant_id TEXT NOT NULL,
+                ancestor_id   INTEGER NOT NULL,
+                descendant_id INTEGER NOT NULL,
                 depth         INTEGER NOT NULL
             );",
         )
@@ -101,14 +107,21 @@ pub fn build(conn: &mut Connection, include_self: bool) -> Result<()> {
 
     // Load all concept_isa edges: child_id → [parent_id, …]
     // The whole table fits comfortably in memory (~500k rows for UK Clinical,
-    // ~1M for the Monolith).
-    let mut parents_of: HashMap<String, Vec<String>> = HashMap::new();
+    // ~1M for the Monolith). SCTIDs are held as u64: the BFS below hashes and
+    // clones them millions of times, and integers hash/copy far more cheaply
+    // than the equivalent Strings. concept_isa is TEXT, so CAST at the SQL
+    // boundary hands back integers directly.
+    let mut parents_of: HashMap<u64, Vec<u64>> = HashMap::new();
     {
         let mut stmt = conn
-            .prepare("SELECT child_id, parent_id FROM concept_isa")
+            .prepare(
+                "SELECT CAST(child_id AS INTEGER), CAST(parent_id AS INTEGER) FROM concept_isa",
+            )
             .context("preparing concept_isa query")?;
         let rows = stmt
-            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+            .query_map([], |r| {
+                Ok((r.get::<_, i64>(0)? as u64, r.get::<_, i64>(1)? as u64))
+            })
             .context("querying concept_isa")?;
         for row in rows {
             let (child, parent) = row.context("reading concept_isa row")?;
@@ -119,10 +132,10 @@ pub fn build(conn: &mut Connection, include_self: bool) -> Result<()> {
     pb.set_message("Loading concept IDs...");
 
     let mut concepts_stmt = conn
-        .prepare("SELECT id FROM concepts ORDER BY id")
+        .prepare("SELECT CAST(id AS INTEGER) FROM concepts ORDER BY id")
         .context("preparing concepts query")?;
-    let concepts: Vec<String> = concepts_stmt
-        .query_map([], |r| r.get::<_, String>(0))
+    let concepts: Vec<u64> = concepts_stmt
+        .query_map([], |r| r.get::<_, i64>(0).map(|v| v as u64))
         .context("querying concepts")?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("collecting concept IDs")?;
@@ -145,26 +158,28 @@ pub fn build(conn: &mut Connection, include_self: bool) -> Result<()> {
                 )
                 .context("preparing insert statement")?;
 
-            for (i, concept_id) in concepts.iter().enumerate() {
+            for (i, &concept_id) in concepts.iter().enumerate() {
                 // BFS upward from this concept through all its ancestors.
                 //
                 // Because this is BFS, the first time we encounter any given
                 // ancestor is always via the shortest path - no deduplication
                 // or MIN(depth) logic is needed beyond the visited set.
-                let mut visited: HashSet<String> = HashSet::new();
-                visited.insert(concept_id.clone());
+                // SCTIDs are u64 (Copy), so nodes move through the queue and
+                // visited set without allocation or cloning.
+                let mut visited: HashSet<u64> = HashSet::new();
+                visited.insert(concept_id);
 
-                let mut queue: VecDeque<(String, i32)> = VecDeque::new();
-                queue.push_back((concept_id.clone(), 0));
+                let mut queue: VecDeque<(u64, i32)> = VecDeque::new();
+                queue.push_back((concept_id, 0));
 
                 while let Some((node, depth)) = queue.pop_front() {
                     if let Some(parents) = parents_of.get(&node) {
-                        for parent in parents {
-                            if visited.insert(parent.clone()) {
+                        for &parent in parents {
+                            if visited.insert(parent) {
                                 insert_stmt
-                                    .execute(params![parent, concept_id, depth + 1])
+                                    .execute(params![parent as i64, concept_id as i64, depth + 1])
                                     .context("inserting ancestor row")?;
-                                queue.push_back((parent.clone(), depth + 1));
+                                queue.push_back((parent, depth + 1));
                             }
                         }
                     }
@@ -172,7 +187,7 @@ pub fn build(conn: &mut Connection, include_self: bool) -> Result<()> {
 
                 if include_self {
                     insert_stmt
-                        .execute(params![concept_id, concept_id, 0])
+                        .execute(params![concept_id as i64, concept_id as i64, 0])
                         .context("inserting self row")?;
                 }
 
