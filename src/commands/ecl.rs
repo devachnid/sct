@@ -125,10 +125,15 @@ fn expand(args: ExpandArgs) -> Result<()> {
 
     let format = args.format.or_json_flag(args.json);
     if !format.print(&ids)? {
-        let mut out = std::io::stdout().lock();
+        // Buffer stdout: the raw lock is a LineWriter, which issues one write
+        // syscall per line - 136k syscalls for a big expansion (measured ~99%
+        // of the process's syscall count). BufWriter batches them into ~8 KiB
+        // writes.
+        let mut out = std::io::BufWriter::new(std::io::stdout().lock());
         for id in &ids {
             writeln!(out, "{id}")?;
         }
+        out.flush()?;
     }
     Ok(())
 }

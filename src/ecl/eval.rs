@@ -62,6 +62,17 @@ fn eval_expr(conn: &Connection, expr: &Expr) -> Result<IdSet> {
     }
 }
 
+/// Build an [`IdSet`] from an unordered, possibly-duplicated collection of
+/// ids. Sorting + deduplicating first lets `BTreeSet::from_iter` take its
+/// bulk-build path (one pass over sorted input) instead of a b-tree descent
+/// per element - measurably cheaper for the 100k+ row collections the
+/// collectors below produce.
+fn set_from(mut v: Vec<u64>) -> IdSet {
+    v.sort_unstable();
+    v.dedup();
+    v.into_iter().collect()
+}
+
 fn all_concepts(conn: &Connection) -> Result<IdSet> {
     // The id column is TEXT; CAST lets SQLite hand back an integer directly,
     // so no per-row String crosses the FFI boundary.
@@ -69,15 +80,15 @@ fn all_concepts(conn: &Connection) -> Result<IdSet> {
         .prepare_cached("SELECT CAST(id AS INTEGER) FROM concepts WHERE active = 1")
         .context("preparing wildcard query")?;
     let rows = stmt.query_map([], |r| r.get::<_, i64>(0))?;
-    let mut set = IdSet::new();
+    let mut out = Vec::new();
     for r in rows {
-        set.insert(r? as u64);
+        out.push(r? as u64);
     }
-    Ok(set)
+    Ok(set_from(out))
 }
 
 fn eval_op(conn: &Connection, op: Op, base: &IdSet) -> Result<IdSet> {
-    let mut out = IdSet::new();
+    let mut out = Vec::new();
     match op {
         Op::DescendantOf | Op::DescendantOrSelfOf => {
             let tct = has_tct(conn);
@@ -113,7 +124,7 @@ fn eval_op(conn: &Connection, op: Op, base: &IdSet) -> Result<IdSet> {
             }
         }
     }
-    Ok(out)
+    Ok(set_from(out))
 }
 
 /// Whether the precomputed transitive-closure table (`concept_ancestors`,
@@ -133,31 +144,31 @@ pub(crate) fn has_tct(conn: &Connection) -> bool {
 /// `sct diagram` and `sct ecl compress`; reuses the same traversal the ECL
 /// evaluator uses so subsumption has one definition across the codebase.
 pub(crate) fn descendants_or_self(conn: &Connection, id: u64) -> Result<IdSet> {
-    let mut out = IdSet::new();
+    let mut out = Vec::new();
     collect_transitive(conn, id, true, has_tct(conn), &mut out)?;
-    out.insert(id);
-    Ok(out)
+    out.push(id);
+    Ok(set_from(out))
 }
 
 /// Proper ancestors of `id` (excludes `id`).
 pub(crate) fn ancestors(conn: &Connection, id: u64) -> Result<IdSet> {
-    let mut out = IdSet::new();
+    let mut out = Vec::new();
     collect_transitive(conn, id, false, has_tct(conn), &mut out)?;
-    Ok(out)
+    Ok(set_from(out))
 }
 
 /// Direct IS-A parents of `id` (one hop up), deduplicated and sorted numerically.
 pub(crate) fn parents(conn: &Connection, id: &str) -> Result<Vec<String>> {
-    let mut set = IdSet::new();
-    collect_one_hop(conn, parse_sctid(id)?, false, &mut set)?;
-    Ok(sorted_numeric(set))
+    let mut v = Vec::new();
+    collect_one_hop(conn, parse_sctid(id)?, false, &mut v)?;
+    Ok(sorted_numeric(v))
 }
 
 /// Direct IS-A children of `id` (one hop down), deduplicated and sorted numerically.
 pub(crate) fn children(conn: &Connection, id: &str) -> Result<Vec<String>> {
-    let mut set = IdSet::new();
-    collect_one_hop(conn, parse_sctid(id)?, true, &mut set)?;
-    Ok(sorted_numeric(set))
+    let mut v = Vec::new();
+    collect_one_hop(conn, parse_sctid(id)?, true, &mut v)?;
+    Ok(sorted_numeric(v))
 }
 
 /// Defining attribute relationships of `id`: `(type_id, destination_id, group)`,
@@ -186,10 +197,11 @@ pub(crate) fn relationships(conn: &Connection, id: &str) -> Result<Vec<(String, 
     Ok(out)
 }
 
-/// Render an [`IdSet`] as a `Vec<String>`. `BTreeSet<u64>` already iterates in
-/// ascending numeric order, so no sort is needed.
-fn sorted_numeric(set: IdSet) -> Vec<String> {
-    set.into_iter().map(|id| id.to_string()).collect()
+/// Deduplicate, sort numerically, and render as strings.
+fn sorted_numeric(mut v: Vec<u64>) -> Vec<String> {
+    v.sort_unstable();
+    v.dedup();
+    v.into_iter().map(|id| id.to_string()).collect()
 }
 
 /// Proper descendants (`down = true`) or ancestors (`down = false`) of `id`.
@@ -202,7 +214,7 @@ pub(crate) fn collect_transitive(
     id: u64,
     down: bool,
     tct: bool,
-    out: &mut IdSet,
+    out: &mut Vec<u64>,
 ) -> Result<()> {
     // The id columns are TEXT: bind the parameter as text (one small format per
     // call, preserving index use) and CAST the result column so each row comes
@@ -234,7 +246,7 @@ pub(crate) fn collect_transitive(
     let mut stmt = conn.prepare_cached(sql)?;
     let rows = stmt.query_map([id.to_string()], |r| r.get::<_, i64>(0))?;
     for r in rows {
-        out.insert(r? as u64);
+        out.push(r? as u64);
     }
     Ok(())
 }
@@ -243,7 +255,7 @@ pub(crate) fn collect_one_hop(
     conn: &Connection,
     id: u64,
     down: bool,
-    out: &mut IdSet,
+    out: &mut Vec<u64>,
 ) -> Result<()> {
     let sql = if down {
         "SELECT CAST(child_id AS INTEGER) FROM concept_isa WHERE parent_id = ?1"
@@ -253,18 +265,18 @@ pub(crate) fn collect_one_hop(
     let mut stmt = conn.prepare_cached(sql)?;
     let rows = stmt.query_map([id.to_string()], |r| r.get::<_, i64>(0))?;
     for r in rows {
-        out.insert(r? as u64);
+        out.push(r? as u64);
     }
     Ok(())
 }
 
-fn collect_members(conn: &Connection, refset_id: u64, out: &mut IdSet) -> Result<()> {
+fn collect_members(conn: &Connection, refset_id: u64, out: &mut Vec<u64>) -> Result<()> {
     let mut stmt = conn.prepare_cached(
         "SELECT CAST(referenced_component_id AS INTEGER) FROM refset_members WHERE refset_id = ?1",
     )?;
     let rows = stmt.query_map([refset_id.to_string()], |r| r.get::<_, i64>(0))?;
     for r in rows {
-        out.insert(r? as u64);
+        out.push(r? as u64);
     }
     Ok(())
 }
@@ -302,6 +314,13 @@ pub(crate) fn has_relationships_table(conn: &Connection) -> bool {
     .is_ok()
 }
 
+/// Ceiling on `|types| x |values|` index probes in attribute refinement before
+/// falling back to the scan-by-type path. Probes cost a b-tree descent each
+/// (~µs warm); the scan costs the type's whole row count. 4096 keeps every
+/// realistic clinical value set on the probe path without letting a
+/// pathological `= <<404684003`-sized value set turn into 136k probes.
+const PROBE_LIMIT: usize = 4096;
+
 fn eval_attr(
     conn: &Connection,
     focus: &IdSet,
@@ -326,8 +345,40 @@ fn eval_attr(
         _ => Some(eval_expr(conn, value)?),
     };
 
-    let mut matched = IdSet::new();
+    let mut matched = Vec::new();
     match &type_filter {
+        // `type = <value set>` with a small type × value cross product: probe
+        // the (type_id, destination_id) compound index once per pair instead
+        // of scanning every row of the type. A common clinical refinement like
+        // `<<404684003 : 363698007 = <<39057004` is 1 type × 27 values = 27
+        // indexed probes, where the scan walked all 216k finding-site rows
+        // (measured ~26x faster end to end). Negation cannot probe ("some
+        // relationship whose destination is NOT in the set" needs to see every
+        // row), and huge value sets degrade to probe-per-value, so both fall
+        // through to the scan.
+        Some(types)
+            if !negate
+                && value_filter
+                    .as_ref()
+                    .is_some_and(|vals| types.len().saturating_mul(vals.len()) <= PROBE_LIMIT) =>
+        {
+            let vals = value_filter.as_ref().expect("guard checked is_some");
+            let mut stmt = conn.prepare_cached(
+                "SELECT CAST(source_id AS INTEGER) FROM concept_relationships
+                 WHERE type_id = ?1 AND destination_id = ?2",
+            )?;
+            for t in types {
+                let t_s = t.to_string();
+                for v in vals {
+                    let rows = stmt.query_map([t_s.as_str(), v.to_string().as_str()], |r| {
+                        r.get::<_, i64>(0)
+                    })?;
+                    for r in rows {
+                        matched.push(r? as u64);
+                    }
+                }
+            }
+        }
         Some(types) => {
             let mut stmt = conn.prepare_cached(
                 "SELECT CAST(source_id AS INTEGER), CAST(destination_id AS INTEGER)
@@ -370,6 +421,7 @@ fn eval_attr(
         }
     }
 
+    let matched = set_from(matched);
     Ok(focus.intersection(&matched).copied().collect())
 }
 
@@ -380,7 +432,7 @@ fn consider(
     dest: u64,
     value_filter: Option<&IdSet>,
     negate: bool,
-    matched: &mut IdSet,
+    matched: &mut Vec<u64>,
 ) {
     let in_value = match value_filter {
         None => true,
@@ -388,6 +440,6 @@ fn consider(
     };
     // `=` matches when in_value; `!=` matches when not.
     if in_value != negate {
-        matched.insert(source);
+        matched.push(source);
     }
 }
