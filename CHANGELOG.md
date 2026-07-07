@@ -5,6 +5,16 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.0] - 2026-07-07
+
+### CI / dependencies
+
+- **deps**: Upgrade axum 0.7->0.8, rusqlite 0.39->0.40, sha2 0.10->0.11, toml 0.8->1.1 ([e15cd60](https://github.com/pacharanero/sct/commit/e15cd60fdcb817d0017699d26e9eda1814d83e7b))
+
+### Performance
+
+- **ecl**: Index-probe small refinements, bulk-build sets, buffer stdout ([3c47992](https://github.com/pacharanero/sct/commit/3c4799208dd787b1d4820978bf3842b93891ae56))
+
 ## [0.17.1] - 2026-07-07
 
 ### Bug fixes
