@@ -115,20 +115,24 @@ toml = "0.8"
 serde_yaml_ng = "0.10"
 chrono = { version = "0.4.44", default-features = false, features = ["std", "clock"] }
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
 # Optional: sct tui
 ratatui = { version = "0.30", optional = true }
 crossterm = { version = "0.29", optional = true }
 
-# Optional: sct gui
+# Optional: sct gui and sct serve (axum + tokio are shared by both)
 axum = { version = "0.7", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"], optional = true }
 open = { version = "5", optional = true }
 
 # Optional: sct dmwb - pure-Rust Microsoft Access (.mdb) reader
 jetdb = { version = "0.3", optional = true }
+
+# NOTE: keep this table LAST among dependency tables, and keep it to genuinely
+# unix-only deps. A TOML table runs until the next [header], so anything added
+# below it silently becomes unix-only - exactly how axum/tokio ended up
+# unavailable on Windows and broke the v0.17.0 release build there.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 criterion = "0.8"

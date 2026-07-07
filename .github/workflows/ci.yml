@@ -60,6 +60,36 @@ jobs:
           cargo build --bin sct
           SCT_BIN=target/debug/sct benchmarks/conformance-ci.sh
 
+  # The release matrix builds Windows, but the test job above is Linux-only -
+  # a Windows-only compile break (e.g. a dependency accidentally scoped to
+  # [target.'cfg(unix)'], which shipped broken in v0.17.0) would otherwise
+  # surface for the first time inside the release pipeline. cargo check
+  # compiles the same graph as the release build without codegen.
+  windows-check:
+    name: Windows check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-check-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-check-
+
+      - name: cargo check (default features, mirrors the release build)
+        run: cargo check
+
+      - name: cargo check --features full
+        run: cargo check --features full
+
   reuse:
     name: REUSE compliance
     runs-on: ubuntu-latest
