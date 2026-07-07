@@ -23,7 +23,12 @@ not here.)
 
 Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and Docker Compose quickstart for the terminology server. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs. Outstanding:
 
-- [ ] Publish a Docker Hub / GHCR image for `sct serve`, with tags matching `sct` releases
+- [ ] Publish a Docker Hub / GHCR image for `sct serve`, with tags matching `sct` releases.
+      Part of the **`sct serve` appliance** design in [`spec/deployment.md`](deployment.md):
+      runtime TRUD bootstrap (already in `docker/entrypoint.sh`), Caddy TLS from a
+      `DOMAIN` env var, optional basic-auth, and a multi-arch `buildx` publish wired
+      into the release workflow. Target UX: DNS -> ssh -> start container with a TRUD
+      key + domain -> `curl https://mydomain/fhir/...` works.
 - [ ] macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users
       don't have to `chmod +x` and bypass Gatekeeper
 - [ ] Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block.

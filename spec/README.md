@@ -20,6 +20,8 @@ only repeats those sources, trim it or replace it with a link.
 - `path-resolution.md` - shared path/config discovery contract.
 - `library-rs.md` - Rust library surface design.
 - `bench.md` - benchmark suite contract.
+- `deployment.md` - the `sct serve` Docker appliance: TRUD bootstrap, Caddy
+  TLS, and the env-var interface for self-hosting a FHIR endpoint.
 
 ## Maintenance Rules
 
