@@ -131,6 +131,36 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
 > [`specs/cross-terminology-mapping.md`](cross-terminology-mapping.md) and the
 > DMWB walkthrough in the docs site.
 
+### Performance internals (potential, not committed)
+
+Both of these are **candidates, not decisions** - each is grounded in a real
+profile, but neither has cleared a "worth the surface area / risk" bar yet.
+
+- [ ] **Potential: DB-wide INTEGER SCTID columns.** `concept_ancestors` already
+      uses INTEGER id columns (shipped with the `u64` transitive-closure work:
+      ~17% faster TCT, ~35% smaller table). Extending that to every SCTID column
+      (`concepts.id`, `concept_isa`, `concept_relationships`, `refset_members`,
+      `concept_history` source/target) would roughly halve the bytes per id
+      across the whole database and speed the text-sort-heavy index builds, while
+      dropping the query-time `CAST(... AS INTEGER)` shims. The catch is why it is
+      only *potential*: ~15 cross-table JOINs compare those columns to
+      `concepts.id`, so they must all flip together or SQLite's INTEGER-vs-TEXT
+      affinity silently returns zero rows; the FTS5 rowid semantics need care
+      (an `INTEGER PRIMARY KEY` aliases `rowid`); the non-numeric code columns
+      (CTV3 / ICD-10 / OPCS-4 crossmaps) must stay TEXT; and it needs a
+      schema-version bump + rebuild. A real DB-size win, but a careful day's work
+      whose payoff over the already-shipped `concept_ancestors` piece is unproven.
+
+- [ ] **Potential: optional one-pass RF2 → SQLite build.** The build writes a
+      ~1.4 GB NDJSON (RF2 → NDJSON) and then reads it straight back (NDJSON →
+      SQLite); that intermediate write + read is the single largest build cost
+      (I/O-bound, not CPU). A fused streaming RF2 → SQLite path would delete it.
+      **This does not change sct's file-first design:** NDJSON stays the default
+      and the canonical, inspectable, distributable artifact - the fused path
+      would be a purely *additive, opt-in* shortcut (e.g. `sct build --direct`)
+      for users who only need the database and don't want the intermediate file.
+      Deferred; the file-first pipeline is the priority.
+
 - [ ] **History MCP surface** - RF2 Association history is parsed and loaded into
       `concept_history`, and `sct map --forward-history` uses it. Still missing:
       expose the same forwarding through an MCP `snomed_resolve` tool.
