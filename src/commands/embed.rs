@@ -160,7 +160,14 @@ pub fn run(args: Args) -> Result<()> {
 
     pb.set_message("Writing Arrow IPC file...");
 
-    write_arrow(&concepts, &all_embeddings, dim, &args.output, prov.as_ref())?;
+    write_arrow(
+        &concepts,
+        &all_embeddings,
+        dim,
+        &args.output,
+        prov.as_ref(),
+        &args.model,
+    )?;
 
     pb.finish_with_message(format!(
         "Done. {} embeddings (dim={}) → {}",
@@ -175,6 +182,12 @@ pub fn run(args: Args) -> Result<()> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Version marker for the document-text scheme below, recorded in the Arrow
+/// metadata so `sct semantic` can detect files built with an incompatible
+/// scheme. Bump whenever `embed_text` changes shape (v2 = `search_document:`
+/// prefix + PT/FSN/synonyms/hierarchy composition).
+pub const EMBED_TEXT_SCHEME: &str = "2";
 
 /// Build the text string that will be embedded for a concept.
 ///
@@ -216,14 +229,17 @@ fn call_ollama(base_url: &str, model: &str, texts: &[String]) -> Result<Vec<Vec<
 }
 
 /// Write an Arrow IPC file with columns: id, preferred_term, hierarchy, embedding.
-/// Provenance (if known) is attached to the schema-level metadata so that
-/// `sct semantic` and other readers can cite the source release.
+/// Provenance (if known), the embedding model, and the text scheme are attached
+/// to the schema-level metadata so `sct semantic` can cite the source release
+/// and refuse to search with a mismatched model (same-dimension model swaps
+/// produce silently garbage similarity scores otherwise).
 fn write_arrow(
     concepts: &[ConceptRecord],
     embeddings: &[Vec<f32>],
     dim: usize,
     path: &Path,
     prov: Option<&Provenance>,
+    model: &str,
 ) -> Result<()> {
     anyhow::ensure!(
         concepts.len() == embeddings.len(),
@@ -233,7 +249,7 @@ fn write_arrow(
     );
 
     let item_field = Arc::new(Field::new("item", DataType::Float32, false));
-    let mut schema = Schema::new(vec![
+    let schema = Schema::new(vec![
         Field::new("id", DataType::Utf8, false),
         Field::new("preferred_term", DataType::Utf8, false),
         Field::new("hierarchy", DataType::Utf8, false),
@@ -243,10 +259,10 @@ fn write_arrow(
             false,
         ),
     ]);
-    if let Some(p) = prov {
-        schema = schema.with_metadata(provenance::to_arrow_metadata(p));
-    }
-    let schema = Arc::new(schema);
+    let mut metadata = prov.map(provenance::to_arrow_metadata).unwrap_or_default();
+    metadata.insert("sct.embedding_model".into(), model.to_string());
+    metadata.insert("sct.embed_text_scheme".into(), EMBED_TEXT_SCHEME.into());
+    let schema = Arc::new(schema.with_metadata(metadata));
 
     let ids = StringArray::from_iter_values(concepts.iter().map(|c| c.id.as_str()));
     let terms = StringArray::from_iter_values(concepts.iter().map(|c| c.preferred_term.as_str()));

@@ -197,12 +197,23 @@ pub fn semantic_search(
     query: &str,
     limit: usize,
 ) -> Result<Vec<ScoredConcept>> {
-    let query_vec = embed_query(ollama_url, model, query)?;
-    let q_norm = l2_norm(&query_vec);
-
     let file = std::fs::File::open(embeddings)
         .with_context(|| format!("opening {}", embeddings.display()))?;
     let reader = FileReader::try_new(file, None).context("reading Arrow IPC file")?;
+
+    // Refuse to search with a model other than the one that built the file.
+    // The dimension check below cannot catch a same-dimension model swap, and
+    // cross-model cosine scores are silently garbage. Files written before
+    // this metadata existed get a stderr note instead (we cannot verify them).
+    let stored_model = reader
+        .schema()
+        .metadata()
+        .get("sct.embedding_model")
+        .cloned();
+    check_model_compat(stored_model.as_deref(), model, embeddings)?;
+
+    let query_vec = embed_query(ollama_url, model, query)?;
+    let q_norm = l2_norm(&query_vec);
 
     let mut results: Vec<ScoredConcept> = Vec::new();
 
@@ -309,6 +320,42 @@ pub fn embed_query(base_url: &str, model: &str, query: &str) -> Result<Vec<f32>>
         .context("Ollama returned an empty embedding for the query")
 }
 
+/// Compare the model recorded in the embeddings file against the requested
+/// query model. Mismatch is a hard error; an absent record (file written by an
+/// sct predating the metadata) gets a stderr warning because it cannot be
+/// verified. `nomic-embed-text` and `nomic-embed-text:latest` are the same
+/// model, so a bare name and its `:latest` alias are treated as equal.
+fn check_model_compat(stored: Option<&str>, requested: &str, path: &Path) -> Result<()> {
+    let canon = |m: &str| {
+        m.strip_suffix(":latest")
+            .map(String::from)
+            .unwrap_or_else(|| m.to_string())
+    };
+    match stored {
+        Some(s) if canon(s) == canon(requested) => Ok(()),
+        Some(s) => anyhow::bail!(
+            "embeddings file {} was built with model '{}', but this search uses '{}'. \
+             Cross-model similarity scores are meaningless. Re-run with --model {} \
+             or rebuild the file: sct embed --model {}",
+            path.display(),
+            s,
+            requested,
+            s,
+            requested,
+        ),
+        None => {
+            eprintln!(
+                "note: {} does not record which embedding model built it (written by an \
+                 older sct), so it cannot be verified against --model {}. If results look \
+                 poor, rebuild it with a current sct: `sct embed`.",
+                path.display(),
+                requested,
+            );
+            Ok(())
+        }
+    }
+}
+
 fn l2_norm(v: &[f32]) -> f32 {
     v.iter().map(|x| x * x).sum::<f32>().sqrt()
 }
@@ -349,5 +396,31 @@ mod tests {
     fn l2_norm_basic() {
         let v = vec![3.0f32, 4.0];
         assert!((l2_norm(&v) - 5.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn model_compat_exact_match_ok() {
+        let p = Path::new("x.arrow");
+        assert!(check_model_compat(Some("nomic-embed-text"), "nomic-embed-text", p).is_ok());
+    }
+
+    #[test]
+    fn model_compat_latest_alias_ok() {
+        let p = Path::new("x.arrow");
+        assert!(check_model_compat(Some("nomic-embed-text:latest"), "nomic-embed-text", p).is_ok());
+        assert!(check_model_compat(Some("nomic-embed-text"), "nomic-embed-text:latest", p).is_ok());
+    }
+
+    #[test]
+    fn model_compat_mismatch_errors() {
+        let p = Path::new("x.arrow");
+        let err = check_model_compat(Some("nomic-embed-text"), "mxbai-embed-large", p).unwrap_err();
+        assert!(err.to_string().contains("built with model"));
+    }
+
+    #[test]
+    fn model_compat_absent_metadata_warns_but_allows() {
+        let p = Path::new("x.arrow");
+        assert!(check_model_compat(None, "nomic-embed-text", p).is_ok());
     }
 }
