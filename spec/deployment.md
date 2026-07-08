@@ -1,6 +1,6 @@
-# Deployment: the `sct serve` appliance image
+# Deployment: self-hosting `sct serve` with Docker Compose
 
-Status: **design draft** (not yet built beyond the existing `Dockerfile` / `compose.yaml` / `docker/entrypoint.sh`). This spec captures the target UX, the design decisions, and the env-var interface so the remaining pieces (TLS via Caddy, a published multi-arch image, auth) can be built against a fixed contract.
+Status: **design draft** (not yet built beyond the existing `Dockerfile` / `compose.yaml` / `docker/entrypoint.sh`). This spec captures the target UX, the design decisions, and the env-var interface so the remaining pieces - a `caddy` reverse-proxy service for TLS, a published multi-arch image, and optional auth - can be built against a fixed contract. **The packaging shape is decided: a Docker Compose stack with `sct` and Caddy as separate services** (design decision 3).
 
 ## Goal: the four-step self-host
 
@@ -8,20 +8,20 @@ The north-star UX for standing up a public FHIR terminology server:
 
 1. **DNS** - point `fhir.example.org` at your server.
 2. **`ssh` in.**
-3. **Start the container** with a TRUD API key and a domain, in env.
+3. **Bring up the Compose stack** with a TRUD API key and a domain in env.
 4. **`curl https://fhir.example.org/fhir/metadata`** works.
 
-Between steps 3 and 4 the container downloads a SNOMED CT release from TRUD (under the operator's own licence), runs the full build pipeline, provisions a TLS certificate, and starts serving - with no further operator action.
+Between steps 3 and 4, `sct` downloads a SNOMED CT release from TRUD (under the operator's own licence), runs the full build pipeline, and starts serving, while Caddy provisions a TLS certificate - with no further operator action.
 
 ## What already exists
 
-The repository ships a working core of this today; the appliance work is additive.
+The repository ships a working core of this today; the remaining work is additive.
 
 - **`Dockerfile`** - multi-stage build; the runtime layer is the static `sct` binary plus a small entrypoint. The pipeline (download, unzip, RF2 -> NDJSON -> SQLite -> TCT) is entirely in-process Rust, so the image needs no `jq` / `sqlite3` / `curl` / `unzip` at runtime.
 - **`docker/entrypoint.sh`** - on start, finds a built `*.db` under `/data`; if none exists and `TRUD_API_KEY` is set, runs `sct trud download --edition … --skip-if-current --pipeline` and then serves it. Binds `0.0.0.0` (sct's CLI default of `127.0.0.1` would be invisible in a container). Passes non-`serve` arguments straight through, so `docker run sct lookup 22298006` still works as a plain CLI.
 - **`compose.yaml`** - passes `TRUD_API_KEY` and the `SCT_*` config, mounts a `sct-data` named volume for persistence, and has a healthcheck with a 20-minute `start_period` to cover the first-run build.
 
-**Gaps this spec addresses:** TLS / reverse proxy, optional auth, a *published* image (today the image builds from source), and the ergonomics of the single-command start.
+**Gaps this spec addresses:** TLS / reverse proxy, optional auth, a *published* image (today the image builds from source), and the ergonomics of bringing the stack up.
 
 ## Design decisions
 
@@ -33,16 +33,13 @@ SNOMED CT is licensed; it **cannot** be redistributed inside a public image. The
 
 `sct serve` speaks plain HTTP. Rather than teach it ACME, certificate renewal, auth, CORS, and rate-limiting, front it with [Caddy](https://caddyserver.com), whose entire configuration for this is a few lines and whose automatic-HTTPS is its headline feature. The reverse-proxy layer also gives, for free, the things a public FHIR endpoint actually needs beyond TLS: **CORS** (browser-based FHIR clients require it), request logging, gzip, and rate-limiting.
 
-Rejected alternative: `rustls-acme` inside `sct serve` for a true single-process image. It reinvents mature Caddy functionality and pulls serving concerns into the core binary. Not worth it.
+Rejected alternative: teaching `sct serve` to terminate TLS itself (e.g. `rustls-acme`). It reinvents mature Caddy functionality - ACME, renewal, auth, CORS, rate-limiting - and pulls serving concerns into the core binary. Not worth it.
 
-### 3. Packaging: Caddy as a compose service (recommended), appliance image as an option
+### 3. Packaging: `sct` and Caddy as separate Compose services
 
-Two shapes, and the choice is the main open decision:
+The stack is a Docker Compose file with two services: the single-purpose `sct` image (also the "publish an image for `sct serve`" roadmap item), and Caddy's official image alongside it with a `{$DOMAIN}` Caddyfile. Each container runs one process; Caddy owns TLS termination and the public ports, and `sct` serves plain HTTP on an internal port that only Caddy reaches.
 
-- **Option A - `caddy` as a second compose service (recommended).** Keep the `sct` image single-purpose (it is also the "publish an image for `sct serve`" roadmap item), add Caddy's official image alongside it with a `{$DOMAIN}` Caddyfile. Clean, one-process-per-container, reuses battle-tested ACME. Cost: a `compose.yaml` on the host, so the start command is `docker compose up`, not a bare `docker run`.
-- **Option B - bundle Caddy into the `sct` image, driven by `DOMAIN`.** Delivers the literal one-`docker run` UX; if `DOMAIN` is set the entrypoint supervises Caddy + `sct` (via s6-overlay or a small supervising script), otherwise it serves plain HTTP. Cost: two processes per container (the appliance anti-pattern), ~40 MB of Caddy in the image, and we own the supervision.
-
-**Recommendation: A.** The friction delta ("`curl` a compose file, then `docker compose up`" vs a bare `docker run`) is small next to the unavoidable steps that dominate either way - DNS, opening ports 80/443, a TRUD subscription, and a multi-minute first-run build. A keeps the architecture clean. B is legitimate if the appliance one-liner is itself the point; the two are not mutually exclusive (we can ship the clean image and a compose bundle now, and add an all-in-one tag later).
+This keeps the `sct` image clean and reusable - it is still a plain CLI (`docker run sct lookup 22298006`) and composes into any stack - and it reuses Caddy's battle-tested ACME rather than reimplementing certificate handling. The cost is a `compose.yaml` on the host, so the start command is `docker compose up` rather than a bare `docker run` - a negligible delta next to the steps that dominate either way (DNS, opening ports 80/443, a TRUD subscription, and a multi-minute first-run build), and Compose is the natural shape for a multi-service stack.
 
 ### 4. Readiness during the first-run build
 
@@ -91,11 +88,11 @@ The contract the entrypoint and Caddyfile read. Existing vars keep their current
 ## Deliverables
 
 1. **`Caddyfile`** driven by the env above: `{$DOMAIN}` -> `reverse_proxy sct:{$SCT_SERVE_PORT}`, optional `basic_auth`, CORS headers, `handle_errors` -> 503 while upstream is unhealthy.
-2. **A `caddy` service in `compose.yaml`** (or a `docker-compose.tls.yaml` overlay / compose profile), publishing `80` + `443`, sharing a Caddy data volume for certs.
+2. **A `caddy` service in `compose.yaml`**, publishing `80` + `443`, fronting the internal `sct` service and sharing a named volume for issued certs. With `DOMAIN` unset it serves plain HTTP for local/dev use.
 3. **A published multi-arch image** (`linux/amd64` + `linux/arm64`) on Docker Hub and/or GHCR, tagged to `sct` releases - wired into the release workflow via `docker buildx`. This is the existing roadmap item and the prerequisite for `docker run pacharanero/sct` (rather than build-from-source).
 4. **Docs**: a `docs/deployment.md` "self-host in four steps" page and the copy-pasteable commands.
 
-## Realistic run (Option A)
+## Realistic run
 
 ```bash
 # 1. DNS: fhir.example.org -> your server   (ACME needs this live first)
@@ -109,7 +106,7 @@ docker compose up -d
 # 4. curl https://fhir.example.org/fhir/metadata
 ```
 
-The deltas from the ideal four steps: a compose file instead of a bare `docker run` (Option B removes this), and step 4 succeeds after the first-run build and certificate issuance, not instantly.
+The one delta from the ideal four steps: step 4 succeeds once the first-run build and certificate issuance complete, not instantly. Fetching a compose file is the expected shape for a multi-service stack, not friction to design away.
 
 ## Caveats to design around
 
@@ -121,7 +118,6 @@ The deltas from the ideal four steps: a compose file instead of a bare `docker r
 
 ## Open questions
 
-1. **A or B** as the flagship (compose + Caddy service, or bundled appliance image)? Recommendation is A, with B as a later optional tag.
-2. Docker Hub, GHCR, or both? (Both is cheap and gives users a choice.)
-3. Auth beyond basic - is it ever wanted for a terminology endpoint, or is basic-auth-plus-rate-limit sufficient? (Leaning: sufficient.)
-4. Should `SCT_AUTO_UPDATE` exist at all, or is "rebuild when you choose to" cleaner than any automatic-update magic?
+1. Docker Hub, GHCR, or both? (Both is cheap and gives users a choice.)
+2. Auth beyond basic - is it ever wanted for a terminology endpoint, or is basic-auth-plus-rate-limit sufficient? (Leaning: sufficient.)
+3. Should `SCT_AUTO_UPDATE` exist at all, or is "rebuild when you choose to" cleaner than any automatic-update magic?
