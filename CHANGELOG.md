@@ -5,6 +5,24 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.1] - 2026-07-08
+
+### Chores
+
+- Rename specs/ to spec/ for consistency across repos ([8169ddc](https://github.com/pacharanero/sct/commit/8169ddc35e0532a2a6843fa49049c852c347720f))
+
+### Documentation
+
+- **roadmap**: Add concurrent load-testing harness item for sct serve ([c603896](https://github.com/pacharanero/sct/commit/c603896fea6322d1218cd49c3461db919a0dbf67))
+
+- **roadmap**: Note DB-wide INTEGER columns + optional one-pass build as potential ([9ce66ad](https://github.com/pacharanero/sct/commit/9ce66adfbc807b712b3da3a5dfe1ccb23179097c))
+
+- **spec**: Add sct serve appliance deployment design ([d517943](https://github.com/pacharanero/sct/commit/d51794366d1aa679a141e95ee34c081db6052381))
+
+### Performance
+
+- **tct**: U64 closure + INTEGER concept_ancestors columns ([6babaa8](https://github.com/pacharanero/sct/commit/6babaa8975eb938e98971c829b913472e667e8e1))
+
 ## [0.18.0] - 2026-07-07
 
 ### CI / dependencies
