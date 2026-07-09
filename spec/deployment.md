@@ -1,6 +1,6 @@
 # Deployment: self-hosting `sct serve` with Docker Compose
 
-Status: **design draft** (not yet built beyond the existing `Dockerfile` / `compose.yaml` / `docker/entrypoint.sh`). This spec captures the target UX, the design decisions, and the env-var interface so the remaining pieces - a `caddy` reverse-proxy service for TLS, a published multi-arch image, and optional auth - can be built against a fixed contract. **The packaging shape is decided: a Docker Compose stack with `sct` and Caddy as separate services** (design decision 3).
+Status: **shipped**. All four deliverables below are built: the `Caddyfile` + `docker/caddy-entrypoint.sh`, the `caddy` service in `compose.yaml`, the multi-arch Docker Hub publish job in `.github/workflows/release.yml`, and the user-facing walkthrough at [`docs/terminology-server.md`](../docs/terminology-server.md). The Caddy layer was verified against a live stack (not just `caddy validate` syntax-checking) - proxying, CORS, the unhealthy-upstream 503, and basic auth (401/401/200 across unauthenticated/wrong/correct credentials) all confirmed working; two real bugs surfaced only by live testing are noted inline where they were fixed. This document now records the *design record*, not outstanding work - see `spec/roadmap.md` for anything still open (e.g. GHCR as a second registry).
 
 ## Goal: the four-step self-host
 
@@ -83,25 +83,30 @@ The contract the entrypoint and Caddyfile read. Existing vars keep their current
 | `BASIC_AUTH_USER` | (unset) | If set with a hash, Caddy enforces HTTP basic auth. Terminology data is non-PHI and read-only, so auth is opt-in - mainly abuse control on a public endpoint. |
 | `BASIC_AUTH_HASH` | (unset) | bcrypt hash for `BASIC_AUTH_USER` (from `caddy hash-password`). Hash, not plaintext, so it is safe in `docker inspect`. |
 | `CORS_ORIGINS` | `*` | Allowed CORS origins for browser FHIR clients. |
-| `SCT_AUTO_UPDATE` | `false` | If `true`, re-check TRUD for a newer release on restart and rebuild. Off by default so a restart never triggers a surprise multi-GB rebuild. |
+
+**Not built**: `SCT_AUTO_UPDATE` (re-check TRUD for a newer release on restart and rebuild) was speced but deliberately not implemented - open question 3 below was never actually resolved, and a container-restart triggering a surprise multi-GB rebuild is real, separate risk surface that deserves its own careful design rather than a bolt-on. Not part of the current env-var contract; do not reference it as if it works.
 
 ## Deliverables
 
-1. **`Caddyfile`** driven by the env above: `{$DOMAIN}` -> `reverse_proxy sct:{$SCT_SERVE_PORT}`, optional `basic_auth`, CORS headers, `handle_errors` -> 503 while upstream is unhealthy.
-2. **A `caddy` service in `compose.yaml`**, publishing `80` + `443`, fronting the internal `sct` service and sharing a named volume for issued certs. With `DOMAIN` unset it serves plain HTTP for local/dev use.
-3. **A published multi-arch image** (`linux/amd64` + `linux/arm64`) on Docker Hub and/or GHCR, tagged to `sct` releases - wired into the release workflow via `docker buildx`. This is the existing roadmap item and the prerequisite for `docker run pacharanero/sct` (rather than build-from-source).
-4. **Docs**: a `docs/deployment.md` "self-host in four steps" page and the copy-pasteable commands.
+All four shipped:
+
+1. **`Caddyfile`** (+ `docker/caddy-entrypoint.sh`) driven by the env above: the site address and optional `basic_auth` block are resolved by the entrypoint wrapper rather than Caddyfile placeholders (see the file's own header comment for why - `{$VAR:default}` substitutes at parse time and cannot safely embed a colon, and `basic_auth` must be entirely absent, not present-with-dummy-credentials, when unconfigured). CORS headers, and a top-level `handle_errors 502 503 504` block for the "still starting up" message - deliberately *not* `reverse_proxy`'s nested `handle_response`, which does not fire when active health checks have marked every upstream down (verified live).
+2. **A `caddy` service in `compose.yaml`**, publishing `80` + `443`, fronting the internal `sct` service (no longer directly port-published) and sharing named volumes for issued certs + Caddy config. With `DOMAIN` unset it serves plain HTTP for local/dev use.
+3. **A published multi-arch image** (`linux/amd64` + `linux/arm64`) on **Docker Hub only** (`docker.io/pacharanero/sct`) - GHCR was in scope per open question 1 but not requested; trivial to add later since it reuses `GITHUB_TOKEN` with no extra secret. Built on native per-arch runners (not QEMU) and merged into one manifest via `docker buildx imagetools create`, wired into `.github/workflows/release.yml` as two jobs after the GitHub Release.
+4. **Docs**: [`docs/terminology-server.md`](../docs/terminology-server.md) - an existing, better-named, already-nav-registered page turned out to already own this job; updated in place rather than duplicated into a new `docs/deployment.md`.
 
 ## Realistic run
 
+As actually documented in [`docs/terminology-server.md`](../docs/terminology-server.md) - `git clone` rather than piecemeal `curl -O`, since the stack is more than the two files a fetch-and-run approach would suggest (`Dockerfile`, `docker/entrypoint.sh`, `docker/caddy-entrypoint.sh` all need to come along too):
+
 ```bash
 # 1. DNS: fhir.example.org -> your server   (ACME needs this live first)
-# 2. ssh your-server
-# 3. fetch the compose bundle and configure
-curl -O https://raw.githubusercontent.com/pacharanero/sct/main/compose.yaml
-curl -O https://raw.githubusercontent.com/pacharanero/sct/main/Caddyfile
-printf 'TRUD_API_KEY=…\nDOMAIN=fhir.example.org\nACME_EMAIL=you@example.org\n' > .env
-docker compose up -d
+# 2. ssh your-server; clone and configure
+git clone https://github.com/pacharanero/sct.git && cd sct
+cp .env.example .env && $EDITOR .env
+#    set TRUD_API_KEY, DOMAIN=fhir.example.org, ACME_EMAIL=you@example.org
+# 3. bring the stack up
+docker compose up -d --build
 #    first run: downloads the UK Monolith + builds (~a few minutes); Caddy issues the cert
 # 4. curl https://fhir.example.org/fhir/metadata
 ```
@@ -116,8 +121,8 @@ The one delta from the ideal four steps: step 4 succeeds once the first-run buil
 - **TRUD subscription.** Download fails if the operator is not subscribed to `SCT_TRUD_EDITION`; the error must say so clearly.
 - **Persistence is mandatory.** Without the `/data` volume, every restart re-downloads and rebuilds. Already handled by the `VOLUME` + `find_db` logic.
 
-## Open questions
+## Resolved
 
-1. Docker Hub, GHCR, or both? (Both is cheap and gives users a choice.)
-2. Auth beyond basic - is it ever wanted for a terminology endpoint, or is basic-auth-plus-rate-limit sufficient? (Leaning: sufficient.)
-3. Should `SCT_AUTO_UPDATE` exist at all, or is "rebuild when you choose to" cleaner than any automatic-update magic?
+1. **Docker Hub, GHCR, or both?** Docker Hub only, for now - that's what was asked for. GHCR remains an easy, low-cost future addition (reuses `GITHUB_TOKEN`, no new secret) if wanted.
+2. **Auth beyond basic?** Shipped basic-auth-only, matching the original lean. Nothing has surfaced a need for more.
+3. **`SCT_AUTO_UPDATE`?** Deferred, not built - see the "Not built" note above. Revisit as its own piece of work if wanted, rather than resolve it implicitly by shipping an unreviewed implementation.

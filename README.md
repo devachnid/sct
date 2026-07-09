@@ -161,16 +161,20 @@ sct trud download --edition uk_monolith --pipeline
 ```
 
 Or, on a fresh VPS with Docker installed, run the FHIR terminology server from
-this checkout:
+this checkout - `sct` plus a [Caddy](https://caddyserver.com) reverse proxy for
+automatic HTTPS:
 
 ```bash
 cp .env.example .env
-$EDITOR .env   # set TRUD_API_KEY
-docker compose up --build
+$EDITOR .env   # set TRUD_API_KEY, and DOMAIN for real HTTPS
+docker compose up -d --build
 ```
 
 The first boot downloads the configured TRUD edition, builds `snomed.db` into a
-persistent Docker volume, and serves FHIR at `http://localhost:8080/fhir`.
+persistent Docker volume, and serves FHIR at `https://$DOMAIN/fhir` (or
+`http://localhost/fhir` if `DOMAIN` is left unset). See
+[Get Your Own Terminology Server](docs/terminology-server.md) for the full
+walkthrough, including optional basic auth.
 
 ## Documentation
 

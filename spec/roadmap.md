@@ -27,15 +27,10 @@ not here.)
 
 ### Distribution
 
-Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and Docker Compose quickstart for the terminology server. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs. Outstanding:
+Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and a Docker Compose stack (`sct` + a Caddy reverse proxy for automatic HTTPS, optional basic auth, CORS - see [`spec/deployment.md`](deployment.md)) published as a multi-arch image to Docker Hub (`pacharanero/sct`) on every release. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs and [`docs/terminology-server.md`](../docs/terminology-server.md). Outstanding:
 
-- [ ] Publish a Docker Hub / GHCR image for `sct serve`, with tags matching `sct` releases.
-      Part of the **`sct serve` Docker Compose deployment** design in
-      [`spec/deployment.md`](deployment.md): a Compose stack with `sct` + a Caddy TLS
-      service, runtime TRUD bootstrap (already in `docker/entrypoint.sh`), TLS from a
-      `DOMAIN` env var, optional basic-auth, and a multi-arch `buildx` publish wired
-      into the release workflow. Target UX: DNS -> ssh -> `docker compose up` with a
-      TRUD key + domain -> `curl https://mydomain/fhir/...` works.
+- [ ] Publish the same image to GHCR too (Docker Hub only today) - cheap addition,
+      reuses `GITHUB_TOKEN`, no new secret needed.
 - [ ] macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users
       don't have to `chmod +x` and bypass Gatekeeper
 - [ ] Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block.

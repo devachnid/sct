@@ -35,42 +35,9 @@ Responses are `application/fhir+json`. An `Accept` header that requests XML excl
 
 ## Docker Compose
 
-For the focused quick-start, see
-[Get your own terminology server in 2 commands](../terminology-server.md).
-
-For a small VPS where you want a working terminology server from a fresh clone:
-
-```bash
-git clone https://github.com/pacharanero/sct.git
-cd sct
-cp .env.example .env
-$EDITOR .env   # set TRUD_API_KEY
-docker compose up --build
-```
-
-The Compose setup builds `sct` with the `serve` feature, mounts a persistent
-`sct-data` volume at `/data`, and starts the server on
-`http://localhost:8080/fhir`. On first boot, if no SQLite database exists in the
-volume, the entrypoint runs:
-
-```bash
-sct trud download --edition uk_monolith --skip-if-current --pipeline --refsets all --locale en-GB
-```
-
-Set these in `.env` to change the bootstrap:
-
-| Variable | Default | Description |
-|---|---|---|
-| `TRUD_API_KEY` | - | Required for first boot unless you mount/provide an existing DB. |
-| `SCT_TRUD_EDITION` | `uk_monolith` | Built-in TRUD edition to download. |
-| `SCT_REFSETS` | `all` | Refset mode for the build; `all` enables ICD-10 / OPCS-4 maps and history. |
-| `SCT_LOCALE` | `en-GB` | Preferred-term locale. |
-| `SCT_INCLUDE_INACTIVE` | `false` | Set `true` to retain inactive concepts. |
-| `SCT_PORT` | `8080` | Host port mapped to the container. |
-
-Subsequent starts reuse the existing database and skip the TRUD download/build
-step. To force a rebuild, remove the `sct-data` Docker volume or run the desired
-`sct trud` command manually inside a one-off container.
+For a full self-host walkthrough - a `caddy` reverse proxy in front of `sct`
+for automatic HTTPS, optional basic auth, CORS, and the bootstrap/config
+reference - see [Get your own terminology server](../terminology-server.md).
 
 ---
 
