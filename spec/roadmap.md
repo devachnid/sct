@@ -4,16 +4,18 @@ Outstanding work and next steps. Completed work is removed; see git log for hist
 
 ---
 
-long-running processes such as `embed`, `ndjson`, `sqlite`, which have a known 'start' and 'end' ie we can see the completion of the task against the size of the task like `embed`'s "81216/836761 concepts embedded" should display progress and an ETA, even if it's an estimate.
-
-
-
 ### TODO
 
 In no particular order. (Distribution items - code signing, the Docker Hub image, and
 registry submissions - are tracked in detail under [Distribution](#distribution) below,
 not here.)
 
+* [ ] **Progress + ETA for long-running builds.** `embed`, `ndjson`, and `sqlite` are
+      long-running processes with a known start and a known total (e.g. `embed`'s
+      "81216/836761 concepts embedded"), so each can show progress and an estimated
+      time remaining, even if the estimate is rough. Real per-phase timings are now on
+      hand from this session's build-pipeline profiling (`benchmarks/profile.sh`,
+      RF2→NDJSON / NDJSON→SQLite+FTS / TCT breakdown) to calibrate the estimates against.
 * [~] revise the benchmarks and automate them, so that we end up with a nice-looking, comprehensive benchmarking comparison which includes comparing `sct` with local or remote Terminology servers, as well as comparing within `sct` the different search backends (`lexical` vs `fst`) and the impact of different index configurations (e.g. with or without labels). FHIR conformance fixtures and a terminology-server runner now exist in `benchmarks/conformance.sh`, and conformance runs as a **CI regression gate** (`benchmarks/conformance-ci.sh` builds the committed synthetic RF2 fixture, starts `sct serve`, and asserts against a minimal fixture set on every push). `bench.sh` can now compare either sct's native SQLite (`--sct-sqlite`) or sct serve (`--sct-fhir`) against a comparator FHIR server (`--vs`). Remaining: broader fixture coverage, comparator server compose profiles, and published reports. Concurrent load testing is now its own item (below).
 * [ ] **Concurrent load-testing harness for `sct serve`.** Today's `bench.sh` measures *single-request* latency one operation at a time; it says nothing about behaviour under contention. Add a load-testing harness (a load generator such as `oha` / `bombardier` / `k6` driving a mixed FHIR workload - `$lookup`, `$expand`, `$subsumes`, `$validate-code`) that ramps concurrency (1, 2, 4, 8, 16, 32, 64, 128 clients) and reports **throughput (req/s), tail latency (p50/p95/p99/p99.9), saturation point, and error rate** at each level. Goal: demonstrate `sct serve` stays fast as load climbs rather than degrading, and find the knee of the curve. Fair, fully-owned comparison is **`sct serve` vs a local Snowstorm Lite**, same machine, over loopback, with HTTP keep-alive and generous warm-up (JVM servers need it) - the same fairness controls the single-request benchmarks use. This also validates the concurrency design: `sct serve` is Tokio multi-thread with every DB op on `spawn_blocking` over concurrent read-only SQLite connections, so it *should* scale across cores; the harness would confirm that and reveal whether the per-request `open_db_readonly` (a fresh connection each call, no pool) becomes a bottleneck under high concurrency - i.e. whether a connection pool is worth adding. Output: latency-vs-concurrency and throughput-vs-concurrency curves, published as charts. A place sct's lean, GC-free architecture may shine against a JVM server's GC pauses and thread-pool limits - or expose a bottleneck to fix.
 * [ ] **Externally-verified FHIR conformance.** Our `benchmarks/conformance.sh` is home-grown - HL7-*aligned* (it exercises the real FHIR R4 terminology operations and has been cross-checked against Ontoserver and Snowstorm) but *not* an official/certified artefact, and the docs say so. To make a stronger, third-party claim, validate `sct serve` with the **HL7 FHIR Validator** (point it at `sct serve` as the terminology backend and validate real resources / Implementation Guides with SNOMED CT bindings). Add it to CI against the committed RF2 fixture so regressions are caught. The heavier, fuller path - a **FHIR `TestScript`** suite run in **Touchstone** (AEGIS) - is a later complement, not a prerequisite. Deferred; we'll do the FHIR Validator step sometime. See [`docs/fhir-conformance-benchmarks.md`](../docs/fhir-conformance-benchmarks.md).
@@ -88,17 +90,11 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
       solution for SNOMED-canonical lists; v2 is for genuinely cross-terminology source
       artefacts.
 - [ ] `sct codelist search <file> <query>` - interactive FTS5 search → include/exclude
+      (CLI surface exists and is documented in `--help`, but the handler is currently a
+      stub - `bail!("... is not yet implemented")`. Low-hanging: the plumbing is there.)
 - [ ] `sct codelist import --from <source>` - OCL, CSV, RF2, FHIR import
-- [x] **Composable codelists** ✅ **shipped** - a `.codelist` composes others via an
-      `includes:` front-matter list. References use a Docker-registry model: a bare id
-      resolves to `<registry>/<id>.codelist` (registry defaults to `./codelists`,
-      overridable via `--codelists` / `SCT_CODELISTS` / `[codelists] dir`), a path is
-      relative to the including file, and an `http(s)://` URL is fetched and cached. Members
-      are resolved live (own + included, recursively, parent exclusions win) by `stats`,
-      `validate`, `export`, `diff`, and `sct serve`; `sct codelist include` edits the
-      reference list and `sct codelist resolve` flattens to a standalone snapshot. Cycles
-      and missing includes are detected. See [`docs/commands/codelist.md`](../docs/commands/codelist.md).
-      Remaining: multi-terminology composition (format v2) and OCL references.
+      (same: `--from opencodelists/csv/rf2/fhir-json` is a real, validated flag, but the
+      handler stubs out. Low-hanging alongside `search` above.)
 
 ### Interactive "search as you type"
 
@@ -239,13 +235,6 @@ profile, but neither has cleared a "worth the surface area / risk" bar yet.
 - [ ] **MCP crossmaps** - CLI/codelist/FHIR crossmap support is shipped. Extend the MCP
       `snomed_map` tool beyond CTV3/Read v2 so it can expose ICD-10 / OPCS-4 `crossmaps`
       and history-forwarding results too.
-- [x] **Read v2 import** ✅ **shipped** - `sct read2 import` loads TRUD item 9
-      (`nhs_datamigration_29.0.0_20200401000001.zip`) from
-      `rcsctmap2_uk_20200401000001.txt`, selecting latest `EffectiveDate` per
-      `MapId`, storing `MapStatus > 0` as the active flag, and preserving
-      `DescriptionId`, `IS_ASSURED`, `MapId`, `EffectiveDate`, and source
-      provenance in `crossmaps`. `sct trud download --multi-terminology` builds
-      the full SNOMED/CTV3/Read v2/ICD-10/OPCS-4 workspace in one command.
 - [ ] **First-class ICD-10 / ICD-11 support** - current `sct` support for ICD-10 is
       map-centric: UK/International SNOMED CT -> ICD-10 ExtendedMap rows are
       already imported into `crossmaps` with `sct ndjson --refsets all`, and
