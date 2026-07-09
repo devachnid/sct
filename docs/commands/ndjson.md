@@ -163,6 +163,7 @@ One JSON object per line, sorted by concept SCTID. Every line is a standalone JS
 
 - One line per active concept (inactive omitted unless `--include-inactive`)
 - Stable ordering by concept ID
+- `fsn`, `preferred_term`, and `synonyms` are unbounded-length strings - no truncation at 255 or any other length, so SNOMED International's July 2026 increase of the maximum description length to 4096 characters (for long multivalent-vaccine ingredient lists) needs no schema change here
 - Locale-aware preferred terms
 - Self-contained: each line is independently interpretable
 - Greppable: `grep "22298006" snomed.ndjson`

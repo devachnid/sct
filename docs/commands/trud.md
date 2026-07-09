@@ -3,6 +3,9 @@
 Download SNOMED CT RF2 releases directly from [NHS TRUD](https://isd.digital.nhs.uk/trud)
 using the TRUD REST API. Handles authentication, SHA-256 integrity verification, and optional pipeline chaining so a single command can take you from API key to a fully-built SQLite database.
 
+!!! note "4096-character description limit (SNOMED International, July 2026)"
+    SNOMED International raised the maximum FSN/Synonym length from 255 to 4096 characters, driven by long ingredient lists on multivalent vaccine FSNs. `sct` never assumed a fixed length anywhere in the pipeline - RF2 parsing, NDJSON, SQLite, Parquet, Arrow, and the FST index all use variable-length string types throughout - so no code change was needed. Confirmed against the July 2026 UK Monolith release with no issues.
+
 ---
 
 ## Getting a TRUD API key
