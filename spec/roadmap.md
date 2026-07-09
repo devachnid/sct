@@ -74,9 +74,14 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 
 ### `sct codelist` - clinical code list management
 
-Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks). See [`docs/commands/codelist.md`](../docs/commands/codelist.md). Outstanding:
+Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks) / **fhir-json** (a FHIR R4 ValueSet, via the same shared builder `sct serve` uses, so exported and served forms are identical; `--url` sets the canonical base). See [`docs/commands/codelist.md`](../docs/commands/codelist.md). Outstanding:
 
-- [ ] `sct codelist export <file> --format fhir-json/rf2` - remaining export formats
+- [ ] `sct codelist export <file> --format rf2` - the remaining export format. Blocked on a
+      decision, not effort: a valid RF2 Simple Reference Set needs a real SNOMED CT namespace
+      (a `refsetId`, `moduleId`, and member-row UUIDs) that a codelist does not carry, so it
+      cannot be emitted correctly without that input. `--format fhir-json` shipped and covers
+      the portable-standards-export need in the meantime; `rf2` today returns a clear
+      not-yet-implemented message explaining the namespace requirement.
 - [ ] **Multi-terminology codelists (format v2)** - future extension now that the
       terminology workspace can contain SNOMED CT, CTV3, Read v2, ICD-10, and OPCS-4.
       Would allow first-class non-SNOMED source codes in a codelist, e.g. historical
