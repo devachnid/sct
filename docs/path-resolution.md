@@ -129,7 +129,7 @@ This convention covers **read** discovery only. Commands that *write* files keep
 | Command | Default output |
 |---|---|
 | `sct sqlite` | `./snomed.db` |
-| `sct ndjson` | `./snomed.ndjson` |
+| `sct ndjson` | Slugified name of the first `--rf2` input (e.g. `snomedct-monolithrf2-production-...ndjson`); use `-o` to pick your own |
 | `sct parquet` | `./snomed.parquet` |
 | `sct embed` | `./snomed-embeddings.arrow` |
 | `sct trud download` | `$SCT_DATA_HOME/releases/<zip>` |

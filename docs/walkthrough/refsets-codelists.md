@@ -24,16 +24,14 @@ sct refset list
 ```
 
 ```
-460 refset(s):
-
-  [999002431000000102] AIDS (acquired immune deficiency syndrome) defining illness for adults simple reference set  (26 members)
-  [999002121000000109] Accessible information - communication support simple reference set  (27 members)
-  ...
-  [1129631000000105] Summary Care Record exclusions simple reference set  (231 members)
-  ...
+999002431000000102 | AIDS (acquired immune deficiency syndrome) defining illness for adults simple reference set (26 members)
+999002121000000109 | Accessible information - communication support simple reference set (27 members)
+...
+1129631000000105 | Summary Care Record exclusions simple reference set (232 members)
+...
 ```
 
-The UK Monolith release contains around 460 simple refsets. The International release has
+The UK Monolith release contains around 463 simple refsets. The International release has
 fewer, but the same commands work regardless of edition.
 
 ### Show metadata for a single refset
@@ -45,7 +43,7 @@ sct refset info 1129631000000105
 ```
   [1129631000000105] Summary Care Record exclusions simple reference set
   Module:  999000021000000109
-  Members: 231
+  Members: 232
 ```
 
 ### List the concepts in a refset
@@ -169,7 +167,7 @@ sct codelist remove codelists/asthma-diagnosis.codelist 41553006 \
 Moves the line to a commented exclusion record, preserving the audit trail:
 
 ```
-# 41553006      Occupational asthma  # occupational asthma - separate pathway
+# 41553006      Detergent asthma  # occupational asthma - separate pathway
 ```
 
 ### Validate (CI-ready)

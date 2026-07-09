@@ -125,7 +125,9 @@ in English and German using SapBERT + FAISS. English F1: 0.765 unsupervised.
 
 **Note for `sct`:** SapBERT would likely produce significantly better SNOMED embeddings
 than a general model like `nomic-embed-text`, since it was specifically trained on
-biomedical concept synonymy. Worth supporting as an `--model` option in `sct embed`.
+biomedical concept synonymy. `sct embed --model <name>` and `sct semantic --model <name>`
+already support pointing at any Ollama model, so recommending SapBERT here is a
+documentation and default-choice question, not a missing flag.
 
 ---
 

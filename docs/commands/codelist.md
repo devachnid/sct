@@ -2,7 +2,7 @@
 
 Build, validate, and manage clinical code lists as plain-text `.codelist` files.
 
-Also accessible as `sct refset` and `sct valueset`.
+Also accessible as `sct valueset`.
 
 A code list is a curated collection of clinical codes used to identify a patient population or clinical event in a health dataset. `.codelist` files use YAML front-matter and a simple concept list body - they're designed to live in version control and be reviewed like source code.
 

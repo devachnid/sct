@@ -1,6 +1,6 @@
 # Deployment: self-hosting `sct serve` with Docker Compose
 
-Status: **shipped**. All four deliverables below are built: the `Caddyfile` + `docker/caddy-entrypoint.sh`, the `caddy` service in `compose.yaml`, the multi-arch Docker Hub publish job in `.github/workflows/release.yml`, and the user-facing walkthrough at [`docs/terminology-server.md`](../docs/terminology-server.md). The Caddy layer was verified against a live stack (not just `caddy validate` syntax-checking) - proxying, CORS, the unhealthy-upstream 503, and basic auth (401/401/200 across unauthenticated/wrong/correct credentials) all confirmed working; two real bugs surfaced only by live testing are noted inline where they were fixed. This document now records the *design record*, not outstanding work - see `spec/roadmap.md` for anything still open (e.g. GHCR as a second registry).
+Status: **shipped**. All four deliverables below are built: the `Caddyfile` + `docker/caddy-entrypoint.sh`, the `caddy` service in `compose.yaml`, the multi-arch Docker Hub publish job in `.github/workflows/release.yml`, and the user-facing walkthrough at [`docs/deploy/`](../docs/deploy/index.md). The Caddy layer was verified against a live stack (not just `caddy validate` syntax-checking) - proxying, CORS, the unhealthy-upstream 503, and basic auth (401/401/200 across unauthenticated/wrong/correct credentials) all confirmed working; two real bugs surfaced only by live testing are noted inline where they were fixed. A second, no-clone run path (`compose.hub.yaml`, pulling the published image instead of building) was added after this spec's original "Realistic run" below and is verified the same way - see that section. This document now records the *design record*, not outstanding work - see `spec/roadmap.md` for anything still open (e.g. GHCR as a second registry).
 
 ## Goal: the four-step self-host
 
@@ -93,11 +93,11 @@ All four shipped:
 1. **`Caddyfile`** (+ `docker/caddy-entrypoint.sh`) driven by the env above: the site address and optional `basic_auth` block are resolved by the entrypoint wrapper rather than Caddyfile placeholders (see the file's own header comment for why - `{$VAR:default}` substitutes at parse time and cannot safely embed a colon, and `basic_auth` must be entirely absent, not present-with-dummy-credentials, when unconfigured). CORS headers, and a top-level `handle_errors 502 503 504` block for the "still starting up" message - deliberately *not* `reverse_proxy`'s nested `handle_response`, which does not fire when active health checks have marked every upstream down (verified live).
 2. **A `caddy` service in `compose.yaml`**, publishing `80` + `443`, fronting the internal `sct` service (no longer directly port-published) and sharing named volumes for issued certs + Caddy config. With `DOMAIN` unset it serves plain HTTP for local/dev use.
 3. **A published multi-arch image** (`linux/amd64` + `linux/arm64`) on **Docker Hub only** (`docker.io/pacharanero/sct`) - GHCR was in scope per open question 1 but not requested; trivial to add later since it reuses `GITHUB_TOKEN` with no extra secret. Built on native per-arch runners (not QEMU) and merged into one manifest via `docker buildx imagetools create`, wired into `.github/workflows/release.yml` as two jobs after the GitHub Release.
-4. **Docs**: [`docs/terminology-server.md`](../docs/terminology-server.md) - an existing, better-named, already-nav-registered page turned out to already own this job; updated in place rather than duplicated into a new `docs/deployment.md`.
+4. **Docs**: [`docs/terminology-server.md`](../docs/deploy/terminology-server.md) - an existing, better-named, already-nav-registered page turned out to already own this job; updated in place rather than duplicated into a new `docs/deployment.md`. Later split into a `docs/deploy/` section (see below) once a second run path existed to document alongside it.
 
 ## Realistic run
 
-As actually documented in [`docs/terminology-server.md`](../docs/terminology-server.md) - `git clone` rather than piecemeal `curl -O`, since the stack is more than the two files a fetch-and-run approach would suggest (`Dockerfile`, `docker/entrypoint.sh`, `docker/caddy-entrypoint.sh` all need to come along too):
+As actually documented in [`docs/deploy/terminology-server.md`](../docs/deploy/terminology-server.md) - `git clone` rather than piecemeal `curl -O`, since building from source needs more than a couple of files (`Dockerfile`, `docker/entrypoint.sh`, `docker/caddy-entrypoint.sh` all need to come along too):
 
 ```bash
 # 1. DNS: fhir.example.org -> your server   (ACME needs this live first)
@@ -112,6 +112,8 @@ docker compose up -d --build
 ```
 
 The one delta from the ideal four steps: step 4 succeeds once the first-run build and certificate issuance complete, not instantly. Fetching a compose file is the expected shape for a multi-service stack, not friction to design away.
+
+**Revised for the published image.** The `Dockerfile` / `docker/entrypoint.sh` reasoning above only applies to building from source - once the image was actually published (deliverable 3), `Dockerfile` and `entrypoint.sh` are baked into it and never need to exist on the host. Only the `caddy` service still needs host-side config, since it bind-mounts a stock upstream image rather than a custom-built one. That leaves exactly four files to fetch (`compose.hub.yaml` as `compose.yaml`, `Caddyfile`, `docker/caddy-entrypoint.sh`, `.env.example` as `.env`) with no `git clone` at all - verified end to end against the real published `pacharanero/sct:latest` image, genuinely pulled from Docker Hub rather than built locally. Documented as the [Docker Image](../docs/deploy/docker-image.md) route, alongside the original as [Build From Source](../docs/deploy/terminology-server.md).
 
 ## Caveats to design around
 

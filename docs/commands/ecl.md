@@ -61,9 +61,11 @@ sct ecl compress [<IDS>...] [--codelist <FILE>] [--intensional-only]
 | `--intensional-only` | off | Emit only subsumption/exclusion clauses; do **not** add literal `OR`/`MINUS` residuals. Exits non-zero if the result is not exact. |
 | `--max-exclusions <N>` | `32` | Cap the number of `MINUS <<x` clauses before the remainder falls to literal residuals. |
 | `--pretty` | off | Break the expression across indented lines (text output only). |
+| `--no-verify` | off | Skip the re-expansion check that verifies exactness (verification is on by default and cheap). |
 | `--stats` | off | Print clause counts and intensional coverage to stderr. |
 | `-f, --format <FMT>` | `text` | `text` prints the ECL expression; `json`/`yaml` emit a structured object (expression plus include/exclude/residual breakdown). |
 | `--db <FILE>` | discovered | SQLite database. |
+| `--codelists <DIR>` | `./codelists` | Registry directory for resolving bare `includes:` ids when compressing a `--codelist` (also `$SCT_CODELISTS` / `[codelists] dir`). |
 
 By default the result is **exact**: if the subsumption heuristic can't express the set cleanly, literal `OR id` / `MINUS id` residuals are appended so the expression provably reproduces the input (verified by re-expansion). A set with no hierarchical structure degrades gracefully to a list of `OR`ed ids - never to a wrong answer.
 
@@ -72,7 +74,7 @@ By default the result is **exact**: if the subsumption heuristic can't express t
 sct ecl expand "<<73211009" | sct ecl compress -            # => <<73211009
 
 # Subtree-minus-subtree
-printf '73211009\n44054006\n' | sct ecl compress - --stats  # => <<73211009 MINUS <<46635009
+sct ecl expand "<<73211009 MINUS <<46635009" | sct ecl compress - --stats  # => <<73211009 MINUS <<46635009
 
 # Round-trip: compress then expand returns the original set
 sct ecl compress --codelist diabetes.codelist | sct ecl expand -

@@ -110,7 +110,7 @@ The search box accepts plain terms as well as FTS5 expressions:
 | `heart attack` | Exact phrase match |
 | `"heart attack"` | Explicit phrase match |
 | `diabetes* OR hypertension` | Boolean OR |
-| `finding_site:heart` | Field-scoped search |
+| `fsn:heart` | Field-scoped search - restrict to one FTS column (`id`, `preferred_term`, `synonyms`, `fsn`) |
 
 ---
 

@@ -55,7 +55,7 @@ If Ollama is not running when you run `sct embed`, you will see a helpful error 
 # Pull the model once
 ollama pull nomic-embed-text
 
-# Generate embeddings (takes ~30 minutes for 831k concepts on CPU)
+# Generate embeddings (takes ~30 minutes for 837,930 concepts on CPU)
 sct embed \
   --input snomed.ndjson \
   --output snomed-embeddings.arrow
@@ -101,6 +101,8 @@ The output is a single Arrow IPC (`.arrow`) file with the following schema:
 | `embedding` | `fixed_size_list<float32>[N]` | Vector embedding (dimension determined by model) |
 
 For `nomic-embed-text` the dimension is 768.
+
+The Arrow schema also carries metadata identifying how the file was built: `sct.embedding_model` and `sct.embed_text_scheme` (the version of the text-composition scheme above), alongside the usual release provenance (edition, release date, `sct` version). `sct semantic` reads `sct.embedding_model` and refuses to query the file with a different model than the one that built it - a same-dimension model swap would otherwise produce silently meaningless cosine scores. Files built before this metadata existed get a stderr note instead, since they can't be verified.
 
 ---
 
@@ -174,7 +176,7 @@ db.create_table("concepts", data=table, mode="overwrite")
 
 ## Notes
 
-- Embedding 831k concepts takes significant time on CPU (~30 min). A GPU or Apple Silicon machine will be much faster.
+- Embedding 837,930 concepts takes significant time on CPU (~30 min). A GPU or Apple Silicon machine will be much faster.
 - `nomic-embed-text` produces 768-dimensional float32 vectors. Other models with different dimensions will work automatically.
 - The complete dataset is held in memory during embedding. For limited RAM, use `--batch-size 16` or lower.
 - The `.arrow` file is also consumed by `sct mcp --embeddings` to expose `snomed_semantic_search` to AI clients.

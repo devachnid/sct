@@ -117,7 +117,7 @@ different simple maps, identified by the `refsetId` column:
 | `1323091000000105` | NHS COVID-19 test catalogue (second set) |
 
 CTV3 is what most people are after for legacy migration. The `900000000000497000` refset contains
-over 524,000 mappings in the current Monolith release.
+over 380,000 mappings in the current Monolith release.
 
 Structure of each row:
 
@@ -133,7 +133,7 @@ id  effectiveTime  active  moduleId  refsetId  referencedComponentId  mapTarget
 
 ## What `sct ndjson` picks up automatically
 
-`sct ndjson` scans the extracted directory and loads:
+By default (`--refsets simple`), `sct ndjson` scans the extracted directory and loads:
 
 - All `sct2_Concept_*Snapshot*.txt` files
 - All `sct2_Description_*Snapshot*.txt` files
@@ -141,16 +141,25 @@ id  effectiveTime  active  moduleId  refsetId  referencedComponentId  mapTarget
 - All `der2_cRefset_Language*Snapshot*.txt` files (for preferred term selection)
 - `der2_sRefset_SimpleMap*Snapshot*.txt` - CTV3 codes (refset `900000000000497000`)
 
-It does **not** currently parse ICD-10, OPCS, or other maps - those are
-different reference set types (ExtendedMap/ComplexMap) with more complex rule columns.
+Pass `--refsets all` to additionally load `der2_i*Refset_ExtendedMap*Snapshot*.txt` (ICD-10
+and OPCS-4 maps) and `der2_cRefset_Association*Snapshot*.txt` (historical associations /
+concept history) - this is what `sct trud download --multi-terminology` and `sct map` rely
+on for cross-terminology mapping. See
+[spec/cross-terminology-mapping.md](https://github.com/pacharanero/sct/blob/main/spec/cross-terminology-mapping.md)
+for the full picture.
+
+It still does **not** parse `der2_iissscRefset_ComplexMap*` (legacy ICD-9/OPCS complex maps)
+or the concept inactivation-reason (`AttributeValue`) refset.
 
 ---
 
 ## Read v2 (Read Codes)
 
-Read v2 codes are **not in current UK SNOMED CT releases**. They were phased out of NHS
-distributions. If you need Read v2 mappings, historical crosswalk files exist but are not
-included in TRUD downloads.
+Read v2 codes are **not in current UK SNOMED CT releases** (Monolith, Clinical, or Drug).
+They were phased out of NHS distributions. The final Read v2 → SNOMED CT crosswalk is still
+available separately via NHS TRUD item 9 ("NHS Data Migration") - `sct trud download --edition
+nhs_data_migration` or `--with-read2` fetches it, and `sct read2 import` loads it into the
+SQLite database alongside the SNOMED data.
 
 ---
 

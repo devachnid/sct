@@ -1,6 +1,8 @@
-# Get Your Own Terminology Server
+# Build From Source
 
-Run a FHIR R4 SNOMED CT terminology server on a clean VPS with Docker Compose - HTTPS included. The stack is two containers: `sct` (builds the database on first boot and serves FHIR), and [Caddy](https://caddyserver.com) in front of it (automatic TLS, optional basic auth, CORS). Caddy owns the public ports; `sct` is never reachable directly.
+Run a FHIR R4 SNOMED CT terminology server on a clean VPS with Docker Compose - HTTPS included. This route builds the `sct` image from a git clone, so it's the one to pick if you want to patch the code, pin a specific commit, or build for a platform the [published image](docker-image.md) doesn't cover. If you just want the server running, [Docker Image](docker-image.md) is faster - no clone, no build.
+
+The stack is two containers: `sct` (builds the database on first boot and serves FHIR), and [Caddy](https://caddyserver.com) in front of it (automatic TLS, optional basic auth, CORS). Caddy owns the public ports; `sct` is never reachable directly.
 
 ## Prerequisites
 
@@ -148,7 +150,7 @@ The `sct-data` volume contains licensed SNOMED CT data. Do not publish it as par
 
 ## FHIR surface
 
-The Docker setup runs the same server as [`sct serve`](commands/serve.md), including:
+The Docker setup runs the same server as [`sct serve`](../commands/serve.md), including:
 
 - `CodeSystem/$lookup`
 - `CodeSystem/$validate-code`
@@ -157,4 +159,4 @@ The Docker setup runs the same server as [`sct serve`](commands/serve.md), inclu
 - `ValueSet/$validate-code`
 - `ConceptMap/$translate` when the database has crossmaps loaded
 
-For the full operation reference, see [`sct serve`](commands/serve.md). For the deployment design and rationale, see [`spec/deployment.md`](https://github.com/pacharanero/sct/blob/main/spec/deployment.md).
+For the full operation reference, see [`sct serve`](../commands/serve.md). For the deployment design and rationale, see [`spec/deployment.md`](https://github.com/pacharanero/sct/blob/main/spec/deployment.md).

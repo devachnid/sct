@@ -14,7 +14,7 @@ Embeds your query text via Ollama and performs cosine similarity against all con
 ## Usage
 
 ```
-sct semantic <QUERY> [--embeddings <FILE>] [--model <MODEL>] [--ollama-url <URL>] [--limit <N>]
+sct semantic <QUERY> [--embeddings <FILE>] [--model <MODEL>] [--ollama-url <URL>] [--limit <N>] [--format text|json|yaml]
 ```
 
 ## Options
@@ -26,7 +26,10 @@ sct semantic <QUERY> [--embeddings <FILE>] [--model <MODEL>] [--ollama-url <URL>
 | `--model <MODEL>` | `nomic-embed-text` | Ollama model - must match the model used when building the embeddings. |
 | `--ollama-url <URL>` | `http://localhost:11434` | Ollama base URL. |
 | `--limit <N>` | `10` | Maximum number of results. |
+| `-f, --format <FORMAT>` | `text` | Output format: `text`, `json`, or `yaml`. |
 | `--ids` | off | Emit only matching SCTIDs (newline-delimited) for piping into other commands. |
+| `--template <TEMPLATE>` | `{score} \| {id} \| {pt}` | Override the per-result line template (text output only). See [`sct refset`](refset.md) for the variable list. |
+| `--provenance` / `--no-provenance` | on for TTY, off otherwise | Show/hide release provenance (edition, release date) on this query's output. |
 
 ---
 
@@ -103,7 +106,7 @@ The query is embedded using the same text template as `sct embed`, so the query 
 |---|---|---|
 | Basis | Keyword matching (FTS5) | Meaning / vector similarity |
 | Input | SQLite `.db` | Arrow `.arrow` + Ollama |
-| Speed | Instant | A few seconds (Ollama round-trip + scanning the full `.arrow` file - observed 2-7 s on an 831k-concept UK Monolith) |
+| Speed | Instant | A few seconds (Ollama round-trip + scanning the full `.arrow` file - observed 2-7 s on an 838k-concept UK Monolith) |
 | Finds synonyms | Only if indexed | Yes |
 | Finds related concepts without shared words | No | Yes |
 | Works offline | Yes | Requires local Ollama |

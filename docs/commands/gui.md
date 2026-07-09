@@ -11,7 +11,7 @@ Same data as [`sct tui`](tui.md) - search, concept detail, hierarchy browsing, I
 ## Usage
 
 ```bash
-sct gui [--db <PATH>] [--port <PORT>] [--no-open]
+sct gui [--db <PATH>] [--port <PORT>] [--no-open] [--dev-html <FILE>]
 ```
 
 ## Options
@@ -21,6 +21,7 @@ sct gui [--db <PATH>] [--port <PORT>] [--no-open]
 | `--db <PATH>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 | `--port <PORT>` | `8420` | TCP port to listen on. |
 | `--no-open` | *(flag)* | Start the server but do not open a browser window. |
+| `--dev-html <FILE>` | *(embedded UI)* | Development only: serve the UI from this HTML file instead of the version embedded in the binary. Changes are visible on browser refresh without recompiling. |
 
 ---
 
@@ -106,16 +107,16 @@ curl 'http://127.0.0.1:8420/api/graph/22298006'
 {
   "focal_id": "22298006",
   "nodes": [
-    {"id": "22298006", "label": "Heart attack", "type": "focal"},
-    {"id": "414795007", "label": "Ischaemic heart disease", "type": "parent"},
+    {"id": "22298006", "label": "Myocardial infarction", "type": "focal"},
+    {"id": "414545008", "label": "Ischaemic heart disease", "type": "parent"},
     {"id": "57054005",  "label": "Acute myocardial infarction", "type": "child"}
   ],
   "edges": [
-    {"source": "414795007", "target": "22298006"},
+    {"source": "414545008", "target": "22298006"},
     {"source": "22298006",  "target": "57054005"}
   ],
-  "parent_count": 1,
-  "child_count": 47
+  "parent_count": 2,
+  "child_count": 14
 }
 ```
 

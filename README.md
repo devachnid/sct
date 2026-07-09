@@ -44,9 +44,9 @@ SNOMED CT is distributed as RF2 - a set of tab-separated files that require join
 | Single concept lookup (SCTID) | 6ms | 491ms | ~80x faster |
 | Free-text search (10 results) | 2ms | 202ms | ~100x faster |
 
-> * Snowstorm Lite running in Docker with 24Gb of Java heap allocation ran out of memory on the full UK Monolith, which has 831k concepts. `sct` handled it in under a minute.
+> * Snowstorm Lite running in Docker with 24Gb of Java heap allocation ran out of memory on the full UK Monolith, which has 837,930 concepts. `sct` handled it in under a minute.
 
-For more detailed benchmarks, see [docs/benchmarks.md](docs/benchmarks.md). Feel free to run the benchmarks yourself and share your results, perhaps as an Issue.
+These comparison numbers predate the current 837,930-concept release and haven't been re-run against a live Snowstorm Lite instance since - treat them as indicative rather than current. For up-to-date `sct`-only timings, see [docs/benchmarks.md](docs/benchmarks.md). Feel free to run the benchmarks yourself (including a fresh Snowstorm Lite comparison) and share your results, perhaps as an Issue.
 
 ---
 
@@ -116,12 +116,11 @@ cargo install --path . --features full   # both
 
 | Feature | What it adds | Extra dependencies |
 |---|---|---|
-| (default) | All non-interactive subcommands | - |
+| (default) | All non-interactive subcommands, plus the FHIR R4 server (`sct serve`) | `axum`, `tokio` |
 | `tui` | Keyboard-driven terminal UI (`sct tui`) | `ratatui`, `crossterm` |
 | `gui` | Browser-based graph UI (`sct gui`) | `axum`, `tokio`, `open` |
-| `serve` | FHIR R4 terminology server (`sct serve`) | `axum`, `tokio` |
 | `dmwb` | Read NHS Data Migration Workbench `.mdb` files (`sct dmwb`) | `jetdb` |
-| `full` | `tui` + `gui` + `serve` | all of the above |
+| `full` | `tui` + `gui` (`serve` is already in the default build) | all of the above |
 
 ### Manual download
 
@@ -138,10 +137,10 @@ Grab the appropriate archive from the [Releases page](https://github.com/pachara
 #                   NB: You need to Subscribe to a release before you can see the Download option 🤯
 #    International: https://mlds.ihtsdotools.org/ (allow up to a week for approval)
 
-# 2. Convert RF2 → NDJSON (~10s for 831k concepts)
+# 2. Convert RF2 → NDJSON (~52s for 837,930 concepts)
 #    Pass the .zip directly - no manual extraction needed
 sct ndjson --rf2 SnomedCT_MonolithRF2_PRODUCTION_20260311T120000Z.zip
-# ✓  831,487 concepts written → snomedct-monolithrf2-production-20260311t120000z.ndjson
+# ✓  837,930 concepts written → snomedct-monolithrf2-production-20260311t120000z.ndjson
 
 # 3. Load into SQLite with FTS5
 sct sqlite --input snomedct-monolithrf2-production-20260311t120000z.ndjson
@@ -173,8 +172,9 @@ docker compose up -d --build
 The first boot downloads the configured TRUD edition, builds `snomed.db` into a
 persistent Docker volume, and serves FHIR at `https://$DOMAIN/fhir` (or
 `http://localhost/fhir` if `DOMAIN` is left unset). See
-[Get Your Own Terminology Server](docs/terminology-server.md) for the full
-walkthrough, including optional basic auth.
+[Get Your Own Terminology Server](docs/deploy/index.md) for the full
+walkthrough, including optional basic auth and a no-clone route using the
+published Docker Hub image.
 
 ## Documentation
 
@@ -184,27 +184,31 @@ For all further information see the full documentation by either exploring the [
 
 ## Subcommands
 
-* [sct ndjson](docs/ndjson.md) - convert an RF2 Snapshot directory to a canonical NDJSON artefact
-* [sct sqlite](docs/sqlite.md) - load NDJSON into a SQLite database with FTS5
-* [sct parquet](docs/parquet.md) - export NDJSON to a Parquet file for DuckDB / analytics
-* [sct markdown](docs/markdown.md) - export NDJSON to per-concept Markdown files (or per-hierarchy with `--mode hierarchy`)
-* [sct mcp](docs/mcp.md) - start a local MCP server over stdio backed by the SQLite database
+* [sct trud](docs/commands/trud.md) - download SNOMED CT RF2 releases via the NHS TRUD API
+* [sct ndjson](docs/commands/ndjson.md) - convert an RF2 Snapshot directory to a canonical NDJSON artefact
+* [sct sqlite](docs/commands/sqlite.md) - load NDJSON into a SQLite database with FTS5
+* [sct tct](docs/commands/tct.md) - build a transitive closure table over the IS-A hierarchy for subsumption-heavy workloads
+* [sct parquet](docs/commands/parquet.md) - export NDJSON to a Parquet file for DuckDB / analytics
+* [sct markdown](docs/commands/markdown.md) - export NDJSON to per-concept Markdown files (or per-hierarchy with `--mode hierarchy`)
+* [sct mcp](docs/commands/mcp.md) - start a local MCP server over stdio backed by the SQLite database
 * [sct serve](docs/commands/serve.md) - FHIR R4 terminology server ($lookup/$validate-code/$subsumes/$expand with ECL)
 * [sct read2](docs/commands/read2.md) - import final Read v2 maps from NHS Data Migration TRUD item 9
 * [sct embed](docs/commands/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
 * [sct lexical](docs/commands/lexical.md) - keyword (FTS5) search over the SQLite database
 * [sct fst](docs/commands/fst.md) - mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
 * [sct semantic](docs/commands/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama) - experimental, see the docs for known limitations
+* [sct ecl](docs/commands/ecl.md) - evaluate an ECL expression and emit matching concept SCTIDs (pipe-friendly)
 * `sct lookup <code>` - look up a concept by SCTID, or reverse-resolve a CTV3 code
-* [sct transcode](docs/commands/transcode.md) - map a stream of codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4 (`sct trud download --multi-terminology` builds the full workspace)
-* [sct crosswalk](docs/commands/crosswalk.md) - show all cross-terminology equivalents of a single code at once
+* [sct diagram](docs/commands/diagram.md) - draw a concept's definition, ancestors, or descendants as a tree, DOT, or Mermaid diagram
+* [sct refset](docs/commands/refset.md) - inspect SNOMED CT simple reference sets loaded into a SQLite database
+* [sct map](docs/commands/map.md) - map codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4: `sct map <code>` shows all cross-terminology equivalents of a single code, `sct map --from read2 --to snomed` maps a stream (`sct trud download --multi-terminology` builds the full workspace). Aliases: `sct transcode`, `sct crosswalk`
 * `sct codelist` - build, validate, and publish clinical code lists; `add --ecl "<<73211009"` populates from an ECL query
 * `sct info <file>` - inspect any `.ndjson`, `.db`, or `.arrow` artefact and print a summary
 * `sct diff --old <file> --new <file>` - compare two NDJSON releases and report what changed
 * `sct paths` - show where sct looks for databases, embeddings, and config files
-* [sct completions](docs/completions.md) - print shell completion scripts (bash, zsh, fish, powershell, elvish)
-* [sct tui](docs/tui.md) - keyboard-driven terminal UI for interactive SNOMED CT exploration *(optional feature)*
-* [sct gui](docs/gui.md) - browser-based UI served over localhost for point-and-click exploration *(optional feature)*
+* [sct completions](docs/commands/completions.md) - print shell completion scripts (bash, zsh, fish, powershell, elvish)
+* [sct tui](docs/commands/tui.md) - keyboard-driven terminal UI for interactive SNOMED CT exploration *(optional feature)*
+* [sct gui](docs/commands/gui.md) - browser-based UI served over localhost for point-and-click exploration *(optional feature)*
 
 Run any subcommand with `--help` for full option reference.
 

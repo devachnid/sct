@@ -11,14 +11,14 @@ Export SNOMED CT as a directory of Markdown files - one per concept. Ideal for
 retrieval-augmented generation (RAG), Claude Code file reading, or filesystem MCP.
 
 !!! danger "CRASH WARNING"
-    **Use with caution:** the resulting directory is about 3.2 GB with 831,000 files (nested in subdirectories), which can be unwieldy to manage and version-control. If you try to open the directory in a text editor, it may crash. Consider using `.gitignore` or a separate branch if you want to keep it in the same repository.
+    **Use with caution:** the resulting directory is about 3.2 GB with 837,930 files (nested in subdirectories), which can be unwieldy to manage and version-control. If you try to open the directory in a text editor, it may crash. Consider using `.gitignore` or a separate branch if you want to keep it in the same repository.
 
 > **Docs**: [`sct markdown`](../commands/markdown.md)
 
 ```bash
 sct markdown --input snomed.ndjson --output ./snomed-concepts/
 
-# ~14.5 s for ~831k .md files, ~1 GB total
+# ~32 s for ~838k .md files, ~3.2 GB total
 ```
 
 **Example output** (`cat snomed-concepts/clinical-finding/22298006.md`):
@@ -69,7 +69,7 @@ sct markdown --input snomed.ndjson --output ./snomed-concepts/
 ```bash
 sct markdown --input snomed.ndjson --output ./snomed-hierarchies/ --mode hierarchy
 
-# ~ 3 s for ~ 20 .md files, total ~ 380 MB
+# ~ 8 s for ~ 20 .md files, total ~ 333 MB
 ```
 
 These human-readable files can be quite helpful for just getting an understanding of how concepts are structured, what their preferred terms and synonyms are, and what relationships they have. They can be used as context documents for retrieval-augmented generation (RAG) with LLMs, or simply for browsing in a Markdown viewer or VSCode.
@@ -83,7 +83,7 @@ Generate dense vector embeddings for semantic (nearest-neighbour) search.
 !!! tip "Local AI required"
     Requires [Ollama](https://ollama.ai) running locally.
 
-The embeddings take quite a while to generate for the whole release (about 40 minutes for the UK Monolith with 831k concepts), and the resulting Arrow IPC file is about 2.7 GB. The resulting semantic search is a genuinely useful adjunct to keyword search - see the caveats in [`sct semantic`](../commands/semantic.md) before relying on it.
+The embeddings take quite a while to generate for the whole release (about 40 minutes for the UK Monolith with 838k concepts), and the resulting Arrow IPC file is about 2.7 GB. The resulting semantic search is a genuinely useful adjunct to keyword search - see the caveats in [`sct semantic`](../commands/semantic.md) before relying on it.
 
 > **Docs**: [`sct embed`](../commands/embed.md)
 
@@ -102,7 +102,7 @@ sct embed --input snomed.ndjson \
           --output snomed-embeddings.arrow \
           --model nomic-embed-text
 
-# ~65 mins for ~831k concepts → snomed-embeddings.arrow (2.7 GB)
+# ~65 mins for ~838k concepts → snomed-embeddings.arrow (2.7 GB)
 ```
 
 Each concept is embedded using a rich text template (real example, Myocardial infarction):
@@ -208,10 +208,18 @@ With semantic search:
 | `snomed_children` | Immediate IS-A children of a concept |
 | `snomed_ancestors` | Full ancestor chain to SNOMED root |
 | `snomed_hierarchy` | All concepts within a top-level hierarchy |
-| `snomed_map` | Cross-map between SNOMED CT and CTV3 (UK only) |
+| `snomed_map` | Cross-map between SNOMED CT and CTV3/Read v2 (UK only) |
 | `snomed_refsets` | List all loaded refsets with member counts |
 | `snomed_refset_members` | List concepts belonging to a refset |
 | `snomed_semantic_search` | Nearest-neighbour semantic search (requires `--embeddings`) |
+| `codelist_list` | List `.codelist` files in a directory, with title, status, and concept count |
+| `codelist_read` | Read a `.codelist` file's metadata and concept lists |
+| `codelist_new` | Scaffold a new `.codelist` file with YAML front-matter |
+| `codelist_add` | Add SCTIDs to a `.codelist` file |
+| `codelist_remove` | Move a concept to excluded in a `.codelist` file |
+| `codelist_validate` | Validate a `.codelist` file against the database |
+| `codelist_stats` | Concept count, hierarchy breakdown, and staleness for a `.codelist` file |
+| `codelist_export` | Export a `.codelist` file as CSV, OpenCodelists CSV, or Markdown |
 
 **Example MCP interaction:**
 
@@ -220,10 +228,10 @@ With semantic search:
 LLM calls `snomed_children` with SCTID `44054006`, receives the list, and answers
 with accurate SNOMED-grounded terminology.
 
-### UK edition: CTV3 cross-mapping
+### UK edition: CTV3 and Read v2 cross-mapping
 
 If your database was built from a UK NHS SNOMED CT release, the MCP server also has access to
-`snomed_map` - a bidirectional lookup tool for CTV3 legacy codes.
+`snomed_map` - a bidirectional lookup tool for CTV3 and Read v2 legacy codes.
 
 Example MCP interaction:
 
@@ -248,7 +256,9 @@ SNOMED concept details and provides context with the modern terminology.
 
 **MCP server properties:**
 
-- Startup time < 5 ms (well under the 100 ms MCP budget)
+- Startup time scales with database size: under 5 ms for a small database, but around 373 ms
+  for a full UK Monolith database with a transitive closure table (2.6 GB) - see
+  [benchmarks](../benchmarks.md#mcp-server-startup-time) for measured figures.
 - Read-only and stateless
 - Dual-mode transport: supports both Claude Desktop (Content-Length framing) and
   Claude Code 2.1.86+ (newline-delimited JSON)

@@ -23,7 +23,7 @@ It was initially created as an experiment in file-based data handling, offline-f
 
 ```mermaid
 flowchart TD
-    RF2["SNOMED RF2 release"] -->|"sct ndjson · build once per release (~30 s / 831k concepts)"| N[("canonical NDJSON artefact")]
+    RF2["SNOMED RF2 release"] -->|"sct ndjson · build once per release (~52 s / 838k concepts)"| N[("canonical NDJSON artefact")]
 
     N -->|"sct sqlite"| DB[("snomed.db · SQL + full-text search<br/>+ transitive closure (sct tct)")]
     N -->|"sct parquet"| PQ[("snomed.parquet · analytics with DuckDB / pandas")]

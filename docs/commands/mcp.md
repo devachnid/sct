@@ -2,7 +2,7 @@
 
 Start a local MCP (Model Context Protocol) server backed by the SNOMED CT SQLite database. Exposes SNOMED CT as a set of tools for Claude Desktop, Claude Code, Cursor, and any other MCP-compatible AI client.
 
-Single binary, no runtime dependencies, starts in under 5 ms. The SNOMED CT database is always read-only; codelist tools can read and write `.codelist` files.
+Single binary, no runtime dependencies. Startup scales with database size rather than being a fixed cost - low milliseconds against a small database, a few hundred milliseconds against a full national-edition database with a transitive closure table (see [Benchmarks](../benchmarks.md#mcp-server-startup-time)). The SNOMED CT database is always read-only; codelist tools can read and write `.codelist` files.
 
 Design rationale for `snomed_semantic_search` lives in [`spec/commands/mcp.md`](https://github.com/pacharanero/sct/blob/main/spec/commands/mcp.md).
 
@@ -36,6 +36,8 @@ sct mcp [--db <DB>] [--embeddings <ARROW>] [--model <MODEL>] [--ollama-url <URL>
 | `snomed_children` | Always | Immediate IS-A children of a concept |
 | `snomed_ancestors` | Always | Full ancestor chain up to root |
 | `snomed_hierarchy` | Always | List all concepts in a named top-level hierarchy |
+| `snomed_refsets` | Always | List reference sets loaded in the database, with member counts |
+| `snomed_refset_members` | Always | List the concepts belonging to a given reference set |
 | `snomed_map` | Always (UK edition only) | Bidirectional SNOMED↔CTV3/Read v2 cross-map |
 | `snomed_semantic_search` | Requires `--embeddings` | Nearest-neighbour semantic search via vector embeddings |
 
@@ -154,5 +156,5 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
 - **Protocol versions supported:** MCP 2024-11-05 (Content-Length framing) and MCP 2025-03-26+ (newline-delimited JSON). The version is negotiated on `initialize`.
 - **Database access:** read-only - the SNOMED CT database is never modified
 - **Codelist files:** `codelist_new`, `codelist_add`, and `codelist_remove` write `.codelist` files on disk; all other tools are read-only
-- **Startup time:** < 5 ms (well under the 100 ms MCP budget)
+- **Startup time:** scales with database size, not fixed - ~2.5 ms against the tiny test fixture, ~373 ms against the full UK Monolith with a transitive closure table (2.6 GB). See [Benchmarks](../benchmarks.md#mcp-server-startup-time).
 - **Schema version check:** validates `schema_version` on startup; warns if the database is newer than the binary, refuses to start if the gap exceeds 5 versions

@@ -8,6 +8,7 @@ site_description: A fast, local-first SNOMED CT toolkit
 # repo
 repo_url: https://github.com/pacharanero/sct
 repo_name: sct
+edit_uri: edit/main/docs/
 
 docs_dir: docs
 
@@ -15,11 +16,16 @@ theme:
   name: zensical
   variant: modern
   features:
-    - content.code.copy
+    - content.code.copy # Copy code snippets
     - content.action.edit # Edit this page
     - content.action.view # View source of this page
     - navigation.path # Show the current path in breadcrumbs
     - navigation.footer # Show Previous and Next links
+    - navigation.instant # Enable instant navigation
+    - navigation.instant.progress # Show instant navigation progress
+    - navigation.expand # Expand navigation by default
+    - navigation.tabs # Top-level sections as a tab bar below the header
+    - navigation.tabs.sticky # Keep the tab bar visible when scrolling
 
   palette:
     # Follows OS preference
@@ -56,46 +62,49 @@ nav:
       - Semantic Search and LLMs: walkthrough/semantic-llm.md
       - Transitive Closure Table: walkthrough/transitive-closure.md
       - Interactive UIs: walkthrough/interactive-uis.md
+      - DMWB:
+          - Walkthrough: dmwb/walkthrough.md
+          - Read v2 via TRUD item 9: dmwb/read-v2-item9.md
       - Everything Else: walkthrough/everything-else.md
-  - DMWB:
-      - Walkthrough: dmwb/walkthrough.md
-      - Read v2 via TRUD item 9: dmwb/read-v2-item9.md
-  - Why Build This?:
+  - Commands:
+      - Get & build:
+          - sct trud: commands/trud.md
+          - sct read2: commands/read2.md
+          - sct ndjson: commands/ndjson.md
+          - sct sqlite: commands/sqlite.md
+          - sct parquet: commands/parquet.md
+          - sct markdown: commands/markdown.md
+          - sct embed: commands/embed.md
+          - sct fst: commands/fst.md
+          - sct tct: commands/tct.md
+      - Search & explore:
+          - sct lookup: commands/lookup.md
+          - sct lexical: commands/lexical.md
+          - sct semantic: commands/semantic.md
+          - sct ecl: commands/ecl.md
+          - sct diagram: commands/diagram.md
+          - sct refset: commands/refset.md
+          - sct map: commands/map.md
+          - sct dmwb: commands/dmwb.md
+      - Code lists:
+          - sct codelist: commands/codelist.md
+      - Connect & serve:
+          - sct serve: commands/serve.md
+          - sct mcp: commands/mcp.md
+          - sct tui: commands/tui.md
+          - sct gui: commands/gui.md
+      - Utilities:
+          - sct info: commands/info.md
+          - sct diff: commands/diff.md
+          - sct paths: commands/paths.md
+          - sct completions: commands/completions.md
+  - Deploy:
+      - Overview: deploy/index.md
+      - Docker Image: deploy/docker-image.md
+      - Build from Source: deploy/terminology-server.md
+  - Reference:
       - Why sct?: why/why-build-this.md
       - Why code lists?: why/why-codelists.md
-  - Get & build:
-      - sct trud: commands/trud.md
-      - sct read2: commands/read2.md
-      - sct ndjson: commands/ndjson.md
-      - sct sqlite: commands/sqlite.md
-      - sct parquet: commands/parquet.md
-      - sct markdown: commands/markdown.md
-      - sct embed: commands/embed.md
-      - sct fst: commands/fst.md
-      - sct tct: commands/tct.md
-  - Search & explore:
-      - sct lookup: commands/lookup.md
-      - sct lexical: commands/lexical.md
-      - sct semantic: commands/semantic.md
-      - sct ecl: commands/ecl.md
-      - sct diagram: commands/diagram.md
-      - sct refset: commands/refset.md
-      - sct map: commands/map.md
-      - sct dmwb: commands/dmwb.md
-  - Code lists:
-      - sct codelist: commands/codelist.md
-  - Connect & serve:
-      - sct serve: commands/serve.md
-      - sct mcp: commands/mcp.md
-      - sct tui: commands/tui.md
-      - sct gui: commands/gui.md
-  - Utilities:
-      - sct info: commands/info.md
-      - sct diff: commands/diff.md
-      - sct paths: commands/paths.md
-      - sct completions: commands/completions.md
-  - Get Your Own Terminology Server: terminology-server.md
-  - Reference:
       - Path Resolution: path-resolution.md
       - UK Edition Structure: uk-edition-structure.md
       - GPS and IPS Releases: gps-ips.md
@@ -116,6 +125,9 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
   - pymdownx.emoji:
       emoji_index: !!python/name:zensical.extensions.emoji.twemoji
       emoji_generator: !!python/name:zensical.extensions.emoji.to_svg

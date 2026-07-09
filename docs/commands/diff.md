@@ -18,8 +18,8 @@ sct diff --old <NDJSON> --new <NDJSON> [-f text|ndjson|json|yaml] [--output <FIL
 |---|---|---|
 | `--old <FILE>` | *(required)* | The older NDJSON artefact (baseline). |
 | `--new <FILE>` | *(required)* | The newer NDJSON artefact (comparison target). |
-| `-f, --format <FMT>` | `text` | Output format: `text` (human-readable summary; alias `summary`), `ndjson` (one diff record per line, streaming), `json` (array of all records), or `yaml`. |
-| `--output <FILE>` | stdout | Output file for the structured formats (`ndjson`/`json`/`yaml`). |
+| `-f, --format <FMT>` | `text` | Output format: `text` (human-readable summary; alias `summary`), `ndjson` (one diff record per line, streaming), `json` (array of all records), or `yaml` (alias `yml`). |
+| `-o, --output <FILE>` | stdout | Output file for the structured formats (`ndjson`/`json`/`yaml`). |
 
 ---
 
@@ -40,7 +40,7 @@ sct diff \
 
 # Filter to just term changes
 sct diff --old old.ndjson --new new.ndjson --format ndjson | \
-  jq 'select(.change == "term_changed")'
+  jq 'select(.change == "preferred_term_changed")'
 ```
 
 ---
@@ -51,7 +51,7 @@ sct diff --old old.ndjson --new new.ndjson --format ndjson | \
 |---|---|
 | `added` | Concept present in `--new`, absent from `--old` |
 | `inactivated` | Concept active in `--old`, absent or inactive in `--new` |
-| `term_changed` | Preferred term changed between releases |
+| `preferred_term_changed` | Preferred term changed between releases |
 | `hierarchy_changed` | Concept moved to a different top-level hierarchy |
 
 ---
@@ -61,10 +61,10 @@ sct diff --old old.ndjson --new new.ndjson --format ndjson | \
 One JSON object per changed concept:
 
 ```json
-{"change": "added",             "id": "...", "preferred_term": "...", "hierarchy": "..."}
-{"change": "inactivated",       "id": "...", "preferred_term": "...", "hierarchy": "..."}
-{"change": "term_changed",      "id": "...", "old_term": "...", "new_term": "...", "hierarchy": "..."}
-{"change": "hierarchy_changed", "id": "...", "preferred_term": "...", "old_hierarchy": "...", "new_hierarchy": "..."}
+{"change": "added",                  "id": "...", "preferred_term": "...", "hierarchy": "..."}
+{"change": "inactivated",            "id": "...", "preferred_term": "...", "hierarchy": "..."}
+{"change": "preferred_term_changed", "id": "...", "old_preferred_term": "...", "new_preferred_term": "...", "hierarchy": "..."}
+{"change": "hierarchy_changed",      "id": "...", "preferred_term": "...", "old_hierarchy": "...", "new_hierarchy": "..."}
 ```
 
 ---

@@ -90,7 +90,7 @@ sct ndjson --rf2 ./SnomedCT_Release/ -o - | jq 'select(.id == "22298006")'
 
 ## Output format
 
-One JSON object per line, sorted by concept SCTID. Every line is a standalone JSON object - the file is valid NDJSON.
+One JSON object per line, sorted by concept SCTID. Every line is a standalone JSON object - the file is valid NDJSON. The first line is a provenance record (`"_type": "sct_provenance"`) carrying the source edition, release date, and the `sct` version that built the file - every line after that is a concept record. Older (pre-provenance) NDJSON files without this header line still work; downstream `sct` commands detect the header by its `_type` tag and fall through to the concept-record path otherwise.
 
 ```json
 {
@@ -211,13 +211,13 @@ jq 'select(.effective_time == "20260301") | .preferred_term' snomed.ndjson
 
 ## Determinism
 
-Given the same RF2 Snapshot directory and `--locale`, `sct ndjson` always produces byte-for-byte identical output:
+Given the same RF2 Snapshot directory and `--locale`, the concept records in `sct ndjson`'s output - every line after the first - are always byte-for-byte identical. The first line is the provenance header (see above), which embeds a `created_at` build timestamp, so it differs between runs even against identical input. Exclude it when checksumming for reproducibility:
 
 ```bash
-sha256sum snomed-uk-20260311.ndjson
+tail -n +2 snomed-uk-20260311.ndjson | sha256sum
 ```
 
-The file can be checksummed, committed to git-lfs, and used as a pinned dependency.
+The concept lines can be checksummed this way, committed to git-lfs, and used as a pinned dependency.
 
 ---
 
@@ -232,6 +232,9 @@ The file can be checksummed, committed to git-lfs, and used as a pinned dependen
 | `sct2_Relationship_Snapshot_*.txt` | IS-A and attribute relationships (inferred) |
 | `der2_cRefset_Language_*.txt` | Language reference sets (preferred term acceptability) |
 | `der2_sRefset_SimpleMap_*.txt` | Simple map reference sets (CTV3/Read v2 crossmaps) |
+| `der2_Refset_Simple_*.txt` | Generic concept-level Simple reference sets (membership only, e.g. SCR exclusion); loaded with `--refsets simple` (default) or `all` |
+| `der2_*Refset_ExtendedMap_*.txt` | ExtendedMap reference sets (SNOMED CT → ICD-10 / OPCS-4); loaded with `--refsets all` only |
+| `der2_cRefset_Association_*.txt` | Historical Association reference sets (inactive-concept forwarding); loaded with `--refsets all` only |
 
 Stated relationship files (`sct2_StatedRelationship_*`) are intentionally skipped - the inferred release is used for hierarchy and attributes. Full and Delta files are ignored.
 

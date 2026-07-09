@@ -90,7 +90,7 @@ several things:
   that real systems actually use at the point of care.
 
 - **A bootstrapping experience for new users.** Shipping (or
-  downloading) the GPS means someone can try `sct lookup`, `sct search`,
+  downloading) the GPS means someone can try `sct lookup`, `sct lexical`,
   and basic codelist workflows without first navigating TRUD or MLDS
   registration. The experience is limited compared to a full edition,
   but it is far better than nothing.

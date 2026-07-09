@@ -12,7 +12,7 @@ Run a **FHIR R4 terminology server** over a SNOMED CT SQLite database - a lightw
 ## Usage
 
 ```
-sct serve [--db <FILE>] [--port <PORT>] [--host <HOST>] [--fhir-base <PATH>]
+sct serve [--db <FILE>] [--port <PORT>] [--host <HOST>] [--fhir-base <PATH>] [--codelists <DIR>]
 ```
 
 | Flag | Default | Description |
@@ -21,6 +21,7 @@ sct serve [--db <FILE>] [--port <PORT>] [--host <HOST>] [--fhir-base <PATH>]
 | `--port <PORT>` | `8080` | TCP port to listen on. |
 | `--host <HOST>` | `127.0.0.1` | Address to bind. Use `0.0.0.0` to accept remote connections. |
 | `--fhir-base <PATH>` | `/` | Base path for all routes. Set to `/fhir` for Ontoserver-compatible URLs. |
+| `--codelists <DIR>` | `./codelists` (or `$SCT_CODELISTS` / `[codelists] dir`) | Directory of `.codelist` files to serve as named FHIR ValueSets. |
 | `--read-only` | on | The server never writes; the flag documents that intent. |
 
 ```bash
@@ -37,7 +38,7 @@ Responses are `application/fhir+json`. An `Accept` header that requests XML excl
 
 For a full self-host walkthrough - a `caddy` reverse proxy in front of `sct`
 for automatic HTTPS, optional basic auth, CORS, and the bootstrap/config
-reference - see [Get your own terminology server](../terminology-server.md).
+reference - see [Get your own terminology server](../deploy/index.md).
 
 ---
 

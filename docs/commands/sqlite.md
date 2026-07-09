@@ -57,7 +57,7 @@ CREATE TABLE concepts (
     effective_time TEXT,
     ctv3_codes     TEXT,            -- JSON array of strings (UK edition only)
     read2_codes    TEXT,            -- JSON array of strings (UK edition only)
-    schema_version INTEGER NOT NULL DEFAULT 2
+    schema_version INTEGER NOT NULL DEFAULT 3
 );
 ```
 
@@ -72,6 +72,42 @@ CREATE TABLE concept_isa (
 );
 CREATE INDEX idx_concept_isa_parent ON concept_isa(parent_id);
 CREATE INDEX idx_concept_isa_child  ON concept_isa(child_id);
+```
+
+### `concept_relationships` table
+
+Typed attribute relationships (non-IS-A), preserving the attribute type SCTID and relationship group. Backs ECL attribute refinement (`<<X : type = value`) - see [`sct codelist add --ecl`](codelist.md).
+
+```sql
+CREATE TABLE concept_relationships (
+    source_id      TEXT NOT NULL,
+    type_id        TEXT NOT NULL,
+    destination_id TEXT NOT NULL,
+    group_num      INTEGER NOT NULL
+);
+```
+
+### `refset_members` table
+
+Simple refset membership. Each row asserts that a concept belongs to a refset (populated with `sct ndjson --refsets simple`, the default, or `all`). The refset itself is a concept - join to `concepts` on `refset_id` to get its preferred term, module, and other metadata.
+
+```sql
+CREATE TABLE refset_members (
+    refset_id                TEXT NOT NULL,
+    referenced_component_id  TEXT NOT NULL,
+    PRIMARY KEY (refset_id, referenced_component_id)
+);
+```
+
+### `metadata` table
+
+Release provenance as a flat key/value store, written once at `sct sqlite` time (edition, release date, release id, source paths, `sct` version, build timestamp) and read by every downstream query command.
+
+```sql
+CREATE TABLE metadata (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 ```
 
 ### `concepts_fts` FTS5 virtual table
@@ -295,7 +331,7 @@ double-chevron meaning *self plus all descendants*. The recursive CTE walks the
 relationship until no new children are found.
 
 ```bash
-sqlite3 /home/marcus/code/sct/snomed.db "
+sqlite3 snomed.db "
 WITH RECURSIVE descendants AS (
   SELECT '73211009' AS id
   UNION
@@ -322,7 +358,7 @@ intersected; the result is ordered by depth (using the pre-computed
 ancestor appears first.
 
 ```bash
-sqlite3 /home/marcus/code/sct/snomed.db "
+sqlite3 snomed.db "
 WITH RECURSIVE
   ancestors_mi AS (
     SELECT parent_id FROM concept_isa WHERE child_id = '22298006'
@@ -367,7 +403,7 @@ entire Clinical finding hierarchy. The `EXISTS` clause walks the JSON array stor
 in `attributes` and checks each value's SCTID against that set.
 
 ```bash
-sqlite3 /home/marcus/code/sct/snomed.db "
+sqlite3 snomed.db "
 WITH RECURSIVE cardio_structure AS (
   SELECT '113257007' AS id
   UNION

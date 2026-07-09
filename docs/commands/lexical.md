@@ -9,7 +9,7 @@ Keyword search over the SNOMED CT SQLite database using FTS5 full-text search.
 ## Usage
 
 ```
-sct lexical <QUERY> [--db <FILE>] [--hierarchy <NAME>] [--limit <N>]
+sct lexical <QUERY> [--db <FILE>] [--hierarchy <NAME>] [--limit <N>] [--format text|json|yaml]
 ```
 
 ## Options
@@ -20,7 +20,11 @@ sct lexical <QUERY> [--db <FILE>] [--hierarchy <NAME>] [--limit <N>]
 | `--db <FILE>` | discovered (see [Path resolution](../path-resolution.md)) | SQLite database produced by `sct sqlite`. |
 | `--hierarchy <NAME>` | *(all)* | Restrict results to a top-level hierarchy (e.g. `"Clinical finding"`). |
 | `--limit <N>` | `10` | Maximum number of results. |
+| `-f, --format <FORMAT>` | `text` | Output format: `text`, `json`, or `yaml`. |
 | `--ids` | off | Emit only matching SCTIDs (newline-delimited) for piping into other commands. |
+| `--template <TEMPLATE>` | *(built-in)* | Override the per-concept line template (text output only). See [`sct refset`](refset.md) for the variable list. |
+| `--template-fsn-suffix <TEMPLATE>` | *(built-in)* | Override the FSN suffix template (rendered only when the FSN differs from the preferred term). |
+| `--provenance` / `--no-provenance` | on for TTY, off otherwise | Show/hide release provenance (edition, release date) on this query's output. |
 
 ---
 
@@ -34,6 +38,9 @@ sct lexical "beta blocker" --limit 20 --db /data/snomed.db
 
 # Pipe matching SCTIDs straight into a code list
 sct lexical "asthma" --ids --limit 50 | sct codelist add asthma.codelist -
+
+# JSON output for scripting
+sct lexical "heart attack" --format json
 ```
 
 ---

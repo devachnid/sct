@@ -43,7 +43,8 @@ Attribute relationships (the `definition` and `neighbourhood` views) need a data
 # A concept's logical definition in the terminal
 sct diagram 22298006 --view definition
 # Myocardial infarction (22298006)
-# ├── is a: Clinical finding (404684003)
+# ├── is a: Myocardial necrosis (251061000)
+# ├── is a: Ischaemic heart disease (414545008)
 # └── role group 1
 #     ├── Associated morphology: Infarct (55641003)
 #     └── Finding site: Myocardium structure (74281007)

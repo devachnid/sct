@@ -214,14 +214,14 @@ canonical intermediate artefact that everything else is built from.
 sct ndjson --rf2 ~/Downloads/uk_sct2mo_41.6.0_20260311000001Z.zip \
            --output snomed.ndjson
 
-# ~30 s for 831k concepts → snomed.ndjson (1.1 GB)
+# ~52 s for 838k concepts → snomed.ndjson (1.3 GB)
 ```
 
 If you pass it a `.zip` it will automatically extract and parse the RF2 files within. If you pass it a directory containing extracted RF2 files, it will parse them directly.
 
 The output is a single `.ndjson` file - one JSON object per line, each representing a SNOMED concept with all its details (ID, preferred term, synonyms, hierarchy, relationships, attributes, etc.)
 
-Testing on my laptop, this takes about 30 seconds for the UK Monolith release with 831k active concepts. The resulting NDJSON file is about 1.1 GB. Incredibly, because NDJSON is easier to handle in memory than JSON, **you can load the whole 1.1 GB file into VSCode** (takes less than 5 seconds) and play around with it there, great for getting to understand what data is available and how it's structured.
+Testing on my laptop, this takes about 52 seconds for the UK Monolith release with 837,930 active concepts. The resulting NDJSON file is about 1.3 GB. Incredibly, because NDJSON is easier to handle in memory than JSON, **you can load the whole 1.3 GB file into VSCode** (takes less than 5 seconds) and play around with it there, great for getting to understand what data is available and how it's structured.
 
 You can now query the NDJSON file with `jq` or any tool that can handle line-delimited JSON. For example, to get the full details of Myocardial infarction (disorder)":
 
@@ -290,7 +290,24 @@ Which should return something similar to the below:
     "X200E"
   ],
   "read2_codes": [],
-  "schema_version": 2
+  "refsets": [
+    "1127601000000107",
+    "1382531000000102"
+  ],
+  "relationships": [
+    {
+      "type_id": "116676008",
+      "destination_id": "55641003",
+      "group": 1
+    },
+    {
+      "type_id": "363698007",
+      "destination_id": "74281007",
+      "group": 1
+    }
+  ],
+  "crossmaps": [],
+  "schema_version": 5
 }
 ```
 
@@ -345,7 +362,7 @@ sct sqlite --input snomed.ndjson --output snomed.db
 
 **Docs**: [`sct sqlite`](../commands/sqlite.md)
 
-On my machine this takes about 45 seconds for the UK Monolith release with 831k active concepts. The resulting `snomed.db` file is about 2 GB.
+On my machine this takes about 32 seconds for the UK Monolith release with 837,930 active concepts. The resulting `snomed.db` file is about 1.9 GB.
 
 **Now you can query SNOMED CT with standard `sqlite3`:** The following examples should all work out of the box on the resulting database, running in the terminal.
 
@@ -412,7 +429,7 @@ SNOMED → CTV3 mappings is useful for:
 - **Reporting** to systems that still consume CTV3
 - **Learning and exploration** - see how concepts were mapped from CTV3 to SNOMED CT
 
-Over 524,000 concepts have CTV3 mappings in the UK Monolith release. Read v2 codes are not distributed
+Over 380,000 concepts have CTV3 mappings in the UK Monolith release. Read v2 codes are not distributed
 as a separate refset in current UK releases.
 
 **Data structure:**

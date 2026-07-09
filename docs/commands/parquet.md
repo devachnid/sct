@@ -47,9 +47,9 @@ sct parquet \
 | `module` | `VARCHAR` | SNOMED module identifier |
 | `effective_time` | `VARCHAR` | `YYYYMMDD` |
 | `attributes` | `VARCHAR` | JSON object of attribute groups |
-| `ctv3_codes` | `VARCHAR` | JSON array of strings (UK edition) |
-| `read2_codes` | `VARCHAR` | JSON array of strings (UK edition) |
 | `schema_version` | `BIGINT` | Artefact schema version |
+
+`sct parquet` carries over the core concept fields only - `ctv3_codes`, `read2_codes`, `refsets`, `relationships`, and `crossmaps` from the NDJSON record are not exported as columns. For crossmap lookups or ECL attribute refinement, use [`sct sqlite`](sqlite.md) instead.
 
 Array/object columns are stored as JSON strings. DuckDB's `json_extract`, `json_extract_string`, and `unnest` can operate on them directly.
 
@@ -287,6 +287,6 @@ df[df.hierarchy == "Procedure"].preferred_term.head(20)
 ## Tips
 
 - DuckDB reads Parquet files in-place with zero import overhead - just reference the file path directly in queries.
-- The Parquet file is ~250 MB for the full UK Monolith (vs ~1.2 GB NDJSON), owing to columnar compression.
+- The Parquet file is ~785 MB for the full UK Monolith (vs ~1.2 GB NDJSON), owing to columnar compression.
 - Written in batches of 50,000 rows using Arrow for memory efficiency.
 - For analytics workloads, Parquet is faster than SQLite; for FTS and exact lookups, prefer [`sct sqlite`](sqlite.md).

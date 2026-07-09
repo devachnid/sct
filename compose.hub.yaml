@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Deploy sct using the published Docker Hub image - no git clone, no local
+# build. This is compose.yaml's sct service with `build:` swapped for
+# `image:`; everything else (the caddy service, volumes, healthcheck) is
+# identical. See docs/deploy/docker-image.md for the full walkthrough, or
+# compose.yaml + docs/deploy/terminology-server.md to build from source
+# instead.
+
+services:
+  # Not directly published - reached only through caddy, which owns TLS
+  # termination and the public ports. See spec/deployment.md decision 3.
+  sct:
+    image: pacharanero/sct:latest
+    restart: unless-stopped
+    environment:
+      TRUD_API_KEY: ${TRUD_API_KEY:-}
+      SCT_DATA_HOME: /data
+      SCT_CODELISTS: /codelists
+      SCT_SERVE_HOST: 0.0.0.0
+      SCT_SERVE_PORT: ${SCT_SERVE_PORT:-8080}
+      SCT_FHIR_BASE: /fhir
+      SCT_TRUD_EDITION: ${SCT_TRUD_EDITION:-uk_monolith}
+      SCT_REFSETS: ${SCT_REFSETS:-all}
+      SCT_LOCALE: ${SCT_LOCALE:-en-GB}
+      SCT_INCLUDE_INACTIVE: ${SCT_INCLUDE_INACTIVE:-false}
+      SCT_BOOTSTRAP: ${SCT_BOOTSTRAP:-true}
+    volumes:
+      - sct-data:/data
+      - ./codelists:/codelists:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${SCT_SERVE_PORT:-8080}/fhir/metadata"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20m
+
+  # TLS termination, optional basic auth, and CORS in front of sct. Caddyfile
+  # + docker/caddy-entrypoint.sh (see there for why a wrapper script is
+  # needed) are bind-mounted read-only into the stock upstream Caddy image -
+  # no custom image to build or keep patched. Fetch both alongside this file
+  # (see the walkthrough) - they are not baked into either published image.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - sct
+    entrypoint: ["/bin/sh", "/caddy-entrypoint.sh"]
+    environment:
+      DOMAIN: ${DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:-}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      SCT_SERVE_PORT: ${SCT_SERVE_PORT:-8080}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-entrypoint.sh:/caddy-entrypoint.sh:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  sct-data:
+  caddy-data:
+  caddy-config:

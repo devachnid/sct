@@ -52,15 +52,15 @@ Output includes:
 
 ## Performance
 
-All timings below are for the **UK Monolith (831k active concepts)** on NVMe SSD.
+All timings below are for the **UK Monolith (837,930 active concepts)** on NVMe SSD.
 
 | Operation | Time | Output size |
 |---|---|---|
-| RF2 → NDJSON | ~30 s | ~1.1 GB |
-| NDJSON → SQLite | ~11 s | 1.3 GB |
-| NDJSON → Parquet | ~5 s | 824 MB |
-| NDJSON → Markdown | ~15 s | 3.2 GB (831k files) |
-| MCP server startup | < 5 ms | - |
+| RF2 → NDJSON | ~52 s | 1.3 GB |
+| NDJSON → SQLite | ~32 s | 1.9 GB |
+| NDJSON → Parquet | ~6 s | 785 MB |
+| NDJSON → Markdown | ~32 s | 3.2 GB (837,930 files) |
+| MCP server startup | < 5 ms (small db) / ~373 ms (full Monolith with TCT) | - |
 
 **vs. remote FHIR terminology server (benchmark results):**
 
@@ -115,16 +115,23 @@ flag selects GB English preferred terms from the UK language reference set.
 | `sct tui` | Terminal UI (requires `--features tui`) |
 | `sct gui` | Browser UI (requires `--features gui`) |
 | `sct completions` | Generate shell completion scripts |
-| `sct codelist` | Build, validate, publish code lists (also: `sct refset`, `sct valueset`) |
+| `sct codelist` | Build and validate code lists (alias: `sct valueset`) |
 | `sct refset` | Browse reference sets loaded into the SQLite database |
+| `sct lookup` | Look up a single concept by SCTID or CTV3 code |
+| `sct ecl` | Evaluate an ECL expression (`expand`) or refactor SCTIDs into ECL (`compress`) |
+| `sct diagram` | Draw a concept's definition, ancestors, or descendants (tree/DOT/Mermaid) |
+| `sct fst` | Build and query an FST-backed lexical index (exact/prefix/fuzzy/word search) |
+| `sct map` | Map codes between terminologies (SNOMED/Read v2/CTV3/ICD-10/OPCS-4) |
+| `sct read2` | Import final Read v2 maps from NHS Data Migration TRUD item 9 |
 
 ---
 
 ## Next Steps
 
 - `sct trud` - automated download from NHS TRUD API
-- `sct serve` - drop-in FHIR R4/R5 terminology server backed by SQLite
+- `sct serve` - drop-in FHIR R4 terminology server backed by SQLite
 - `sct codelist search` - interactive FTS5 search → include/exclude (coming)
-- `sct codelist import` / `sct codelist publish` - import from OpenCodelists, publish back (coming)
+- `sct codelist import` - import from OpenCodelists, CSV, RF2, or FHIR (coming)
+- `sct codelist publish` - publish back to OpenCodelists (coming)
 
 See `spec/roadmap.md` for the full list of planned features.

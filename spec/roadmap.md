@@ -27,7 +27,7 @@ not here.)
 
 ### Distribution
 
-Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and a Docker Compose stack (`sct` + a Caddy reverse proxy for automatic HTTPS, optional basic auth, CORS - see [`spec/deployment.md`](deployment.md)) published as a multi-arch image to Docker Hub (`pacharanero/sct`) on every release. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs and [`docs/terminology-server.md`](../docs/terminology-server.md). Outstanding:
+Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and a Docker Compose stack (`sct` + a Caddy reverse proxy for automatic HTTPS, optional basic auth, CORS - see [`spec/deployment.md`](deployment.md)) published as a multi-arch image to Docker Hub (`pacharanero/sct`) on every release. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs and [`docs/deploy/`](../docs/deploy/index.md) (a no-clone route using the published image, and a build-from-source route). Outstanding:
 
 - [ ] Publish the same image to GHCR too (Docker Hub only today) - cheap addition,
       reuses `GITHUB_TOKEN`, no new secret needed.

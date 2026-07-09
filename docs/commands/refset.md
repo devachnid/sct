@@ -20,7 +20,7 @@ Subcommands:
 | `info <ID>` | Show metadata and member count for a single refset. |
 | `members <ID>` | List the concepts belonging to a refset. |
 
-All subcommands accept `--db <PATH>` (auto-discovered when omitted - see [Path resolution](../path-resolution.md)) and `-f, --format text|json|yaml` for machine-readable output (`--json` is a deprecated alias for `--format json`). `members` also accepts `--ids` to emit just the member SCTIDs (newline-delimited) for piping:
+All subcommands accept `--db <PATH>` (auto-discovered when omitted - see [Path resolution](../path-resolution.md)), `-f, --format text|json|yaml` for machine-readable output (`--json` is a deprecated alias for `--format json`), and `--provenance` / `--no-provenance` to force-show or suppress the release provenance footer (default: on for an interactive terminal). `list` also accepts `--template <TEMPLATE>` to override the per-refset line (default `{id} | {pt} ({count} members)`). `members` also accepts `--limit <N>` to cap the number of rows displayed, `--ids` to emit just the member SCTIDs (newline-delimited) for piping, and `--template` / `--template-fsn-suffix` to override the per-concept line (see **Custom format** below):
 
 ```bash
 # A whole refset becomes a code list in one line
@@ -37,14 +37,14 @@ sct refset members 447562003 --ids | sct codelist add list.codelist -
 sct refset list
 ```
 
-```
-460 refset(s):
+One line per refset (463 in the UK Monolith release):
 
-  [999002431000000102] AIDS (acquired immune deficiency syndrome) defining illness for adults simple reference set  (26 members)
-  [999002121000000109] Accessible information - communication support simple reference set  (27 members)
-  ...
-  [1129631000000105] Summary Care Record exclusions simple reference set  (231 members)
-  ...
+```
+999002431000000102 | AIDS (acquired immune deficiency syndrome) defining illness for adults simple reference set (26 members)
+999002121000000109 | Accessible information - communication support simple reference set (27 members)
+...
+1129631000000105 | Summary Care Record exclusions simple reference set (232 members)
+...
 ```
 
 ### Show metadata for one refset
@@ -56,7 +56,7 @@ sct refset info 1129631000000105
 ```
   [1129631000000105] Summary Care Record exclusions simple reference set
   Module:  999000021000000109
-  Members: 231
+  Members: 232
 ```
 
 ### List the concepts in a refset
@@ -105,6 +105,10 @@ Template variables available in both fields:
 | `{hierarchy}` | Top-level hierarchy name |
 | `{module}` | Module SCTID (empty for list-style commands) |
 | `{effective_time}` | Effective time in `YYYYMMDD` |
+| `{count}` | Cardinality, e.g. refset member count (empty if not set) |
+| `{score}` | Similarity score from `sct semantic`, formatted to 4 decimal places (empty if not set) |
+
+`{count}` and `{score}` are only set by commands with a natural cardinality or ranking - `sct refset list` (member count) and `sct semantic` (similarity score) respectively - and render as an empty string elsewhere, so the same template can be shared globally without breaking commands that lack the field.
 
 The `concept_fsn_suffix` template is appended only when the concept's stripped FSN differs from its PT - that's why the default output suppresses it for concepts whose PT and FSN match. Pass an empty string (`--template-fsn-suffix ''`) to suppress it unconditionally. Unknown `{tokens}` are preserved as literal text so typos are visible.
 

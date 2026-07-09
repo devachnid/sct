@@ -91,7 +91,9 @@ sct completions --dir ~/.elvish/lib elvish
 $ sct completions install --shell zsh
 $ exec zsh
 $ sct <TAB>
-codelist     completions  diff         embed        gui          info
-lexical      markdown     mcp          ndjson       parquet      semantic
-sqlite       tui
+codelist     completions  diagram      diff         ecl          embed
+fst          gui          help         info         lexical      lookup
+map          markdown     mcp          ndjson       parquet      paths
+read2        refset       semantic     serve        sqlite       tct
+trud         tui
 ```

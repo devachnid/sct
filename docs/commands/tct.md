@@ -57,8 +57,8 @@ sct tct --db snomed.db --include-self
 
 ```sql
 CREATE TABLE concept_ancestors (
-    ancestor_id   TEXT NOT NULL,
-    descendant_id TEXT NOT NULL,
+    ancestor_id   INTEGER NOT NULL,
+    descendant_id INTEGER NOT NULL,
     depth         INTEGER NOT NULL   -- number of IS-A hops from ancestor to descendant
 );
 
@@ -68,6 +68,10 @@ CREATE UNIQUE INDEX idx_ca_pair ON concept_ancestors(ancestor_id, descendant_id)
 ```
 
 The `depth` column records the minimum number of IS-A hops separating the pair. Direct parent-child pairs have `depth = 1`. If `--include-self` was used, self-referential pairs have `depth = 0`.
+
+`ancestor_id` and `descendant_id` are `INTEGER`, not `TEXT` like `concepts.id` and `concept_isa.child_id`/`parent_id`. SCTIDs are numeric, so an INTEGER-typed index sorts far more cheaply than the equivalent TEXT index - this was the single largest cost in building the TCT over the full UK Monolith. `concept_ancestors` is an internal derived table that nothing else JOINs to the TEXT `concepts.id` column, so the INTEGER affinity stays self-contained.
+
+**This matters when you hand-write a JOIN back to `concepts`.** A bare `ON c.id = a.descendant_id` mixes a TEXT column with an INTEGER column across a join, and SQLite's planner cannot use the index on either side - it falls back to scanning `concepts` (837k rows) and probing the TCT per row, which turns a sub-millisecond lookup into several seconds. Wrap the `concept_ancestors` side in `CAST(... AS TEXT)` so the comparison stays index-friendly: `ON c.id = CAST(a.descendant_id AS TEXT)`. A plain `WHERE ancestor_id = '22298006'` (comparing the INTEGER column directly to a string literal, no join) is unaffected - SQLite coerces the literal automatically and the query patterns below that don't join back to `concepts` are already index-friendly as written.
 
 ---
 
@@ -80,15 +84,15 @@ sct info snomed.db
 Without TCT:
 
 ```text
-IS-A edges:        504,216
+IS-A edges:        1,605,202
 TCT:               not present  (run `sct tct --db <file>` to build)
 ```
 
 After `sct tct`:
 
 ```text
-IS-A edges:        504,216
-TCT rows:          18,432,601
+IS-A edges:        1,605,202
+TCT rows:          11,607,152
 ```
 
 You can also query the schema directly:
@@ -123,11 +127,11 @@ When `--include-self` is set, a row `(ancestor_id = C, descendant_id = C, depth 
 SELECT c.preferred_term FROM concepts c WHERE c.id = '22298006'
 UNION
 SELECT c.preferred_term FROM concepts c
-  JOIN concept_ancestors a ON c.id = a.descendant_id AND a.ancestor_id = '22298006'
+  JOIN concept_ancestors a ON c.id = CAST(a.descendant_id AS TEXT) AND a.ancestor_id = '22298006'
 
 -- with --include-self
 SELECT c.preferred_term FROM concepts c
-  JOIN concept_ancestors a ON c.id = a.descendant_id AND a.ancestor_id = '22298006'
+  JOIN concept_ancestors a ON c.id = CAST(a.descendant_id AS TEXT) AND a.ancestor_id = '22298006'
 ```
 
 ---
@@ -137,9 +141,9 @@ SELECT c.preferred_term FROM concepts c
 | Release | IS-A edges | TCT rows (no self) | TCT rows (with self) |
 |---|---|---|---|
 | UK Clinical Edition (~412k concepts) | ~500k | ~5–15 M | ~5–15 M + 412k |
-| UK Monolith (~831k concepts) | ~1 M | ~10–30 M | ~10–30 M + 831k |
+| UK Monolith (837,930 concepts) | ~1 M | 11.6 M (measured) | 11.6 M + 837,930 |
 
-These are estimates; measure with `sct info` and record in `docs/benchmarks.md`.
+The UK Monolith row is a real measurement (`docs/benchmarks.md`); the UK Clinical Edition row is still an estimate pending a fresh run. Measure with `sct info` and record in `docs/benchmarks.md`.
 
 ---
 
@@ -180,7 +184,7 @@ sqlite3 snomed.db <<EOF
 .timer on
 SELECT c.preferred_term
 FROM concepts c
-JOIN concept_ancestors a ON c.id = a.descendant_id
+JOIN concept_ancestors a ON c.id = CAST(a.descendant_id AS TEXT)
 WHERE a.ancestor_id = '22298006'
 ORDER BY c.preferred_term;
 EOF
@@ -197,7 +201,7 @@ WHERE c.id = '22298006'
 UNION
 SELECT c.preferred_term
 FROM concepts c
-JOIN concept_ancestors a ON c.id = a.descendant_id
+JOIN concept_ancestors a ON c.id = CAST(a.descendant_id AS TEXT)
 WHERE a.ancestor_id = '22298006'
 ORDER BY preferred_term;
 EOF
@@ -210,7 +214,7 @@ sqlite3 snomed.db <<EOF
 .timer on
 SELECT c.preferred_term, a.depth
 FROM concepts c
-JOIN concept_ancestors a ON c.id = a.ancestor_id
+JOIN concept_ancestors a ON c.id = CAST(a.ancestor_id AS TEXT)
 WHERE a.descendant_id = '22298006'
 ORDER BY a.depth DESC;
 EOF
@@ -242,7 +246,7 @@ sqlite3 snomed.db <<EOF
 .timer on
 SELECT c.preferred_term, a.depth
 FROM concepts c
-JOIN concept_ancestors a ON c.id = a.descendant_id
+JOIN concept_ancestors a ON c.id = CAST(a.descendant_id AS TEXT)
 WHERE a.ancestor_id = '22298006'
   AND a.depth <= 2
 ORDER BY a.depth, c.preferred_term;
@@ -260,12 +264,12 @@ SELECT DISTINCT c.preferred_term
 FROM concepts c
 -- must be a descendant of 'Clinical finding'
 JOIN concept_ancestors cf
-  ON c.id = cf.descendant_id
+  ON c.id = CAST(cf.descendant_id AS TEXT)
  AND cf.ancestor_id = '404684003'
 -- must have a finding_site attribute pointing into the cardiovascular system
 JOIN json_each(json_extract(c.attributes, '$.finding_site')) fs
 JOIN concept_ancestors cardio
-  ON json_extract(fs.value, '$.id') = cardio.descendant_id
+  ON json_extract(fs.value, '$.id') = CAST(cardio.descendant_id AS TEXT)
  AND cardio.ancestor_id = '113257007'
 WHERE c.active = 1
 ORDER BY c.preferred_term
@@ -286,7 +290,7 @@ SELECT c.preferred_term, a1.depth + a2.depth AS combined_depth
 FROM concept_ancestors a1
 JOIN concept_ancestors a2
   ON a1.ancestor_id = a2.ancestor_id
-JOIN concepts c ON c.id = a1.ancestor_id
+JOIN concepts c ON c.id = CAST(a1.ancestor_id AS TEXT)
 WHERE a1.descendant_id = '22298006'
   AND a2.descendant_id = '84114007'
 ORDER BY combined_depth
@@ -394,10 +398,10 @@ sqlite3 snomed.db <<EOF
 .timer on
 SELECT COUNT(DISTINCT c.id)
 FROM concepts c
-JOIN concept_ancestors cf ON c.id = cf.descendant_id AND cf.ancestor_id = '404684003'
+JOIN concept_ancestors cf ON c.id = CAST(cf.descendant_id AS TEXT) AND cf.ancestor_id = '404684003'
 JOIN json_each(json_extract(c.attributes, '$.finding_site')) fs
 JOIN concept_ancestors cardio
-  ON json_extract(fs.value, '$.id') = cardio.descendant_id
+  ON json_extract(fs.value, '$.id') = CAST(cardio.descendant_id AS TEXT)
  AND cardio.ancestor_id = '113257007'
 WHERE c.active = 1;
 EOF

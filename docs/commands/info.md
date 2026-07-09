@@ -29,63 +29,92 @@ sct info snomed-embeddings.arrow
 ### `.ndjson`
 
 ```
-File:       snomed-uk-20260311.ndjson
-Size:       1.1 GB
-Release:    20260311 (inferred from filename)
-Concepts:   831,042 active
-Schema:     version 2
+File:           snomed-uk-20260701.ndjson
+Size:           1.2 GB
+Format:         NDJSON
+Schema version: 5
+Edition:        uk_sct2mo_42.3.0_20260701000001Z
+Release date:   2026-07-01
+Release id:     uk_sct2mo_42.3.0_20260701000001Z
+Built by:       sct 0.18.2
+Concepts:       837,930
 
-By hierarchy:
-  Clinical finding    437,219
-  Procedure           155,823
-  Body structure       76,441
+Hierarchy breakdown (20 top-level):
+  Pharmaceutical / biologic product             231,194
+  Physical object                               224,797
+  Clinical finding                              137,830
   ...
 ```
 
 Reports:
-- Total active concept count
-- Inactive concept count (if `--include-inactive` was used at build time)
+- `Format` (`NDJSON`)
+- Total concept count - active only by default; a separate `(inactive)` line appears when the file was built with `--include-inactive`
 - `schema_version`
-- Release date (inferred from filename)
+- Provenance, when present in the file's header: edition label, release date, release id, and the `sct` version that built it. Falls back to a filename-inferred release date for older pre-provenance NDJSONs.
 - Hierarchy breakdown
 
 ### `.db`
 
 ```
-File:       snomed.db
-Size:       1.3 GB
-Concepts:   831,042
-Schema:     version 2
-FTS rows:   831,042
-IS-A edges: 1,847,331
+File:              snomed.db
+Size:              2.6 GB
+Format:            SQLite (sct sqlite)
+Schema version:    5
+Edition:           uk_sct2mo_42.3.0_20260701000001Z
+Release date:      2026-07-01
+Release id:        uk_sct2mo_42.3.0_20260701000001Z
+Built by:          sct 0.18.2
+Concepts:          837,930
+FTS5 rows:         837,930
+IS-A edges:        1,605,202
+TCT rows:          11,607,152
 
-By hierarchy:
-  Clinical finding    437,219
+Hierarchy breakdown (20 top-level):
+  Pharmaceutical / biologic product             231,194
+  Physical object                               224,797
+  Clinical finding                              137,830
   ...
 ```
 
 Reports:
+- `Format` (`SQLite (sct sqlite)`)
+- Provenance, when present: edition label, release date, release id, and the `sct` version that built it
 - Concept count
 - `schema_version`
 - FTS5 row count
 - IS-A edge count (`concept_isa` table)
+- TCT row count (`concept_ancestors` table), or a note that the transitive closure table is absent and how to build it (`sct tct`)
 - Hierarchy breakdown
 
 ### `.arrow`
 
 ```
-File:        snomed-embeddings.arrow
-Size:        2.4 GB
-Embeddings:  831,042
-Dimensions:  768
-Model:       (not stored - check how you built it)
+File:             snomed-embeddings.arrow
+Size:             2.6 GB
+Format:           Arrow IPC (sct embed)
+Edition:          uk_sct2mo_42.3.0_20260701000001Z
+Release date:     2026-07-01
+Release id:       uk_sct2mo_42.3.0_20260701000001Z
+Built by:         sct 0.18.2
+Embeddings:       837,930
+Dimension:        768
+
+Schema:
+  id                   Utf8
+  preferred_term       Utf8
+  hierarchy            Utf8
+  embedding            FixedSizeList(768 x non-null Float32)
 ```
 
 Reports:
+- `Format` (`Arrow IPC (sct embed)`)
+- Provenance, when present: edition label, release date, release id, and the `sct` version that built it
 - Embedding count
 - Embedding dimension
-- Arrow schema
+- Arrow schema (field names and types)
 - File size
+
+The Ollama embedding model name itself (e.g. `nomic-embed-text`) is not captured in the file or reported by `sct info` - track it separately if you build embeddings with more than one model.
 
 ---
 

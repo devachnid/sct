@@ -23,12 +23,15 @@ sct paths
 ```
 
 ```
-data home:    ~/.local/share/sct          XDG_DATA_HOME
-config home:  ~/.config/sct                XDG_CONFIG_HOME
-config file:  ~/.config/sct/config.toml    (none)
+data home:       ~/.local/share/sct                                default
+config home:     ~/.config/sct                                     default
+config file:     ~/.config/sct/config.toml                         exists
 
-database:     ./snomed.db                  current directory
-embeddings:   ~/.local/share/sct/data/snomed-embeddings.arrow   data home, canonical name
+database:        ./snomed.db                                       cwd
+embeddings:      ~/.local/share/sct/data/snomed-embeddings.arrow    data home, canonical name
+
+trud releases:   ~/.local/share/sct/releases                       3 files
+trud data:       ~/.local/share/sct/data                           6 files
 ```
 
-Each row shows the resolved path and, on the right, which rule in the discovery chain produced it (explicit env var → current directory → config file → data-home canonical name → newest matching file). A `─` with "not found" means no artefact of that kind was discovered - pass an explicit `--db` / `--embeddings`, or build one.
+Each row shows the resolved path and, on the right, which rule in the discovery chain produced it (explicit flag → env var → current directory → config file → data-home canonical name → newest matching file). A `─` with "not found" means no artefact of that kind was discovered - pass an explicit `--db` / `--embeddings`, or build one. The `trud releases` / `trud data` rows show the directories `sct trud download` writes into and how many files are currently there.

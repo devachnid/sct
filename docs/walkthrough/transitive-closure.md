@@ -16,8 +16,8 @@ Apply to an existing database:
 
 ```bash
 sct tct --db snomed.db
-# spinner: Building TCT for 831,132 concepts (5000/831132)...
-# Done. 18,432,601 ancestor-descendant pairs in concept_ancestors.
+# spinner: Building TCT for 837,930 concepts (5000/837930)...
+# Done. 11,607,152 ancestor-descendant pairs in concept_ancestors.
 ```
 
 Or build it in a single step alongside the main load:
@@ -43,15 +43,15 @@ sct info snomed.db
 Without TCT:
 
 ```text
-IS-A edges:        504,216
+IS-A edges:        1,605,202
 TCT:               not present  (run `sct tct --db <file>` to build)
 ```
 
 After `sct tct`:
 
 ```text
-IS-A edges:        504,216
-TCT rows:          18,432,601
+IS-A edges:        1,605,202
+TCT rows:          11,607,152
 ```
 
 ## Performance comparison
@@ -84,7 +84,7 @@ EOF
 
 Both return the same count. The TCT version is faster because the index on `ancestor_id` gives SQLite a direct range scan over a single column, with no recursion.
 
-The performance gap grows sharply with hierarchy depth and fanout. For large ancestors (e.g. `Clinical finding` with ~300k descendants), recursive CTEs can take hundreds of milliseconds; the TCT lookup stays under 1 ms regardless of hierarchy size.
+The performance gap grows sharply with hierarchy depth and fanout. For large ancestors (e.g. `Clinical finding` with ~138k descendants), recursive CTEs can take hundreds of milliseconds; the TCT lookup stays under 1 ms regardless of hierarchy size.
 
 ## Full subsumption query with preferred terms
 

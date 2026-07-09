@@ -229,10 +229,10 @@ Downloads a release
 
 ```
 sct trud download [--edition <NAME>] [--item <N>]
-                  [--latest | --release <VERSION>]
+                  [--release <VERSION>]
                   [--output-dir <PATH>] [--data-dir <PATH>]
                   [--skip-if-current]
-                  [--pipeline] [--pipeline-full]
+                  [--pipeline] [--pipeline-full] [--multi-terminology] [--with-read2]
                   [--include-inactive] [--refsets <MODE>] [--locale <LOCALE>]
 ```
 
@@ -361,8 +361,7 @@ sct trud download --output-dir /data/snomed/
 
 | Flag                  | Default                   | Description                                                                                 |
 | --------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
-| `--latest`            | on                        | Download the most recent release                                                            |
-| `--release <VERSION>` | -                         | Download a specific version (e.g. `41.5.0`)                                                 |
+| `--release <VERSION>` | -                         | Download a specific version (e.g. `41.5.0`); omit for the latest release                    |
 | `--output-dir <PATH>` | `$SCT_DATA_HOME/releases` | Where to save the downloaded zip                                                            |
 | `--data-dir <PATH>`   | `$SCT_DATA_HOME/data`     | Where to write built artefacts (NDJSON, SQLite, …)                                          |
 | `--skip-if-current`   | off                       | Do nothing if the latest zip is already cached with a matching checksum                     |

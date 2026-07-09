@@ -150,7 +150,7 @@ This allows an LLM to browse and read individual concept files directly.
 
 ## Notes on scale
 
-The full UK Monolith produces ~831,000 files in `--mode concept`. This is handled fine by:
+The full UK Monolith produces ~837,930 files in `--mode concept`. This is handled fine by:
 - `ripgrep`, `grep`, `find`
 - Standard filesystem tools on Linux/macOS (ext4, APFS)
 - Most RAG indexing pipelines
