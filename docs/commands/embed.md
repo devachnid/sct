@@ -74,18 +74,18 @@ sct embed \
 
 ## Embedding text format
 
-Each concept is embedded as a single string combining all its human-readable content:
+Each concept is embedded as a single string combining all its human-readable content, prefixed with `search_document:` to activate `nomic-embed-text`'s asymmetric retrieval mode (queries use the matching `search_query:` prefix - see [`sct semantic`](semantic.md)):
 
 ```
-{preferred_term}. {fsn}. Synonyms: {synonyms joined with ", "}. Hierarchy: {hierarchy_path joined with " > "}.
+search_document: {preferred_term}. {fsn}. Synonyms: {synonyms joined with ", "}. Hierarchy: {hierarchy_path joined with " > "}.
 ```
 
-Example:
+Real example (Myocardial infarction, `22298006`, from a UK Monolith build):
 ```
-Heart attack. Myocardial infarction (disorder). Synonyms: Cardiac infarction, MI - Myocardial infarction. Hierarchy: SNOMED CT Concept > Clinical finding > Disorder of cardiovascular system > Ischemic heart disease > Myocardial infarction.
+search_document: Myocardial infarction. Myocardial infarction (disorder). Synonyms: Infarction of heart, Cardiac infarction, Heart attack, Myocardial infarct, MI - myocardial infarction. Hierarchy: SNOMED CT Concept > Clinical finding > Finding of trunk structure > Finding of upper trunk > Finding of thoracic region > Disorder of thorax > Disorder of mediastinum > Heart disease > Structural disorder of heart > Myocardial lesion > Myocardial necrosis > Myocardial infarction.
 ```
 
-This rich format means the query `sct semantic "blocked coronary artery"` can match `Myocardial infarction` even though none of those words appear in the preferred term.
+This gives the model the concept's full vocabulary surface, so a query sharing *any* of these words has something to match against. It is not a guarantee: this scheme has real, documented limitations - see [`sct semantic` - Known limitations](semantic.md#known-limitations) before relying on results.
 
 ---
 

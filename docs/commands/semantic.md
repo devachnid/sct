@@ -2,9 +2,12 @@
 
 Semantic similarity search over a SNOMED CT Arrow IPC embeddings file.
 
-**When to use:** you want to search by *meaning* rather than exact words. `sct semantic "sticky blood"` returns hypercoagulable state concepts; `sct semantic "water tablets"` returns diuretics - even though neither phrase appears in SNOMED. For exact keyword search, [`sct lexical`](lexical.md) is faster and requires no Ollama.
+Embeds your query text via Ollama and performs cosine similarity against all concept embeddings in the `.arrow` file produced by [`sct embed`](embed.md). Returns the concepts whose meaning is closest to your query text, including some concepts that don't share any keywords with it.
 
-Embeds your query text via Ollama and performs cosine similarity against all concept embeddings in the `.arrow` file produced by [`sct embed`](embed.md). Returns the concepts whose meaning is closest to your query - including concepts that don't share any keywords.
+!!! warning "Experimental - read this before trusting a result"
+    `sct semantic` runs a small, general-purpose text-embedding model (`nomic-embed-text` by default) - not a language model, and not one trained on medical text. It is genuinely useful as an **adjunct** to keyword search, surfacing paraphrase-level matches that [`sct lexical`](lexical.md) structurally cannot find. It is **not** reliable enough to trust unreviewed, and it has no real clinical or world knowledge: it does well when a query shares *some* vocabulary root with a concept's own text, and it can fail outright on idiomatic phrases that don't ("sugar sickness" for diabetes, "sticky blood" for hypercoagulable state - see [Known limitations](#known-limitations) below for real, verified examples).
+
+    **If you need deterministic, exact results, use [`sct lexical`](lexical.md).** If you need genuine meaning-level bridging - recognising that "sugar sickness" means diabetes - hand the terminology to an LLM instead: over [`sct mcp`](mcp.md) it can combine `snomed_search` and `snomed_semantic_search` judiciously and bring real-world knowledge that this embedding model doesn't have, while still grounding its answer in real SNOMED concepts.
 
 ---
 
@@ -41,19 +44,17 @@ ollama pull nomic-embed-text  # if not already pulled
 ## Examples
 
 ```bash
-# Basic semantic search
-sct semantic "heart attack"
-
-# Finds concepts by meaning even if the words differ
-sct semantic "difficulty breathing"
-sct semantic "water tablets"          # → diuretic concepts
-sct semantic "sticky blood"           # → hypercoagulable state concepts
+# Paraphrase queries that share no SNOMED vocabulary at all - sct lexical
+# returns nothing for any of these; sct semantic finds real candidates
+sct semantic "can't stop peeing"          # → urinary urgency/incontinence concepts
+sct semantic "chest pain climbing stairs" # → chest pain disorder concepts
 
 # Return more results
-sct semantic "chest pain" --limit 20
+sct semantic "difficulty breathing" --limit 20
 
-# Pipe matching SCTIDs into a code list
-sct semantic "water tablets" --ids --limit 30 | sct codelist add diuretics.codelist -
+# Pipe matching SCTIDs into a code list (review the file before trusting it -
+# see the warning above)
+sct semantic "urinary urgency" --ids --limit 30 | sct codelist add urgency.codelist -
 
 # Use embeddings built with a different model
 sct semantic "fracture" \
@@ -69,25 +70,20 @@ sct semantic "epilepsy" --ollama-url http://192.168.1.100:11434
 ## Output
 
 ```
-10 closest concepts to "heart attack":
+$ sct semantic "can't stop peeing"
 
-  0.9821  [22298006] Heart attack
-  0.9734  [57054005] Acute myocardial infarction
-  0.9701  [233843008] Silent myocardial infarction
-  0.9688  [194828000] Angina pectoris
-  ...
+0.6815 | 87557004 | Urge incontinence of urine
+0.6762 | 249296002 | Sudden stoppage of urine flow
+0.6757 | 299271000000100 | Urge to pass urine again shortly after finishing voiding
+0.6710 | 249289004 | Must urinate repeatedly to empty urinary bladder
+0.6562 | 5972002 | Delay when starting to pass urine
 ```
 
-The first column is the **cosine similarity** score - a value between 0 and 1 representing how closely the concept's meaning aligns with your query in vector space. 1 would mean identical direction; 0 means completely unrelated. In practice:
+(Real output, UK Monolith 42.3.0, `nomic-embed-text`. The columns are `{score} | {id} | {preferred_term}`.)
 
-| Score | Interpretation |
-|---|---|
-| > 0.90 | Very strong match - almost certainly relevant |
-| 0.80 – 0.90 | Good match - worth reviewing |
-| 0.70 – 0.80 | Weak match - may be tangentially related |
-| < 0.70 | Usually noise |
+The first column is the **cosine similarity** between the query vector and the concept embedding - a value between 0 and 1, where 1 means identical direction in vector space and 0 means completely unrelated.
 
-Results are always returned ranked, so the absolute values matter less than relative ordering - a score of 0.82 at rank 1 is more relevant than 0.81 at rank 10.
+**There is no reliable score threshold that separates a good match from noise.** With `nomic-embed-text`, real scores across a wide range of queries cluster in roughly 0.60-0.80 whether the top result is exactly right or completely wrong - a score of 0.66 might be a solid clinical match, or it might be latching onto an unrelated word (see [Known limitations](#known-limitations)). Judge the returned *concept*, not the number. What the number *is* reliable for is relative ranking within one query's results - rank 1 is the model's best guess, and results usually degrade in relevance as you go down the list, even if the score gap between them is small.
 
 ---
 
@@ -107,12 +103,36 @@ The query is embedded using the same text template as `sct embed`, so the query 
 |---|---|---|
 | Basis | Keyword matching (FTS5) | Meaning / vector similarity |
 | Input | SQLite `.db` | Arrow `.arrow` + Ollama |
-| Speed | Instant | ~1–2 s (embedding the query) |
+| Speed | Instant | A few seconds (Ollama round-trip + scanning the full `.arrow` file - observed 2-7 s on an 831k-concept UK Monolith) |
 | Finds synonyms | Only if indexed | Yes |
 | Finds related concepts without shared words | No | Yes |
 | Works offline | Yes | Requires local Ollama |
+| Deterministic / reliable | Yes | No - review results before trusting them |
 
-Use `sct lexical` when you know the SNOMED term. Use `sct semantic` when you're describing a concept in plain language or exploring related concepts.
+Use `sct lexical` when you know the SNOMED term, or need a dependable, repeatable result. Use `sct semantic` for exploring plain-language descriptions, but check what it returns.
+
+---
+
+## Known limitations
+
+Real, verified failures from testing against the UK Monolith with `nomic-embed-text` - kept here so expectations stay calibrated as the model or embedding scheme change.
+
+**Idiomatic phrases the model has no medical grounding for.** A colloquial phrase that doesn't share a vocabulary root with its clinical concept can fail outright, with no signal in the score that anything went wrong:
+
+```
+$ sct semantic "sticky blood" --limit 3
+0.6286 | 276403006 | Neonatal cord sticky
+0.6222 | 104051000119105 | Exposure to body fluid due to accidental needle stick injury
+0.6195 | 77262006 | Heel stick
+```
+
+The intended target - hypercoagulable state - never appears. The model has latched onto "sticky" and "stick" as tokens, not the medical idiom.
+
+**Synonym dilution.** A concept whose *preferred term* is technical/Latin, but whose colloquial synonym is one of several in a list, can rank behind concepts that merely repeat the query phrase. `sct semantic "heart attack"` puts *Myocardial infarction* (`22298006`) at rank 11 (score 0.6998) - one place outside the default `--limit 10` - behind several concepts that just happen to contain the word "heart" (`Fear of having a heart attack`, `Contusion to heart`).
+
+**Category drift.** A query can land in the right clinical neighbourhood but the wrong part of SNOMED's hierarchy. `sct semantic "water on the lungs"` top-scores *Measurement of extravascular lung water* (a procedure) rather than the disorder a clinician means by that phrase (pulmonary oedema).
+
+None of this is a bug in `sct` - the scores are exactly what the embedding model produces for the given text, reproducibly. It reflects `nomic-embed-text` being a general-purpose model with no medical fine-tuning. A future improvement path (per-synonym embeddings with max-pooling, or a clinically-trained model) is tracked in [`spec/roadmap.md`](https://github.com/pacharanero/sct/blob/main/spec/roadmap.md); until then, treat every result as a candidate to review, not an answer.
 
 ---
 

@@ -187,10 +187,10 @@ For all further information see the full documentation by either exploring the [
 * [sct mcp](docs/mcp.md) - start a local MCP server over stdio backed by the SQLite database
 * [sct serve](docs/commands/serve.md) - FHIR R4 terminology server ($lookup/$validate-code/$subsumes/$expand with ECL)
 * [sct read2](docs/commands/read2.md) - import final Read v2 maps from NHS Data Migration TRUD item 9
-* [sct embed](docs/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
-* [sct lexical](docs/lexical.md) - keyword (FTS5) search over the SQLite database
+* [sct embed](docs/commands/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
+* [sct lexical](docs/commands/lexical.md) - keyword (FTS5) search over the SQLite database
 * [sct fst](docs/commands/fst.md) - mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
-* [sct semantic](docs/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama)
+* [sct semantic](docs/commands/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama) - experimental, see the docs for known limitations
 * `sct lookup <code>` - look up a concept by SCTID, or reverse-resolve a CTV3 code
 * [sct transcode](docs/commands/transcode.md) - map a stream of codes between SNOMED CT, Read v2, CTV3, ICD-10, and OPCS-4 (`sct trud download --multi-terminology` builds the full workspace)
 * [sct crosswalk](docs/commands/crosswalk.md) - show all cross-terminology equivalents of a single code at once

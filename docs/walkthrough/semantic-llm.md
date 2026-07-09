@@ -83,7 +83,7 @@ Generate dense vector embeddings for semantic (nearest-neighbour) search.
 !!! tip "Local AI required"
     Requires [Ollama](https://ollama.ai) running locally.
 
-The embeddings take quite a while to generate for the whole release (about 40 minutes for the UK Monolith with 831k concepts), and the resulting Arrow IPC file is about 2.7 GB, but the resulting semantic search capabilities are pretty impressive - you can find relevant concepts even when there are no shared keywords between the query and the concept text.
+The embeddings take quite a while to generate for the whole release (about 40 minutes for the UK Monolith with 831k concepts), and the resulting Arrow IPC file is about 2.7 GB. The resulting semantic search is a genuinely useful adjunct to keyword search - see the caveats in [`sct semantic`](../commands/semantic.md) before relying on it.
 
 > **Docs**: [`sct embed`](../commands/embed.md)
 
@@ -105,12 +105,13 @@ sct embed --input snomed.ndjson \
 # ~65 mins for ~831k concepts → snomed-embeddings.arrow (2.7 GB)
 ```
 
-Each concept is embedded using a rich text template:
+Each concept is embedded using a rich text template (real example, Myocardial infarction):
 
 ```text
-"Heart attack. Myocardial infarction (disorder).
- Synonyms: Cardiac infarction, Infarction of heart, MI.
- Hierarchy: SNOMED CT concept > Clinical finding > ... > Myocardial infarction"
+"search_document: Myocardial infarction. Myocardial infarction (disorder).
+ Synonyms: Infarction of heart, Cardiac infarction, Heart attack, Myocardial infarct,
+ MI - myocardial infarction. Hierarchy: SNOMED CT Concept > Clinical finding > ... >
+ Myocardial infarction."
 ```
 
 The Arrow IPC file can be queried in DuckDB or PyArrow, and is the input for
@@ -131,23 +132,17 @@ sct semantic --embeddings snomed-embeddings.arrow \
              --limit 5
 ```
 
-Example output:
+Real output (UK Monolith 42.3.0, `nomic-embed-text`):
 
 ```
-5 closest concepts to "blocked coronary artery":
-
-  0.9340  [22298006] Myocardial infarction
-  0.9210  [44771008] Coronary artery occlusion
-  0.9080  [394659003] Acute coronary syndrome
-  0.8970  [414795007] Ischaemic heart disease
-  0.8810  [53741008] Coronary artery atherosclerosis
+0.7260 | 47338008 | Removal of coronary artery obstruction
+0.7251 | 6026008 | Removal of coronary artery obstruction by percutaneous transluminal balloon with thrombolytic agent
+0.7248 | 68466008 | Removal of coronary artery obstruction by percutaneous transluminal balloon, single vessel
+0.7152 | 23322009 | Removal of coronary artery obstruction, percutaneous transluminal, multiple vessels
+0.7119 | 46130000 | Removal of coronary artery obstruction by direct intracoronary artery infusion
 ```
 
-The first column is the **cosine similarity** between the query vector and the concept
-embedding - a value between 0 and 1 where 1 means identical direction in vector space.
-In practice, scores above ~0.85 indicate strong semantic relevance; scores below ~0.70
-are usually noise. There is no hard threshold - results are always returned ranked, so
-the top few are what matter.
+The first column is the **cosine similarity** between the query vector and the concept embedding. Note what this genuinely useful result is *not*: every hit is a *procedure* (removing the obstruction), not the *disorder* a clinician might mean by the phrase - a good illustration that semantic search lands you in the right neighbourhood, not necessarily the exact answer. Real scores across a wide range of queries mostly fall in 0.60-0.80 regardless of whether the top hit is right or wrong, so there's no reliable score threshold to lean on - read the concepts, don't trust the number. See [`sct semantic` - Known limitations](../commands/semantic.md#known-limitations) for verified failure cases.
 
 Semantic search finds concepts even when the exact terms don't match - useful for
 natural-language queries, typos, and synonym gaps.
