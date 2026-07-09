@@ -124,4 +124,4 @@ On a UK Monolith-scale edition (~831k concepts) a search-only index (`--no-terms
 
 ## Inspiration
 
-I happened upon this article [Replacing a 3 GB SQLite database with a 10 MB FST (finite state transducer) binary](https://til.andrew-quinn.me/posts/replacing-a-3-gb-sqlite-database-with-a-7-mb-fst-finite-state-trandsucer-binary/) by Andrew Quinn, describing the use of an FST for a Finnish language dataset. I think 
+I happened upon this article [Replacing a 3 GB SQLite database with a 10 MB FST (finite state transducer) binary](https://til.andrew-quinn.me/posts/replacing-a-3-gb-sqlite-database-with-a-7-mb-fst-finite-state-trandsucer-binary/) by Andrew Quinn, describing the use of an FST for a Finnish language dataset.
