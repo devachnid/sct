@@ -366,6 +366,9 @@ On my machine this takes about 32 seconds for the UK Monolith release with 837,9
 
 **Now you can query SNOMED CT with standard `sqlite3`:** The following examples should all work out of the box on the resulting database, running in the terminal.
 
+!!! note "Installing `sqlite3`"
+    These examples use the `sqlite3` command-line tool. `sct` itself embeds SQLite and never needs it, but the `sqlite3` CLI isn't preinstalled on every platform: macOS ships with it; on Debian/Ubuntu run `sudo apt install sqlite3`, on Fedora `sudo dnf install sqlite`, and on Windows download the "command-line tools" bundle from [sqlite.org/download.html](https://www.sqlite.org/download.html).
+
 LLMs are excellent at generating SQL queries, so you can also use any LLM to generate custom SQL queries for you on demand. `sct` includes an MCP server that exposes the database as 'tools' to LLMs in a standard way for interactive querying - see [Semantic search and LLMs](semantic-llm.md).
 
 Free-text search (FTS5)

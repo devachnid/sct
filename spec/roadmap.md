@@ -115,6 +115,24 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
         mode and the stdio component are one binary mode with two front-ends or separate.
         Decide once a backend trait and the result shape are pinned down.
 
+### Concept history & inactivation storytelling
+
+Today inactive concepts are dropped by default (`--include-inactive` retains them), and even when retained `sct` shows little of *why* or *what happened*. The goal: optionally surface retired concepts and tell the full story - when a concept was added, when it was inactivated, what (if anything) replaced it, how long it was in service, and **why** it was inactivated. That last one is the interesting, currently-missing piece.
+
+Most of the data is already in RF2, and much of it `sct` already ingests:
+
+- **Replaced by / same as / possibly equivalent** - the Historical **Association** reference set, already parsed into `concept_history` under `--refsets all` and used by [`sct map --forward-history`](../docs/commands/map.md). This is the "what replaced it" edge, with its association type (REPLACED BY / SAME AS / POSSIBLY EQUIVALENT TO / MOVED TO / WAS A). Ready to surface now.
+- **Why inactivated** - the **Concept inactivation indicator**, a **`der2_cRefset_AttributeValue*` refset** (values: Ambiguous, Duplicate, Erroneous, Limited, Outdated, Moved elsewhere, Classification-derived, etc.). This refset is **not currently parsed** - it's the "Attribute value refsets" line already listed as remaining under [`sct ndjson --refsets all`](#future--larger-scope). Parsing it is the single prerequisite for the "why", and the highest-value part of this feature.
+- **When inactivated** - the concept row's `effectiveTime` at the point `active` flips to 0. Available from the Snapshot.
+- **When added / years in service** - needs the **Full** RF2 (not the Snapshot) to know the true birth `effectiveTime`; this is the same dependency as the "Point-in-time + through-time reporting" item below. Snapshot-only can approximate from the earliest release `sct` has ingested, but the honest full answer needs Full RF2.
+
+Displaying retired concepts is feasible because inactive concepts keep active descriptions (FSNs), so there is always a human-readable label to show. Proposed surface, splitting into a tractable near-term slice and a larger one:
+
+- **Near-term (Snapshot + AttributeValue parsing, no Full RF2):** parse the inactivation-indicator refset, then for an inactive concept make `sct lookup`, the MCP `snomed_concept` tool, and FHIR `CodeSystem/$lookup` show *inactive status + inactivation date + inactivation reason + association target(s) with their preferred terms*. A dedicated `sct history <id>` (or `sct lookup --history`) tells the story in one view.
+- **Larger (Full RF2):** true added-date, years-in-service, and a through-time timeline - folds into the Full-RF2 point-in-time work below.
+
+Pairs naturally with the "Semantic drift summariser" LLM item, which already imagines narrating inactivations, and with codeagogo's inactive-concept warning (see the AEHRC integrations below).
+
 ---
 
 ## Future / larger scope
@@ -477,6 +495,16 @@ being the next concrete pieces of work.
 - [ ] **Observable / D3 hierarchical viewer** served by a local `sct serve --ui` - radial
       tree of descendants, zoomable, with refset overlay colouring. Complements the
       notebook story for users who want a GUI without installing Python.
+
+### Editor & desktop integrations (AEHRC interop)
+
+AEHRC (the CSIRO team behind Ontoserver) ships two open-source tools that are natural front-ends for `sct`'s local engine, precisely because they speak standard FHIR R4 terminology operations - exactly what `sct serve` already implements. Both reinforce the payoff of `sct serve` being genuinely FHIR-conformant: existing terminology tooling can adopt it as a fast, offline, local backend with zero code changes. Researched July 2026.
+
+- [ ] **`aehrc/ecl-lsp` as an editor front-end for the ECL engine.** A Language Server Protocol implementation for SNOMED CT ECL, with plugins for VSCode, IntelliJ, Eclipse, Neovim, Sublime, and Emacs: real-time ECL diagnostics, completion, hover, formatting, eight refactoring actions, and an inline concept-count code lens. It resolves concepts and evaluates ECL through a **configurable FHIR terminology server** (`ValueSet/$expand`, `CodeSystem/$validate-code`, `$lookup`, under the `ecl.*` settings namespace). Since [`sct serve`](../docs/commands/serve.md) implements exactly those operations with a full ECL-aware `$expand`, it should be a drop-in **offline, local** backend - editor-integrated ECL authoring with no Ontoserver/Snowstorm and no network round-trip.
+  - **Near-term:** verify and document pointing ecl-lsp at `sct serve` (a docs recipe plus a conformance check over the specific operations/parameters ecl-lsp actually calls).
+  - **Larger:** a native `sct lsp` mode so no server process is needed at all - `sct` already owns the ECL engine, so the work is the LSP plumbing (stdio JSON-RPC, which the MCP server already frames) rather than any new terminology logic.
+  - Source: <https://github.com/aehrc/ecl-lsp>
+- [ ] **`aehrc/codeagogo` - system-wide code lookup backed by `sct`.** A macOS menu-bar utility for clinical-terminology lookup/search/annotation from any application via global hotkeys; it auto-detects SNOMED codes with Verhoeff check-digit validation and validates concepts against a terminology server in the background, warning on inactive or unknown concepts. Two angles: (1) point codeagogo at a local `sct serve` instead of a remote Ontoserver, for offline system-wide lookup over the exact release the user licenses; (2) harvest the ideas into `sct` itself - Verhoeff check-digit auto-detection in `sct lookup`, and the inactive-concept warning, which dovetails directly with the concept-history/inactivation feature above. Source: <https://github.com/aehrc/codeagogo>
 
 ### Clinical-data interoperability
 
