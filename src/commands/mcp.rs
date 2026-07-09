@@ -302,10 +302,7 @@ fn handle_message(
     }
 
     // Notifications have no id - process but don't respond
-    let id = match &req.id {
-        Some(id) => id.clone(),
-        None => return None,
-    };
+    let id = req.id.as_ref()?.clone();
 
     let result = match req.method.as_str() {
         "initialize" => handle_initialize(&req.params, prov),
