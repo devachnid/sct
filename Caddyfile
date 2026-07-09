@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Reverse proxy for `sct serve`, providing automatic HTTPS (via Caddy's
+# built-in ACME client), optional HTTP basic auth, and CORS headers for
+# browser-based FHIR clients. See spec/deployment.md for the full design.
+#
+# CADDY_SITE_ADDRESS and the two `import`ed snippets below are written by
+# docker/caddy-entrypoint.sh before Caddy starts, because Caddy's {$VAR:default}
+# substitution happens at parse time and cannot safely embed a colon (e.g. the
+# ":80" fallback for "no DOMAIN set") in a default value - see the entrypoint
+# script for why this needs a wrapper rather than a single static Caddyfile.
+{
+	import /etc/caddy/snippets/globals.caddy
+}
+
+{$CADDY_SITE_ADDRESS} {
+	import /etc/caddy/snippets/auth.caddy
+
+	header {
+		Access-Control-Allow-Origin {$CORS_ORIGINS:*}
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Accept"
+	}
+
+	reverse_proxy sct:{$SCT_SERVE_PORT:8080} {
+		health_uri /fhir/metadata
+		health_interval 10s
+		health_timeout 5s
+	}
+
+	# sct's first run downloads and builds the SNOMED database, which can take
+	# several minutes; give callers a clear "come back shortly" instead of a
+	# bare, bodyless error while that is happening. This is deliberately
+	# handle_errors, not reverse_proxy's nested handle_response: when active
+	# health checks have marked every upstream down, reverse_proxy short-
+	# circuits before producing a response to intercept, so handle_response
+	# never fires for this case (verified live - it silently no-ops, leaving
+	# Caddy's bare, empty-body default error). handle_errors catches it.
+	#
+	# Scoped to 502/503/504 only (proxy/upstream failures) - a bare,
+	# unscoped handle_errors also swallows basic_auth's 401 challenge,
+	# turning a real "please authenticate" prompt into a misleading
+	# "starting up" message and breaking auth entirely (verified live).
+	handle_errors 502 503 504 {
+		respond "sct is starting up (downloading/building the SNOMED database) - retry shortly." 503
+	}
+}
