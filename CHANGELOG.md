@@ -5,6 +5,34 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.2] - 2026-07-09
+
+### CI
+
+- **release**: Publish a multi-arch sct image to Docker Hub on release ([d693c66](https://github.com/pacharanero/sct/commit/d693c6645a018a9edddeb810b0ebb6ab32c2305b))
+
+### Chores
+
+- Fix dangling doc sentence and zensical emoji extension path ([f7a839f](https://github.com/pacharanero/sct/commit/f7a839f028e801e5dbdac62d36e75855e94d05a4))
+
+### Documentation
+
+- **spec**: Commit to Compose + separate Caddy (Option A) in deployment plan ([9687bd8](https://github.com/pacharanero/sct/commit/9687bd860176e6eb511c67fb2e3e625f1828ffd5))
+
+- **semantic**: Replace fabricated examples with verified output; set honest expectations ([15eb247](https://github.com/pacharanero/sct/commit/15eb247d3190344cee95598a0049fea117cfd39f))
+
+- Note 4096-char description-length readiness in trud/ndjson ([1baae7c](https://github.com/pacharanero/sct/commit/1baae7cb119e4c1b1ab3f24afae8ede79317881f))
+
+- **roadmap**: Remove completed items, verify claims, tidy stray note ([a71fe84](https://github.com/pacharanero/sct/commit/a71fe84a1d6935a3b9c676b39dd56415ca306850))
+
+- **deploy**: Rewrite the self-host guide for the Caddy-fronted stack ([d921bf1](https://github.com/pacharanero/sct/commit/d921bf1d92cf7b3fa29c4dabb0eb62580c8dd878))
+
+### Features
+
+- **embed**: Stamp model + text scheme into Arrow metadata; verify at query time ([3654fb9](https://github.com/pacharanero/sct/commit/3654fb9a435161e7b8d674802567036591a23ef7))
+
+- **deploy**: TLS reverse proxy for sct serve via Caddy + Compose ([0820924](https://github.com/pacharanero/sct/commit/0820924ace553e99f5f38c5f59e4d5ccdab708e9))
+
 ## [0.18.1] - 2026-07-08
 
 ### Chores
