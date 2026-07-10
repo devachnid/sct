@@ -33,12 +33,12 @@ In no particular order. (Distribution items - code signing, the Docker Hub image
 
 Shipped: multi-platform release binaries (including Windows x86_64 and Linux aarch64), SHA-256 checksums, `.deb` / `.rpm` packages, unsigned macOS `.dmg` images, standalone Windows `.exe`, `install.sh` / `install.ps1`, cargo-binstall, crates.io, the shared `pacharanero/tap` Homebrew tap, a Scoop bucket, and a Docker Compose stack (`sct` + a Caddy reverse proxy for automatic HTTPS, optional basic auth, CORS - see [`spec/deployment.md`](deployment.md)) published as a multi-arch image to Docker Hub (`pacharanero/sct`) on every release. Release artefacts and package-manager manifests are auto-bumped by the release workflow. See the docs installation tabs and [`docs/deploy/`](../docs/deploy/index.md) (a no-clone route using the published image, and a build-from-source route). Outstanding:
 
-- [ ] `R10` Publish the same image to GHCR too (Docker Hub only today) - cheap addition, reuses `GITHUB_TOKEN`, no new secret needed.
+- [x] `R10` **Publish the image to GHCR too.** `release.yml` gained an additive `publish-ghcr` job that mirrors the finished multi-arch manifest from Docker Hub to `ghcr.io/pacharanero/sct` under the same tags, authenticating with the built-in `GITHUB_TOKEN` (no new secret) and leaving the Docker Hub jobs untouched (a GHCR hiccup can't break the Docker Hub release). Motivation: GHCR pulls avoid Docker Hub's anonymous pull rate limits. One-time manual step after the first mirrored release: flip the GHCR package to public. Verifies on the next tagged release; docs note the `image:` swap.
 - [ ] `R11` macOS code signing + notarization (requires Apple Developer ID, $99/yr) so users don't have to `chmod +x` and bypass Gatekeeper
 - [ ] `R12` Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block. Guide: <https://ngrok.com/blog/so-you-want-to-sign-for-windows>
 - [ ] `R13` Submit to `homebrew-core` once project hits 30+ stars and has stable release cadence (would enable `brew install sct` without the tap)
 - [ ] `R14` Submit to `winget` after Windows signing is in place
-- [ ] `R15` Nix flake
+- [x] `R15` **Nix flake.** `flake.nix` packages `sct` via `rustPlatform.buildRustPackage` (version single-sourced from `Cargo.toml`; no system libraries, since SQLite is vendored and TLS is rustls), exposing `packages.default` / `apps.default` (`nix run github:pacharanero/sct`) plus a `devShells.default` carrying the Rust toolchain, across the four released-binary platforms. Not verifiable in the authoring environment (no `nix` present); wants a `nix build` smoke-check - a small CI job would keep it from bit-rotting.
 
 ### Quality
 

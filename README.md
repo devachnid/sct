@@ -105,6 +105,21 @@ cargo install cargo-binstall
 cargo binstall sct-rs
 ```
 
+### Nix
+
+With [Nix](https://nixos.org) and flakes enabled, run `sct` straight from the repository without installing it, add it to your profile, or drop into a dev shell:
+
+```bash
+# Run without installing anything
+nix run github:pacharanero/sct -- lookup 22298006
+
+# Install into your profile
+nix profile install github:pacharanero/sct
+
+# Dev shell with the Rust toolchain, for hacking on sct
+nix develop github:pacharanero/sct
+```
+
 ### Build from source
 
 ```bash
