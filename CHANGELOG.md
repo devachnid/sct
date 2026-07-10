@@ -5,6 +5,12 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.4] - 2026-07-10
+
+### Performance
+
+- **serve**: Pool warm read-only connections (~10x concurrent throughput) ([6da60cf](https://github.com/pacharanero/sct/commit/6da60cf72511ab07f03855c9c5aac50a071ff68f))
+
 ## [0.18.3] - 2026-07-10
 
 ### Bug fixes
