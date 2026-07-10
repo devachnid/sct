@@ -357,7 +357,7 @@ NDJSON is great for quick exploration and ad-hoc queries, but for more complex q
 Load the NDJSON artefact into a SQLite database with FTS5 full-text search.
 
 ```bash
-sct sqlite --input snomed.ndjson --output snomed.db
+sct sqlite --ndjson snomed.ndjson --output snomed.db
 ```
 
 **Docs**: [`sct sqlite`](../commands/sqlite.md)

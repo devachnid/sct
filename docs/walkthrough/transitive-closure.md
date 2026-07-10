@@ -23,7 +23,7 @@ sct tct --db snomed.db
 Or build it in a single step alongside the main load:
 
 ```bash
-sct sqlite --input snomed.ndjson --output snomed.db --transitive-closure
+sct sqlite --ndjson snomed.ndjson --output snomed.db --transitive-closure
 ```
 
 Both call the same underlying algorithm and produce identical output. The `--transitive-closure` flag is a convenience shorthand for pipelines that want everything in one command.

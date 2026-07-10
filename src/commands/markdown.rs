@@ -40,8 +40,14 @@ pub enum OutputMode {
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// Input NDJSON file produced by `sct ndjson`. Use `-` for stdin.
-    #[arg(long, short)]
+    /// NDJSON artefact produced by `sct ndjson`. Use `-` for stdin.
+    #[arg(
+        long = "ndjson",
+        visible_alias = "input",
+        short = 'i',
+        value_hint = clap::ValueHint::FilePath,
+        value_name = "NDJSON"
+    )]
     pub input: PathBuf,
 
     /// Output directory for Markdown files.

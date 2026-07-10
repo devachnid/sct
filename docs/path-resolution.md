@@ -94,7 +94,7 @@ No SNOMED CT database found. Searched (in order):
 
 Build one with:
   sct trud download --edition uk_monolith --pipeline
-  sct sqlite --input snomed.ndjson
+  sct sqlite --ndjson snomed.ndjson
 ```
 
 The message lists every step that was tried - so it's always obvious whether to set an env var, drop a file in cwd, or run `sct trud`.

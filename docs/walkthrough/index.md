@@ -11,7 +11,7 @@ It was initially created as an experiment in file-based data handling, offline-f
     Build the lexical index once, then watch every SNOMED concept autocomplete **instantly and offline** as you type - sub-millisecond per keystroke, no server:
 
     ```bash
-    sct fst build --input snomed.ndjson --output snomed.fst
+    sct fst build --ndjson snomed.ndjson --output snomed.fst
     sct sayt --index snomed.fst
     ```
 

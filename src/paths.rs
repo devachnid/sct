@@ -296,11 +296,11 @@ impl Kind {
             Kind::Db => {
                 "Build one with:\n  \
                  sct trud download --edition uk_monolith --pipeline\n  \
-                 sct sqlite --input snomed.ndjson"
+                 sct sqlite --ndjson snomed.ndjson"
             }
             Kind::Embeddings => {
                 "Build one with:\n  \
-                 sct embed --input snomed.ndjson --output snomed-embeddings.arrow\n\
+                 sct embed --ndjson snomed.ndjson --output snomed-embeddings.arrow\n\
                  (requires Ollama; see `docs/commands/embed.md`)"
             }
         }

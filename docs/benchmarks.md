@@ -28,11 +28,11 @@ full methodology.
 
 ```bash
 time sct ndjson --rf2 ~/downloads/SnomedCT_MonolithRF2_PRODUCTION_20260701T120000Z/
-time sct sqlite   --input snomed.ndjson
-time sct parquet  --input snomed.ndjson
-time sct markdown --input snomed.ndjson
+time sct sqlite   --ndjson snomed.ndjson
+time sct parquet  --ndjson snomed.ndjson
+time sct markdown --ndjson snomed.ndjson
 time sct tct      --db snomed.db
-time sct fst build --input snomed.ndjson
+time sct fst build --ndjson snomed.ndjson
 ```
 
 ---
@@ -96,7 +96,7 @@ time sct ndjson --rf2 ~/downloads/SnomedCT_MonolithRF2_PRODUCTION_20260701T12000
 ### `sct sqlite`
 
 ```bash
-time sct sqlite --input snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed.db
+time sct sqlite --ndjson snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed.db
 ls -lh snomed.db
 ```
 
@@ -108,7 +108,7 @@ sqlite3 snomed.db "SELECT id, preferred_term FROM concepts_fts WHERE concepts_ft
 ### `sct parquet`
 
 ```bash
-time sct parquet --input snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed.parquet
+time sct parquet --ndjson snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed.parquet
 ls -lh snomed.parquet
 ```
 
@@ -120,7 +120,7 @@ duckdb -c "SELECT hierarchy, COUNT(*) n FROM 'snomed.parquet' GROUP BY hierarchy
 ### `sct markdown`
 
 ```bash
-time sct markdown --input snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed-concepts/
+time sct markdown --ndjson snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed-concepts/
 du -sh snomed-concepts/
 find snomed-concepts/ -name "*.md" | wc -l
 ```
@@ -138,7 +138,7 @@ sqlite3 snomed.db "SELECT COUNT(*) FROM concept_ancestors"
 ### `sct fst build`
 
 ```bash
-time sct fst build --input snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed.fst
+time sct fst build --ndjson snomedct-monolithrf2-production-20260701t120000z.ndjson --output snomed.fst
 ls -lh snomed.fst
 ```
 

@@ -138,7 +138,7 @@ sct trud download --edition uk_monolith --pipeline
 Alternatively, build one explicitly:
 
 ```bash
-sct sqlite --input snomed.ndjson --output snomed.db
+sct sqlite --ndjson snomed.ndjson --output snomed.db
 ```
 
 ---

@@ -145,7 +145,7 @@ sct ndjson --rf2 SnomedCT_MonolithRF2_PRODUCTION_20260311T120000Z.zip
 # ✓  837,930 concepts written → snomedct-monolithrf2-production-20260311t120000z.ndjson
 
 # 3. Load into SQLite with FTS5
-sct sqlite --input snomedct-monolithrf2-production-20260311t120000z.ndjson
+sct sqlite --ndjson snomedct-monolithrf2-production-20260311t120000z.ndjson
 
 # 4. Query with standard tools - no custom binary needed
 sqlite3 snomed.db \

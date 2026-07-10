@@ -17,7 +17,7 @@ All three call the same `search_typeahead` core, which blends whole-term prefix 
 Build an FST index once from your NDJSON artefact (see [`sct fst`](fst.md)):
 
 ```bash
-sct fst build --input snomed.ndjson --output snomed.fst
+sct fst build --ndjson snomed.ndjson --output snomed.fst
 ```
 
 ---

@@ -16,7 +16,7 @@ Build and query a **Finite State Transducer (FST)-backed lexical index** - a sin
 ## Usage
 
 ```
-sct fst build  --input <NDJSON> [--output <FST>]
+sct fst build  --ndjson <NDJSON> [--output <FST>]
 sct fst search <QUERY> [--index <FST>] [--prefix | --fuzzy <N> | --words] [--limit <N>]
 ```
 
@@ -28,14 +28,14 @@ sct fst search <QUERY> [--index <FST>] [--prefix | --fuzzy <N> | --words] [--lim
 
 | Flag | Default | Description |
 |---|---|---|
-| `--input <FILE>` | *(required)* | NDJSON file produced by `sct ndjson`. Use `-` for stdin. |
+| `--ndjson <FILE>` | *(required)* | NDJSON file produced by `sct ndjson`. Use `-` for stdin. Accepts `--input` as an alias. |
 | `--output <FILE>` | `snomed.fst` | Output index file. |
 | `--no-terms` | off | Omit the display side-tables (preferred-term labels). Produces a much smaller, search-only index for use alongside SQLite, where labels are resolved from the database. `sct fst search` on such an index returns SCTIDs without labels. |
 
 ```bash
-sct fst build --input snomed.ndjson --output snomed.fst
+sct fst build --ndjson snomed.ndjson --output snomed.fst
 # Smaller, search-only (no labels):
-sct fst build --input snomed.ndjson --output snomed.fst --no-terms
+sct fst build --ndjson snomed.ndjson --output snomed.fst --no-terms
 ```
 
 Build prints a short summary to stderr:

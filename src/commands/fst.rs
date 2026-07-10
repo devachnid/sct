@@ -4,7 +4,7 @@
 //! `sct fst` - build and query the FST-backed lexical index.
 //!
 //! Two subcommands:
-//!   - `sct fst build  --input snomed.ndjson --output snomed.fst`
+//!   - `sct fst build  --ndjson snomed.ndjson --output snomed.fst`
 //!   - `sct fst search --index snomed.fst <query> [--prefix | --fuzzy N | --words]`
 //!
 //! `build` mirrors `sct sqlite` / `sct parquet`: it consumes the canonical
@@ -38,8 +38,14 @@ enum FstCommand {
 
 #[derive(Parser, Debug)]
 struct BuildArgs {
-    /// Input NDJSON file produced by `sct ndjson`. Use `-` for stdin.
-    #[arg(long, short)]
+    /// NDJSON artefact produced by `sct ndjson`. Use `-` for stdin.
+    #[arg(
+        long = "ndjson",
+        visible_alias = "input",
+        short = 'i',
+        value_hint = clap::ValueHint::FilePath,
+        value_name = "NDJSON"
+    )]
     input: PathBuf,
 
     /// Output index file.
