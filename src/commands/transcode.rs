@@ -75,40 +75,26 @@ fn to_snomed(conn: &Connection, from: &str, code: &str) -> Result<Vec<String>> {
                 )
             }
         }
-        "icd10" | "opcs4" if table_exists(conn, "crossmaps") => {
-            // Tolerate undotted ICD-10 input (e.g. `I219`, common in UK SUS/HES
-            // and legacy extracts) by canonicalising to the stored dotted form
-            // (`I21.9`). Scoped to ICD-10; OPCS-4 matching is left untouched. #31
-            let code = if from == "icd10" {
-                normalise_icd10(code)
-            } else {
-                code.to_string()
-            };
+        "icd10" if table_exists(conn, "crossmaps") => {
+            // Tolerate the undotted ICD-10 form (e.g. `I219`, common in UK
+            // SUS/HES and legacy extracts) as well as the canonical dotted form
+            // (`I21.9`) by comparing with dots stripped on both sides. Scoped to
+            // ICD-10; OPCS-4 matching (below) is left untouched. Issue #31.
             collect(
                 conn,
-                "SELECT DISTINCT source_code FROM crossmaps WHERE target_system = ?1 AND target_code = ?2",
-                params![from, code],
+                "SELECT DISTINCT source_code FROM crossmaps
+                 WHERE target_system = 'icd10' AND REPLACE(target_code, '.', '') = ?1",
+                params![code.replace('.', "")],
             )
         }
+        "opcs4" if table_exists(conn, "crossmaps") => collect(
+            conn,
+            "SELECT DISTINCT source_code FROM crossmaps WHERE target_system = ?1 AND target_code = ?2",
+            params![from, code],
+        ),
         "icd10" | "opcs4" => Ok(vec![]), // no crossmaps table -> no maps
         _ => bail!("unknown source terminology {from:?}"),
     }
-}
-
-/// Canonicalise an ICD-10 code to its dotted form so undotted input matches the
-/// stored canonical `mapTarget` form: `I219` -> `I21.9`. ICD-10 categories are
-/// always three characters, with any subcategory following a dot, so when there
-/// is no dot and the code is longer than three characters we insert one after
-/// the third. Already-dotted codes and codes of three or fewer characters (e.g.
-/// `I10`) are returned unchanged. Scoped to ICD-10 by the caller (issue #31).
-fn normalise_icd10(code: &str) -> String {
-    let code = code.trim();
-    if code.contains('.') || code.chars().count() <= 3 {
-        return code.to_string();
-    }
-    let head: String = code.chars().take(3).collect();
-    let tail: String = code.chars().skip(3).collect();
-    format!("{head}.{tail}")
 }
 
 /// Map a SNOMED concept id to its code(s) in the `to` terminology.
@@ -282,24 +268,4 @@ pub(crate) fn read_codes(input: Option<&std::path::Path>) -> Result<Vec<String>>
         }
     }
     Ok(codes)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::normalise_icd10;
-
-    #[test]
-    fn normalise_icd10_inserts_dot_after_category() {
-        assert_eq!(normalise_icd10("I219"), "I21.9");
-        assert_eq!(normalise_icd10("J459"), "J45.9");
-        assert_eq!(normalise_icd10("S0201"), "S02.01"); // multi-char subcategory
-        assert_eq!(normalise_icd10(" I219 "), "I21.9"); // trims
-    }
-
-    #[test]
-    fn normalise_icd10_leaves_canonical_and_short_codes_unchanged() {
-        assert_eq!(normalise_icd10("I21.9"), "I21.9"); // already dotted
-        assert_eq!(normalise_icd10("I10"), "I10"); // 3-char category, no subcategory
-        assert_eq!(normalise_icd10("A00"), "A00");
-    }
 }
