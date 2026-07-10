@@ -42,7 +42,7 @@ pub struct Args {
     /// NDJSON artefact produced by `sct ndjson`. Use `-` for stdin.
     #[arg(
         long = "ndjson",
-        visible_alias = "input",
+        alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
         value_name = "NDJSON",

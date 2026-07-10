@@ -27,7 +27,7 @@ pub struct Args {
     /// NDJSON artefact produced by `sct ndjson`. Use `-` for stdin.
     #[arg(
         long = "ndjson",
-        visible_alias = "input",
+        alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
         value_name = "NDJSON",
@@ -214,7 +214,13 @@ pub fn run(args: Args) -> Result<()> {
         tx.commit().context("committing transaction")?;
     }
 
-    pb.set_message(format!("{} concepts committed; creating indexes...", n));
+    // The load byte bar is now at 100%; retire it and switch to a spinner for
+    // the index + FTS rebuild, which are single opaque SQL statements with no
+    // knowable total. The spinner's steady tick keeps animating (and the
+    // elapsed clock advancing) through the blocking FTS rebuild, so the build
+    // never looks hung.
+    pb.finish_and_clear();
+    let pb = crate::progress::spinner(format!("{} concepts committed; creating indexes...", n));
 
     conn.execute_batch(
         "CREATE INDEX IF NOT EXISTS idx_concepts_hierarchy ON concepts(hierarchy);
