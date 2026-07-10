@@ -421,6 +421,20 @@ mod tests {
     }
 
     #[test]
+    fn icd10_input_tolerates_undotted() {
+        let conn = fixture();
+        // Baseline: the canonical dotted form resolves to the mapped concept.
+        assert!(
+            render_conv(&conn, "icd10", "snomed", "I21.9", MapFormat::Text).contains("22298006")
+        );
+        // Issue #31: the undotted form a UK claims extract might present resolves
+        // to the same concept.
+        assert!(
+            render_conv(&conn, "icd10", "snomed", "I219", MapFormat::Text).contains("22298006")
+        );
+    }
+
+    #[test]
     fn conversion_text_and_tsv_and_json() {
         let conn = fixture();
         assert!(

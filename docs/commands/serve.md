@@ -119,7 +119,8 @@ Map a code between SNOMED CT, ICD-10, OPCS-4, CTV3, and Read v2 using the same m
 # SNOMED CT -> ICD-10
 curl 'http://localhost:8080/ConceptMap/$translate?system=http://snomed.info/sct&code=22298006&targetsystem=http://hl7.org/fhir/sid/icd-10'
 
-# Bare names also accepted; reverse works too (ICD-10 -> SNOMED CT)
+# Bare names also accepted; reverse works too (ICD-10 -> SNOMED CT).
+# ICD-10 input is tolerant of the undotted form (I219 as well as I21.9).
 curl 'http://localhost:8080/ConceptMap/$translate?system=icd10&code=I219&targetsystem=snomed'
 ```
 
