@@ -27,12 +27,10 @@ use arrow::datatypes::{DataType, Field, Schema};
 use arrow::ipc::writer::FileWriter;
 use arrow::record_batch::RecordBatch;
 use clap::Parser;
-use indicatif::{ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::provenance::{self, Provenance};
 use crate::schema::ConceptRecord;
@@ -96,14 +94,7 @@ pub fn run(args: Args) -> Result<()> {
         )
     };
 
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} [{elapsed_precise}] {msg}")
-            .unwrap(),
-    );
-    pb.enable_steady_tick(Duration::from_millis(120));
-    pb.set_message("Probing Ollama...");
+    let pb = crate::progress::spinner("Probing Ollama...");
 
     // Probe Ollama with a single embedding to verify it is reachable and to
     // discover the embedding dimension.
@@ -141,11 +132,9 @@ pub fn run(args: Args) -> Result<()> {
         concepts.push(record);
     }
 
-    pb.set_message(format!(
-        "{} concepts loaded. Embedding in batches of {}...",
-        concepts.len(),
-        args.batch_size
-    ));
+    pb.finish_and_clear();
+    let bar = crate::progress::count_bar(concepts.len() as u64);
+    bar.set_message(format!("Embedding (batches of {})", args.batch_size));
 
     // Embed in batches
     let mut all_embeddings: Vec<Vec<f32>> = Vec::with_capacity(concepts.len());
@@ -159,12 +148,11 @@ pub fn run(args: Args) -> Result<()> {
             )
         })?;
         all_embeddings.extend(batch_vecs);
-
-        let done = ((chunk_idx + 1) * args.batch_size).min(concepts.len());
-        pb.set_message(format!("{}/{} concepts embedded...", done, concepts.len()));
+        bar.inc(chunk.len() as u64);
     }
 
-    pb.set_message("Writing Arrow IPC file...");
+    bar.finish_and_clear();
+    let pb = crate::progress::spinner("Writing Arrow IPC file...");
 
     write_arrow(
         &concepts,

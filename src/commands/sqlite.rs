@@ -15,11 +15,9 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use indicatif::{ProgressBar, ProgressStyle};
 use rusqlite::{params, Connection};
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use crate::provenance;
 use crate::schema::ConceptRecord;
@@ -55,18 +53,9 @@ pub struct Args {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    let input: Box<dyn std::io::Read> = if args.input.as_os_str() == "-" {
-        Box::new(std::io::stdin())
-    } else {
-        Box::new(
-            std::fs::File::open(&args.input)
-                .with_context(|| format!("opening {}", args.input.display()))?,
-        )
-    };
+    let (reader, pb) = crate::progress::ndjson_reader(&args.input)?;
 
-    let reader = BufReader::new(input);
-
-    eprintln!("Opening database {}...", args.output.display());
+    pb.set_message(format!("Opening database {}...", args.output.display()));
     let mut conn = Connection::open(&args.output)
         .with_context(|| format!("opening database {}", args.output.display()))?;
 
@@ -80,13 +69,6 @@ pub fn run(args: Args) -> Result<()> {
 
     create_schema(&conn)?;
 
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} [{elapsed_precise}] {msg}")
-            .unwrap(),
-    );
-    pb.enable_steady_tick(Duration::from_millis(120));
     pb.set_message("Loading concepts...");
 
     let mut n = 0usize;
@@ -262,7 +244,7 @@ pub fn run(args: Args) -> Result<()> {
     // --- Concept history sidecar (`<input-stem>.history.ndjson`, if present) ---
     let history_n = load_history_sidecar(&conn, &args.input)?;
     if history_n > 0 {
-        eprintln!("Loaded {history_n} concept-history rows");
+        pb.println(format!("Loaded {history_n} concept-history rows"));
     }
 
     pb.finish_with_message(format!("Done. {} concepts → {}", n, args.output.display()));

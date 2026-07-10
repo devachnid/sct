@@ -169,12 +169,16 @@ pub fn run(args: Args) -> Result<()> {
     writer.write_all(prov_line.as_bytes())?;
     writer.write_all(b"\n")?;
 
+    let bar = crate::progress::count_bar(records.len() as u64);
+    bar.set_message("Writing NDJSON");
     for record in &records {
         let line = serde_json::to_string(record).context("serialising record")?;
         writer.write_all(line.as_bytes())?;
         writer.write_all(b"\n")?;
+        bar.inc(1);
     }
     writer.flush()?;
+    bar.finish_and_clear();
 
     // --- History sidecar (concept history; populated under `--refsets all`) ---
     // Written alongside the NDJSON as `<stem>.history.ndjson`, one association

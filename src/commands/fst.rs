@@ -16,7 +16,6 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use std::io::BufReader;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -98,15 +97,8 @@ pub fn run(args: Args) -> Result<()> {
 }
 
 fn build(args: BuildArgs) -> Result<()> {
-    let reader: Box<dyn std::io::Read> = if args.input.as_os_str() == "-" {
-        Box::new(std::io::stdin())
-    } else {
-        Box::new(
-            std::fs::File::open(&args.input)
-                .with_context(|| format!("opening {}", args.input.display()))?,
-        )
-    };
-    let reader = BufReader::new(reader);
+    let (reader, pb) = crate::progress::ndjson_reader(&args.input)?;
+    pb.set_message("Building FST index...");
 
     let mut out = std::fs::File::create(&args.output)
         .with_context(|| format!("creating {}", args.output.display()))?;
@@ -119,6 +111,7 @@ fn build(args: BuildArgs) -> Result<()> {
     let stats = index::build_with_options(reader, &mut out, &opts)?;
     drop(out);
     let elapsed = started.elapsed();
+    pb.finish_and_clear();
 
     let size = std::fs::metadata(&args.output)
         .map(|m| m.len())

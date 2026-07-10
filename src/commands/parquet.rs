@@ -15,13 +15,11 @@ use arrow::array::{ArrayRef, BooleanBuilder, Int64Builder, StringBuilder};
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use clap::Parser;
-use indicatif::{ProgressBar, ProgressStyle};
 use parquet::arrow::arrow_writer::ArrowWriter;
 use parquet::file::properties::WriterProperties;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::schema::ConceptRecord;
 
@@ -45,16 +43,8 @@ pub struct Args {
 }
 
 pub fn run(args: Args) -> Result<()> {
-    let input: Box<dyn std::io::Read> = if args.input.as_os_str() == "-" {
-        Box::new(std::io::stdin())
-    } else {
-        Box::new(
-            std::fs::File::open(&args.input)
-                .with_context(|| format!("opening {}", args.input.display()))?,
-        )
-    };
-
-    let reader = BufReader::new(input);
+    let (reader, pb) = crate::progress::ndjson_reader(&args.input)?;
+    pb.set_message("Writing Parquet...");
 
     let schema = Arc::new(parquet_schema());
     let file = std::fs::File::create(&args.output)
@@ -62,15 +52,6 @@ pub fn run(args: Args) -> Result<()> {
     let props = WriterProperties::builder().build();
     let mut writer = ArrowWriter::try_new(file, schema.clone(), Some(props))
         .context("creating Parquet writer")?;
-
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} [{elapsed_precise}] {msg}")
-            .unwrap(),
-    );
-    pb.enable_steady_tick(Duration::from_millis(120));
-    pb.set_message("Writing Parquet...");
 
     let mut batch_buf: Vec<ConceptRecord> = Vec::with_capacity(BATCH_SIZE);
     let mut total = 0usize;
