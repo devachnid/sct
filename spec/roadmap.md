@@ -6,15 +6,9 @@ Each work item carries a stable `R##` identifier (e.g. `R42`) so it can be refer
 
 ## Open issues
 
-Bugs and smaller enhancements are tracked on the **[GitHub issue tracker](https://github.com/pacharanero/sct/issues)** - the authoritative, always-current list. Snapshot at the time of writing (refresh with `gh issue list --state open`):
+Bugs and smaller enhancements are tracked on the **[GitHub issue tracker](https://github.com/pacharanero/sct/issues)** - the authoritative, always-current list (refresh a snapshot here with `gh issue list --state open`).
 
-- [#37](https://github.com/pacharanero/sct/issues/37) - batch terminology operations in one request (`$validate-code` / `$lookup` / `$translate`)
-- [#36](https://github.com/pacharanero/sct/issues/36) - `ConceptMap/$closure` for incremental subsumption closure maintenance
-- [#35](https://github.com/pacharanero/sct/issues/35) - serve a `TerminologyCapabilities` statement for `GET /metadata?mode=terminology`
-- [#34](https://github.com/pacharanero/sct/issues/34) - `sct mcp --embeddings` help text claims auto-discovery that does not happen
-- [#33](https://github.com/pacharanero/sct/issues/33) - `sct codelist export --format rf2` (fhir-json shipped; rf2 is decision-gated, see Features)
-- [#31](https://github.com/pacharanero/sct/issues/31) - tolerate undotted ICD-10 codes as `$translate` input (e.g. `I219` as well as `I21.9`)
-- [#30](https://github.com/pacharanero/sct/issues/30) - `conformance.sh` translate check only inspects the last result; stale `asthma-no-map` fixture
+At the time of writing the tracker is **clear** - #30-#37 have all been resolved: batch Bundle (#37), TerminologyCapabilities (#35), undotted-ICD-10 tolerance (#31), the conformance translate-check fix (#30), and the `mcp --embeddings` / `codelist export` help-text corrections (#34, #33) all shipped; `ConceptMap/$closure` (#36) was deferred as a poor fit for the stateless read-only server. `rf2` codelist export remains as decision-gated item `R24` under Features.
 
 ---
 
