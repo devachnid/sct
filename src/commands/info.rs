@@ -137,8 +137,12 @@ fn info_db(path: &Path) -> Result<()> {
         .query_row("SELECT COUNT(*) FROM concepts", [], |r| r.get::<_, i64>(0))
         .map(|n| n as u64)?;
 
+    // One row suffices - schema_version is uniform across concepts - and avoids
+    // a full-table MAX() scan on an unindexed column (see mcp.rs / issue #32).
     let schema_version: Option<u32> = conn
-        .query_row("SELECT MAX(schema_version) FROM concepts", [], |r| r.get(0))
+        .query_row("SELECT schema_version FROM concepts LIMIT 1", [], |r| {
+            r.get(0)
+        })
         .unwrap_or(None);
 
     let fts_count: u64 = conn
