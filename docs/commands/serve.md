@@ -59,7 +59,7 @@ reference - see [Get your own terminology server](../deploy/index.md).
 
 | Endpoint | What it does |
 |---|---|
-| `GET /metadata` | CapabilityStatement declaring the supported operations |
+| `GET /metadata` | CapabilityStatement declaring the supported operations (add `?mode=terminology` for a **TerminologyCapabilities** statement) |
 | `CodeSystem/$lookup` | Concept details: display, designations (FSN + synonyms), parents, children, ancestors, inactive, moduleId, effectiveTime |
 | `CodeSystem/$validate-code` | Whether a code exists (and an optional `display` matches) |
 | `CodeSystem/$subsumes` | Subsumption between two codes (`subsumes` / `subsumed-by` / `equivalent` / `not-subsumed`) |

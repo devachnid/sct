@@ -228,9 +228,23 @@ fn build_router(state: AppState, base: &str) -> Router {
 
 // --- handlers ---------------------------------------------------------------
 
-async fn metadata(State(st): State<AppState>, headers: HeaderMap) -> Response {
+async fn metadata(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    RawQuery(q): RawQuery,
+) -> Response {
     if let Some(r) = reject_xml(&headers) {
         return r;
+    }
+    // `?mode=terminology` returns a TerminologyCapabilities instead of the
+    // CapabilityStatement (FHIR's terminology-server discovery convention).
+    let params = parse_query(q.as_deref().unwrap_or(""));
+    if param(&params, "mode") == Some("terminology") {
+        return fhir_ok(fhir::terminology_capabilities(
+            env!("CARGO_PKG_VERSION"),
+            &st.impl_url,
+            st.translate_available,
+        ));
     }
     fhir_ok(fhir::capability_statement(
         env!("CARGO_PKG_VERSION"),

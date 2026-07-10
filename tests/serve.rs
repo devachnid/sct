@@ -502,6 +502,15 @@ fn http_metadata_and_lookup_round_trip() {
     assert_eq!(meta["resourceType"], "CapabilityStatement");
     assert_eq!(meta["fhirVersion"], "4.0.1");
 
+    // ?mode=terminology returns a TerminologyCapabilities advertising SNOMED CT.
+    let tc: Value = serde_json::from_str(&get_with_retry(&format!(
+        "{base}/metadata?mode=terminology"
+    )))
+    .unwrap();
+    assert_eq!(tc["resourceType"], "TerminologyCapabilities");
+    assert_eq!(tc["codeSystem"][0]["uri"], "http://snomed.info/sct");
+    assert!(tc["date"].is_string());
+
     let url = format!("{base}/CodeSystem/$lookup?system=http://snomed.info/sct&code=22298006");
     let lookup: Value = serde_json::from_str(&get_with_retry(&url)).unwrap();
     assert_eq!(lookup["resourceType"], "Parameters");
