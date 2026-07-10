@@ -91,7 +91,7 @@ enum Command {
     /// Print shell completion scripts (bash, zsh, fish, powershell, elvish).
     Completions(commands::completions::Args),
 
-    /// Launch an interactive terminal UI for exploring SNOMED CT (requires --features tui).
+    /// Launch an interactive terminal UI for exploring SNOMED CT.
     #[cfg(feature = "tui")]
     Tui(commands::tui::Args),
 

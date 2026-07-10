@@ -34,8 +34,8 @@ A full-screen search box: results repaint on **every keystroke**, with a live la
 sct sayt | cut -f1 | sct codelist add asthma.codelist -
 ```
 
-!!! note "Requires the `tui` feature"
-    The interactive UI is built into `--features tui` / `full` binaries (like [`sct tui`](tui.md)). Install with `cargo install sct-rs --features tui` or `s/install --full`. The `--stdio` protocol below needs no extra feature and works in any build.
+!!! note "In the default build"
+    The interactive UI is part of the default feature set, so it ships in the released binaries and in `cargo install sct-rs`. It is only absent from `--no-default-features` builds (such as the Docker server image, which has no terminal) - the `--stdio` protocol below works in any build.
 
 ---
 
