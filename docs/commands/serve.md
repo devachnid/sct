@@ -22,6 +22,7 @@ sct serve [--db <FILE>] [--port <PORT>] [--host <HOST>] [--fhir-base <PATH>] [--
 | `--host <HOST>` | `127.0.0.1` | Address to bind. Use `0.0.0.0` to accept remote connections. |
 | `--fhir-base <PATH>` | `/` | Base path for all routes. Set to `/fhir` for Ontoserver-compatible URLs. |
 | `--codelists <DIR>` | `./codelists` (or `$SCT_CODELISTS` / `[codelists] dir`) | Directory of `.codelist` files to serve as named FHIR ValueSets. |
+| `--fst <FILE>` | `snomed.fst` beside the database, if present | FST index (from `sct fst build`) powering the `GET /autocomplete` endpoint. |
 | `--read-only` | on | The server never writes; the flag documents that intent. |
 
 ```bash
@@ -33,6 +34,18 @@ sct serve --db snomed.db --host 0.0.0.0 --port 8080 --fhir-base /fhir
 ```
 
 Responses are `application/fhir+json`. An `Accept` header that requests XML exclusively gets a `406` (XML is not supported).
+
+## Search-as-you-type endpoint
+
+With an FST index available (`--fst`, or a `snomed.fst` beside the database), the server also exposes a non-FHIR **`GET /autocomplete?q=<partial>&count=<n>`** endpoint - sub-millisecond, typo-tolerant autocomplete backed by the [FST index](fst.md), for a web front-end to hit per keystroke:
+
+```bash
+sct serve --db snomed.db --fst snomed.fst
+curl 'http://localhost:8080/autocomplete?q=myocard&count=5'
+# {"query":"myocard","hits":[{"id":"22298006","display":"Myocardial infarction","score":0.77,"tag":"disorder"}, ...]}
+```
+
+`id` is a JSON string (SCTIDs exceed 2^53). Without an FST index the endpoint returns `501`. It shares its engine with [`sct sayt`](sayt.md), which also offers an interactive TUI and a stdio line protocol over the same index.
 
 ## Docker Compose
 

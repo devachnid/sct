@@ -15,6 +15,8 @@ flowchart TD
     N -->|"sct embed"| AR[("snomed-embeddings.arrow")]
 
     DB --> QUERY["sct lexical · lookup · ecl<br/>refset · map · diagram · codelist"]
+    N -->|"sct fst"| FST[("snomed.fst · FST index")]
+    FST --> SAYT["sct sayt · search-as-you-type"]
     DB --> SERVE["sct serve · FHIR R4 server"]
     DB --> MCP["sct mcp · LLM tool use"]
     AR --> SEM["sct semantic · vector search"]
@@ -196,6 +198,7 @@ For all further information see the full documentation by either exploring the [
 * [sct embed](docs/commands/embed.md) - generate Ollama vector embeddings and write an Arrow IPC file
 * [sct lexical](docs/commands/lexical.md) - keyword (FTS5) search over the SQLite database
 * [sct fst](docs/commands/fst.md) - mmap'd FST index for exact, prefix, and typo-tolerant **fuzzy** search
+* [sct sayt](docs/commands/sayt.md) - **search-as-you-type**: instant offline autocomplete over 800k+ concepts, as an interactive TUI, a `--stdio` line protocol, or an HTTP `/autocomplete` endpoint on `sct serve`
 * [sct semantic](docs/commands/semantic.md) - semantic similarity search over the Arrow IPC embeddings file (requires Ollama) - experimental, see the docs for known limitations
 * [sct ecl](docs/commands/ecl.md) - evaluate an ECL expression and emit matching concept SCTIDs (pipe-friendly)
 * `sct lookup <code>` - look up a concept by SCTID, or reverse-resolve a CTV3 code

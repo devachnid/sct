@@ -18,13 +18,14 @@ use axum::{
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 use clap::Parser;
 use rusqlite::Connection;
 use std::path::{Path as FsPath, PathBuf};
 use std::sync::Arc;
 
+use crate::index::query::Index;
 use fhir::FhirError;
 use valuesets::ValueSetRegistry;
 
@@ -52,6 +53,12 @@ pub struct Args {
     #[arg(long)]
     pub codelists: Option<PathBuf>,
 
+    /// FST index (from `sct fst build`) that powers the `GET /autocomplete`
+    /// search-as-you-type endpoint. Auto-discovered as `snomed.fst` next to the
+    /// database when omitted; if none is found, `/autocomplete` returns 501.
+    #[arg(long)]
+    pub fst: Option<PathBuf>,
+
     /// Refuse write operations (always true; the server is read-only).
     #[arg(long, default_value_t = true)]
     pub read_only: bool,
@@ -63,6 +70,8 @@ struct AppState {
     impl_url: Arc<String>,
     registry: Arc<ValueSetRegistry>,
     translate_available: bool,
+    /// FST index backing `/autocomplete`, if one was supplied/discovered.
+    fst: Option<Arc<Index>>,
 }
 
 pub fn run(args: Args) -> Result<()> {
@@ -83,7 +92,18 @@ pub fn run(args: Args) -> Result<()> {
         db.display()
     );
     let codelists = crate::paths::codelist_registry(args.codelists.as_deref());
-    serve_listener(db, &args.fhir_base, Some(codelists), listener)
+    let fst = resolve_fst(args.fst.as_deref(), &db);
+    serve_listener(db, &args.fhir_base, Some(codelists), fst, listener)
+}
+
+/// Resolve the FST index for `/autocomplete`: an explicit `--fst` path, else a
+/// `snomed.fst` sibling of the database if one exists (`None` otherwise).
+fn resolve_fst(explicit: Option<&FsPath>, db: &FsPath) -> Option<PathBuf> {
+    if let Some(p) = explicit {
+        return Some(p.to_path_buf());
+    }
+    let sibling = db.parent().unwrap_or(FsPath::new(".")).join("snomed.fst");
+    sibling.exists().then_some(sibling)
 }
 
 /// Serve the FHIR router on an already-bound std listener, blocking. Shared by
@@ -95,6 +115,7 @@ pub fn serve_listener(
     db: PathBuf,
     fhir_base: &str,
     codelists: Option<PathBuf>,
+    fst: Option<PathBuf>,
     listener: std::net::TcpListener,
 ) -> Result<()> {
     let base = normalise_base(fhir_base);
@@ -113,11 +134,31 @@ pub fn serve_listener(
             );
         }
     }
+    // Load the FST index for /autocomplete, if supplied/discovered. A failure to
+    // open it is a warning, not fatal - the rest of the server still serves.
+    let fst_index = fst.as_ref().and_then(|path| match Index::open(path) {
+        Ok(ix) => {
+            eprintln!(
+                "  autocomplete: GET /autocomplete backed by {}",
+                path.display()
+            );
+            Some(Arc::new(ix))
+        }
+        Err(e) => {
+            eprintln!(
+                "  warning: FST index {} failed to open ({e:#}); /autocomplete disabled",
+                path.display()
+            );
+            None
+        }
+    });
+
     let state = AppState {
         translate_available: table_exists(&db, "crossmaps")?,
         db: Arc::new(db),
         impl_url: Arc::new(impl_url),
         registry: Arc::new(registry),
+        fst: fst_index,
     };
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -176,6 +217,7 @@ fn build_router(state: AppState, base: &str) -> Router {
         .route("/ValueSet/{id}", get(valueset_read))
         .route("/ValueSet/{id}/$expand", get(valueset_expand_id))
         .route("/ConceptMap/$translate", get(translate).post(translate))
+        .route("/autocomplete", get(autocomplete))
         .with_state(state);
     if base.is_empty() {
         app
@@ -195,6 +237,35 @@ async fn metadata(State(st): State<AppState>, headers: HeaderMap) -> Response {
         &st.impl_url,
         st.translate_available,
     ))
+}
+
+/// `GET /autocomplete?q=<partial>&count=<n>` - search-as-you-type over the FST
+/// index, the same [`Index::search_typeahead`] core as `sct sayt`. Plain JSON
+/// (not FHIR): `{"query": "...", "hits": [{"id","display","score","tag"}, ...]}`,
+/// with `id` a string (SCTIDs exceed JavaScript's safe-integer range). Returns
+/// `501` if the server was started without an FST index.
+async fn autocomplete(State(st): State<AppState>, RawQuery(q): RawQuery) -> Response {
+    let params = parse_query(q.as_deref().unwrap_or(""));
+    let query = param(&params, "q").unwrap_or("");
+    let count = param(&params, "count")
+        .and_then(|c| c.parse::<usize>().ok())
+        .unwrap_or(10)
+        .clamp(1, 100);
+    let Some(index) = &st.fst else {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({
+                "error": "autocomplete is unavailable: start `sct serve` with `--fst <snomed.fst>` (build one with `sct fst build`)"
+            })),
+        )
+            .into_response();
+    };
+    let hits = index.search_typeahead(query, count, true);
+    Json(serde_json::json!({
+        "query": query,
+        "hits": hits.iter().map(|h| h.to_json()).collect::<Vec<_>>(),
+    }))
+    .into_response()
 }
 
 async fn lookup(State(st): State<AppState>, headers: HeaderMap, RawQuery(q): RawQuery) -> Response {

@@ -408,7 +408,7 @@ fn http_valueset_round_trip() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
-        serve_listener(db, "/", Some(cpath), listener).unwrap();
+        serve_listener(db, "/", Some(cpath), None, listener).unwrap();
     });
     let base = format!("http://127.0.0.1:{port}");
 
@@ -494,7 +494,7 @@ fn http_metadata_and_lookup_round_trip() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
-        serve_listener(db, "/", None, listener).unwrap();
+        serve_listener(db, "/", None, None, listener).unwrap();
     });
     let base = format!("http://127.0.0.1:{port}");
 

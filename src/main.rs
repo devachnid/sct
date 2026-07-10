@@ -34,6 +34,10 @@ enum Command {
     /// Build and query an FST-backed lexical index (exact/prefix/fuzzy/word search).
     Fst(commands::fst::Args),
 
+    /// Search-as-you-type over the FST index: live interactive TUI, or a `--stdio`
+    /// line protocol for embedding sct as a search backend.
+    Sayt(commands::sayt::Args),
+
     /// Evaluate an ECL expression and emit matching concept SCTIDs (pipe-friendly).
     Ecl(commands::ecl::Args),
 
@@ -129,6 +133,7 @@ fn main() -> Result<()> {
         Command::Parquet(args) => commands::parquet::run(args),
         Command::Markdown(args) => commands::markdown::run(args),
         Command::Fst(args) => commands::fst::run(args),
+        Command::Sayt(args) => commands::sayt::run(args),
         Command::Ecl(args) => commands::ecl::run(args),
         Command::Diagram(args) => commands::diagram::run(args),
         Command::Mcp(args) => commands::mcp::run(args),

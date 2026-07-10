@@ -8,6 +8,9 @@ Build and query a **Finite State Transducer (FST)-backed lexical index** - a sin
 
 **When to use:** you want sub-millisecond prefix/autocomplete or **fuzzy (typo-tolerant)** matching that FTS5 can't do, or a lexical index you can mmap without opening the full database. For ranked BM25 keyword search, [`sct lexical`](lexical.md) is still the main tool.
 
+!!! tip "Search-as-you-type"
+    For live, interactive autocomplete over this index - an interactive TUI, a stdio line protocol, or an HTTP endpoint you can drop into your own app - see [`sct sayt`](sayt.md).
+
 ---
 
 ## Usage

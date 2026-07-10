@@ -22,6 +22,7 @@ pub mod parquet;
 pub mod paths;
 pub mod read2;
 pub mod refset;
+pub mod sayt;
 pub mod semantic;
 pub mod sqlite;
 pub mod tct;
