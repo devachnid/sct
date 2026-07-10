@@ -206,7 +206,12 @@ pub fn build_records(
     let mut concept_ids: Vec<&str> = dataset.concepts.keys().map(|s| s.as_str()).collect();
     concept_ids.sort(); // deterministic ordering
 
+    // Count bar with ETA over the known concept total (the `ndjson` command
+    // prints the "Building concept records..." breadcrumb above it).
+    let bar = crate::progress::count_bar(concept_ids.len() as u64);
+
     for concept_id in concept_ids {
+        bar.inc(1);
         let concept = &dataset.concepts[concept_id];
 
         if !include_inactive && !concept.active {
@@ -396,6 +401,7 @@ pub fn build_records(
             schema_version: SCHEMA_VERSION,
         });
     }
+    bar.finish_and_clear();
 
     Ok(records)
 }

@@ -9,6 +9,7 @@
 /// RF2 Snapshot files are TSV files with a header row.
 /// We locate them by filename pattern within the release directory tree.
 use anyhow::{Context, Result};
+use indicatif::{ProgressBar, ProgressBarIter};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -279,13 +280,44 @@ pub fn discover_rf2_files(rf2_dir: &Path) -> Result<Rf2Files> {
 // Parsers
 // ---------------------------------------------------------------------------
 
-fn tsv_reader(path: &Path) -> Result<csv::Reader<std::fs::File>> {
+/// A `Read` wrapper that drives a byte-oriented progress bar (with ETA) as the
+/// underlying RF2 file is consumed, and clears it when the reader is dropped -
+/// so each of the loader's file reads shows its own progress under the
+/// "Loading X from ..." breadcrumb. Auto-hides off an interactive terminal,
+/// like every other `sct` progress widget.
+struct ProgressReader<R: std::io::Read> {
+    inner: ProgressBarIter<R>,
+    pb: ProgressBar,
+}
+
+impl<R: std::io::Read> ProgressReader<R> {
+    fn new(reader: R, total_bytes: u64) -> Self {
+        let pb = crate::progress::byte_bar(total_bytes);
+        let inner = pb.wrap_read(reader);
+        Self { inner, pb }
+    }
+}
+
+impl<R: std::io::Read> std::io::Read for ProgressReader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.inner.read(buf)
+    }
+}
+
+impl<R: std::io::Read> Drop for ProgressReader<R> {
+    fn drop(&mut self) {
+        self.pb.finish_and_clear();
+    }
+}
+
+fn tsv_reader(path: &Path) -> Result<csv::Reader<ProgressReader<std::fs::File>>> {
+    let file = std::fs::File::open(path).with_context(|| format!("opening {}", path.display()))?;
+    let total = file.metadata().map(|m| m.len()).unwrap_or(0);
     let rdr = csv::ReaderBuilder::new()
         .delimiter(b'\t')
         .has_headers(true)
         .flexible(false)
-        .from_path(path)
-        .with_context(|| format!("opening {}", path.display()))?;
+        .from_reader(ProgressReader::new(file, total));
     Ok(rdr)
 }
 
