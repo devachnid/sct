@@ -51,9 +51,9 @@ pub struct Args {
     #[arg(long)]
     pub db: Option<PathBuf>,
 
-    /// Arrow IPC embeddings file produced by `sct embed`.
-    /// When supplied (or discovered under `$SCT_DATA_HOME/data`), the
-    /// `snomed_semantic_search` tool is registered. See `docs/path-resolution.md`.
+    /// Arrow IPC embeddings file produced by `sct embed`. Only registers the
+    /// `snomed_semantic_search` tool when supplied explicitly - it is not
+    /// auto-discovered, since semantic search needs Ollama running.
     #[arg(long)]
     pub embeddings: Option<PathBuf>,
 
