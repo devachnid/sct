@@ -43,7 +43,8 @@ pub struct Args {
         visible_alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
-        value_name = "NDJSON"
+        value_name = "NDJSON",
+        value_parser = crate::paths::tilde_pathbuf
     )]
     pub input: PathBuf,
 
@@ -56,7 +57,7 @@ pub struct Args {
     pub ollama_url: String,
 
     /// Output Arrow IPC file.
-    #[arg(long, short, default_value = "snomed-embeddings.arrow")]
+    #[arg(long, short, default_value = "snomed-embeddings.arrow", value_parser = crate::paths::tilde_pathbuf)]
     pub output: PathBuf,
 
     /// Number of concepts to embed per Ollama API call.

@@ -20,6 +20,7 @@ use crate::schema::ConceptRecord;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to a `.ndjson`, `.db`, or `.arrow` file produced by `sct`.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
 }
 

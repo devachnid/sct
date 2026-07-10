@@ -30,12 +30,13 @@ pub struct Args {
         visible_alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
-        value_name = "NDJSON"
+        value_name = "NDJSON",
+        value_parser = crate::paths::tilde_pathbuf
     )]
     pub input: PathBuf,
 
     /// Output SQLite database file.
-    #[arg(long, short, default_value = "snomed.db")]
+    #[arg(long, short, default_value = "snomed.db", value_parser = crate::paths::tilde_pathbuf)]
     pub output: PathBuf,
 
     /// Build the transitive closure table (concept_ancestors) after loading.

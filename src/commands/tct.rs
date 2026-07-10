@@ -19,7 +19,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// SQLite database produced by `sct sqlite`.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: PathBuf,
 
     /// Also insert self-referential rows (ancestor_id = descendant_id, depth = 0).

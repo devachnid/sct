@@ -31,7 +31,7 @@ pub struct Args {
     /// Path to an RF2 Snapshot directory, or a .zip archive of an RF2 release.
     /// May be specified multiple times to layer a base release with one or more
     /// extensions (e.g. UK clinical + drug extension).
-    #[arg(long = "rf2", required = true, num_args = 1..)]
+    #[arg(long = "rf2", required = true, num_args = 1.., value_parser = crate::paths::tilde_pathbuf)]
     pub rf2_dirs: Vec<PathBuf>,
 
     /// BCP-47 locale for preferred term selection (e.g. en-GB, en-US).
@@ -40,7 +40,7 @@ pub struct Args {
 
     /// Output file path (NDJSON). Defaults to a slugified version of the first
     /// RF2 directory name. Use `-o -` to write to stdout.
-    #[arg(long, short)]
+    #[arg(long, short, value_parser = crate::paths::tilde_pathbuf)]
     pub output: Option<PathBuf>,
 
     /// Include inactive concepts in output (omitted by default).

@@ -48,13 +48,13 @@ use crate::schema::SCHEMA_VERSION;
 pub struct Args {
     /// Path to the SNOMED CT SQLite database produced by `sct sqlite`.
     /// See `docs/path-resolution.md` for the discovery order when omitted.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
 
     /// Arrow IPC embeddings file produced by `sct embed`. Only registers the
     /// `snomed_semantic_search` tool when supplied explicitly - it is not
     /// auto-discovered, since semantic search needs Ollama running.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub embeddings: Option<PathBuf>,
 
     /// Ollama embedding model (used by `snomed_semantic_search`).

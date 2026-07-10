@@ -45,12 +45,13 @@ pub struct Args {
         visible_alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
-        value_name = "NDJSON"
+        value_name = "NDJSON",
+        value_parser = crate::paths::tilde_pathbuf
     )]
     pub input: PathBuf,
 
     /// Output directory for Markdown files.
-    #[arg(long, short, default_value = "snomed-concepts")]
+    #[arg(long, short, default_value = "snomed-concepts", value_parser = crate::paths::tilde_pathbuf)]
     pub output: PathBuf,
 
     /// Output grouping: one file per concept, or one file per hierarchy.

@@ -21,7 +21,7 @@ use crate::index::query::Index;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// FST index produced by `sct fst build`.
-    #[arg(long, default_value = "snomed.fst")]
+    #[arg(long, default_value = "snomed.fst", value_parser = crate::paths::tilde_pathbuf)]
     pub index: PathBuf,
 
     /// Maximum number of results shown / returned.

@@ -33,7 +33,7 @@ use valuesets::ValueSetRegistry;
 pub struct Args {
     /// SNOMED CT SQLite database produced by `sct sqlite`. Discovered via the
     /// usual path-resolution chain when omitted (see `docs/path-resolution.md`).
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
 
     /// TCP port to listen on.
@@ -50,13 +50,13 @@ pub struct Args {
 
     /// Directory of `.codelist` files to serve as named FHIR ValueSets
     /// (default `./codelists`, or `$SCT_CODELISTS` / `[codelists] dir`).
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
 
     /// FST index (from `sct fst build`) that powers the `GET /autocomplete`
     /// search-as-you-type endpoint. Auto-discovered as `snomed.fst` next to the
     /// database when omitted; if none is found, `/autocomplete` returns 501.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub fst: Option<PathBuf>,
 
     /// Refuse write operations (always true; the server is read-only).

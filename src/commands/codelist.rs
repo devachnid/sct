@@ -65,6 +65,7 @@ pub enum Verb {
 #[derive(Parser, Debug)]
 pub struct NewArgs {
     /// Path for the new .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     #[arg(long)]
     pub title: Option<String>,
@@ -83,13 +84,14 @@ pub struct NewArgs {
 #[derive(Parser, Debug)]
 pub struct AddArgs {
     /// Path to the .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// One or more SCTIDs to add. Use `-` to read newline-delimited SCTIDs from
     /// stdin, e.g. `sct ecl expand "<<73211009" | sct codelist add list.codelist -`.
     pub sctids: Vec<String>,
     /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
     /// discovery order when this flag is omitted.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
     /// Add every concept matched by an ECL expression, e.g. `--ecl "<<73211009"`.
     /// Mutually exclusive with positional SCTIDs. See `docs/commands/codelist.md`.
@@ -106,6 +108,7 @@ pub struct AddArgs {
 #[derive(Parser, Debug)]
 pub struct RemoveArgs {
     /// Path to the .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// SCTID to move to exclusion.
     pub sctid: String,
@@ -117,14 +120,15 @@ pub struct RemoveArgs {
 #[derive(Parser, Debug)]
 pub struct ValidateArgs {
     /// Path to the .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
     /// discovery order when this flag is omitted.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
     /// Registry directory bare-id `includes:` entries resolve against
     /// (default `./codelists`, or `$SCT_CODELISTS` / `[codelists] dir`).
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
     /// Re-fetch URL includes instead of using the local cache.
     #[arg(long)]
@@ -134,37 +138,41 @@ pub struct ValidateArgs {
 #[derive(Parser, Debug)]
 pub struct StatsArgs {
     /// Path to the .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
     /// discovery order when this flag is omitted.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
     /// Registry directory bare-id `includes:` entries resolve against.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 pub struct DiffArgs {
     /// First .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file_a: PathBuf,
     /// Second .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file_b: PathBuf,
     /// Registry directory bare-id `includes:` entries resolve against.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 pub struct ExportArgs {
     /// Path to the .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// Output format: csv (default), opencodelists-csv, markdown, or fhir-json
     /// (a FHIR R4 ValueSet resource). `rf2` is planned but not yet implemented.
     #[arg(long, default_value = "csv")]
     pub format: String,
     /// Write to file instead of stdout.
-    #[arg(long, short)]
+    #[arg(long, short, value_parser = crate::paths::tilde_pathbuf)]
     pub output: Option<PathBuf>,
     /// Canonical base URL for `--format fhir-json`. The ValueSet's `url` becomes
     /// `<URL>/ValueSet/<id>`, matching how `sct serve` publishes it. When unset,
@@ -179,16 +187,17 @@ pub struct ExportArgs {
     #[arg(long, value_delimiter = ',')]
     pub include_maps: Vec<String>,
     /// SNOMED CT SQLite database (required when `--include-maps` is set).
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
     /// Registry directory bare-id `includes:` entries resolve against.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 pub struct IncludeArgs {
     /// Path to the .codelist file to add includes to.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// Codelist references to include: a bare id, a relative path, or a URL.
     pub refs: Vec<String>,
@@ -196,19 +205,20 @@ pub struct IncludeArgs {
     #[arg(long)]
     pub remove: bool,
     /// Registry directory bare-id references resolve against (for validation).
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 pub struct ResolveArgs {
     /// Path to the .codelist file to flatten.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// Write the flattened codelist here (default: stdout).
-    #[arg(long, short)]
+    #[arg(long, short, value_parser = crate::paths::tilde_pathbuf)]
     pub output: Option<PathBuf>,
     /// Registry directory bare-id `includes:` entries resolve against.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub codelists: Option<PathBuf>,
     /// Re-fetch URL includes instead of using the local cache.
     #[arg(long)]
@@ -218,18 +228,20 @@ pub struct ResolveArgs {
 #[derive(Parser, Debug)]
 pub struct SearchArgs {
     /// Path to the .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// Search query.
     pub query: String,
     /// SNOMED CT SQLite database. See `docs/path-resolution.md` for the
     /// discovery order when this flag is omitted.
-    #[arg(long)]
+    #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 pub struct ImportArgs {
     /// Path for the new or target .codelist file.
+    #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// Source type: opencodelists, csv, rf2, fhir-json.
     #[arg(long)]

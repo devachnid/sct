@@ -33,12 +33,13 @@ pub struct Args {
         visible_alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
-        value_name = "NDJSON"
+        value_name = "NDJSON",
+        value_parser = crate::paths::tilde_pathbuf
     )]
     pub input: PathBuf,
 
     /// Output Parquet file.
-    #[arg(long, short, default_value = "snomed.parquet")]
+    #[arg(long, short, default_value = "snomed.parquet", value_parser = crate::paths::tilde_pathbuf)]
     pub output: PathBuf,
 }
 

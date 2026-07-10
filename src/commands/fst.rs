@@ -43,12 +43,13 @@ struct BuildArgs {
         visible_alias = "input",
         short = 'i',
         value_hint = clap::ValueHint::FilePath,
-        value_name = "NDJSON"
+        value_name = "NDJSON",
+        value_parser = crate::paths::tilde_pathbuf
     )]
     input: PathBuf,
 
     /// Output index file.
-    #[arg(long, short, default_value = "snomed.fst")]
+    #[arg(long, short, default_value = "snomed.fst", value_parser = crate::paths::tilde_pathbuf)]
     output: PathBuf,
 
     /// Omit the display side-tables (preferred-term labels). Produces a smaller
@@ -64,7 +65,7 @@ struct SearchArgs {
     query: String,
 
     /// Index file produced by `sct fst build`.
-    #[arg(long, default_value = "snomed.fst")]
+    #[arg(long, default_value = "snomed.fst", value_parser = crate::paths::tilde_pathbuf)]
     index: PathBuf,
 
     /// Prefix (autocomplete) search instead of exact match.
