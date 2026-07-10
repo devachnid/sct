@@ -17,7 +17,7 @@ use axum::{
     extract::{Path, RawQuery, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use clap::Parser;
@@ -201,6 +201,7 @@ fn normalise_base(base: &str) -> String {
 
 fn build_router(state: AppState, base: &str) -> Router {
     let app = Router::new()
+        .route("/", post(batch))
         .route("/metadata", get(metadata))
         .route("/CodeSystem/$lookup", get(lookup).post(lookup))
         .route(
@@ -495,6 +496,152 @@ async fn vs_validate_code(
     fhir_err(FhirError::not_found(format!(
         "ValueSet '{url}' not found and not an implicit ECL value set"
     )))
+}
+
+/// `POST /` (the FHIR base) - a batch `Bundle` of read operations. Each entry's
+/// `request.url` (a GET operation URL) is dispatched against one shared
+/// connection, and results come back as a `batch-response` Bundle in the same
+/// order - one round trip instead of N. Being read-only, `transaction` Bundles
+/// are accepted and treated the same as `batch`.
+async fn batch(State(st): State<AppState>, headers: HeaderMap, body: String) -> Response {
+    if let Some(r) = reject_xml(&headers) {
+        return r;
+    }
+    let bundle: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(v) => v,
+        Err(e) => {
+            return fhir_err(FhirError::invalid(format!(
+                "request body is not valid JSON: {e}"
+            )))
+        }
+    };
+    if bundle["resourceType"] != "Bundle" {
+        return fhir_err(FhirError::invalid("expected a Bundle resource".to_string()));
+    }
+    if !matches!(bundle["type"].as_str(), Some("batch") | Some("transaction")) {
+        return fhir_err(FhirError::invalid(format!(
+            "Bundle.type must be 'batch' (got {:?})",
+            bundle["type"].as_str()
+        )));
+    }
+    let entries = bundle["entry"].as_array().cloned().unwrap_or_default();
+    let db = st.db.clone();
+    let registry = st.registry.clone();
+    let joined = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, FhirError> {
+        let conn = crate::commands::open_db_readonly(db.as_path(), None)
+            .map_err(|e| FhirError::exception(format!("opening database: {e}")))?;
+        let responses: Vec<serde_json::Value> = entries
+            .iter()
+            .map(|entry| {
+                let method = entry["request"]["method"].as_str().unwrap_or("GET");
+                let url = entry["request"]["url"].as_str().unwrap_or("");
+                let (status, resource) = run_operation(&conn, &registry, method, url);
+                serde_json::json!({
+                    "response": { "status": status.to_string() },
+                    "resource": resource,
+                })
+            })
+            .collect();
+        Ok(fhir::bundle_batch_response(responses))
+    })
+    .await;
+    match joined {
+        Ok(Ok(v)) => fhir_ok(v),
+        Ok(Err(e)) => fhir_err(e),
+        Err(e) => fhir_err(FhirError::exception(format!("internal task error: {e}"))),
+    }
+}
+
+/// Dispatch one batch entry against an open connection: parse the GET operation
+/// URL, route it to the matching op, and return `(http_status, resource)` where
+/// `resource` is the operation result or an OperationOutcome. Read-only, so only
+/// `GET` entries are supported.
+fn run_operation(
+    conn: &Connection,
+    registry: &ValueSetRegistry,
+    method: &str,
+    url: &str,
+) -> (u16, serde_json::Value) {
+    if !method.eq_ignore_ascii_case("GET") {
+        let e = FhirError::invalid(format!(
+            "batch entries support GET only on this read-only server (got {method:?})"
+        ));
+        return (e.status, e.outcome());
+    }
+    let (path, query) = url.split_once('?').unwrap_or((url, ""));
+    let path = path.trim_start_matches('/');
+    let params = parse_query(query);
+
+    let result: Result<serde_json::Value, FhirError> = match path {
+        "CodeSystem/$lookup" => match param(&params, "code") {
+            Some(code) => ops::lookup(conn, code, &params_all(&params, "property")),
+            None => Err(FhirError::invalid(
+                "missing required parameter 'code'".to_string(),
+            )),
+        },
+        "CodeSystem/$validate-code" => match param(&params, "code") {
+            Some(code) => ops::validate_code(conn, code, param(&params, "display")),
+            None => Err(FhirError::invalid(
+                "missing required parameter 'code'".to_string(),
+            )),
+        },
+        "CodeSystem/$subsumes" => match (param(&params, "codeA"), param(&params, "codeB")) {
+            (Some(a), Some(b)) => ops::subsumes(conn, a, b),
+            _ => Err(FhirError::invalid(
+                "missing required parameters 'codeA' and 'codeB'".to_string(),
+            )),
+        },
+        "ValueSet/$expand" => {
+            let (count, offset, desig) = pagination(&params);
+            if let Some(vs) = param(&params, "url").and_then(|u| registry.resolve_url(u)) {
+                ops::expand_members(conn, &vs.members, count, offset, desig)
+            } else {
+                let ecl = param(&params, "url").and_then(parse_implicit_ecl);
+                ops::expand(
+                    conn,
+                    ecl.as_deref(),
+                    param(&params, "filter"),
+                    count,
+                    offset,
+                    desig,
+                )
+            }
+        }
+        "ValueSet/$validate-code" => match (param(&params, "code"), param(&params, "url")) {
+            (Some(code), Some(url)) => {
+                if let Some(vs) = registry.resolve_url(url) {
+                    let members: std::collections::HashSet<String> =
+                        vs.members.iter().map(|(id, _)| id.clone()).collect();
+                    ops::validate_code_in_set(conn, &members, code, &vs.canonical_url)
+                } else if let Some(ecl) = parse_implicit_ecl(url) {
+                    ops::validate_code_in_ecl(conn, &ecl, code)
+                } else {
+                    Err(FhirError::not_found(format!("ValueSet '{url}' not found")))
+                }
+            }
+            _ => Err(FhirError::invalid(
+                "missing required parameters 'code' and 'url'".to_string(),
+            )),
+        },
+        "ConceptMap/$translate" => match (
+            param(&params, "system"),
+            param(&params, "code"),
+            param(&params, "targetsystem").or(param(&params, "target")),
+        ) {
+            (Some(system), Some(code), Some(target)) => ops::translate(conn, system, code, target),
+            _ => Err(FhirError::invalid(
+                "missing required parameters 'system', 'code', 'targetsystem'".to_string(),
+            )),
+        },
+        other => Err(FhirError::not_found(format!(
+            "unsupported batch operation path '{other}'"
+        ))),
+    };
+
+    match result {
+        Ok(v) => (200, v),
+        Err(e) => (e.status, e.outcome()),
+    }
 }
 
 // --- helpers ----------------------------------------------------------------

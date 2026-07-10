@@ -156,6 +156,7 @@ pub fn capability_statement(
         },
         "rest": [{
             "mode": "server",
+            "interaction": [{ "code": "batch" }],
             "resource": resources,
         }],
     })
@@ -221,5 +222,16 @@ pub fn bundle_searchset(resources: Vec<Value>) -> Value {
         "type": "searchset",
         "total": entry.len(),
         "entry": entry,
+    })
+}
+
+/// A `batch-response` Bundle: one entry per request entry, in order, each with a
+/// `response.status` and the operation's result `resource` (or an
+/// OperationOutcome). Pre-built entries are passed in.
+pub fn bundle_batch_response(entries: Vec<Value>) -> Value {
+    json!({
+        "resourceType": "Bundle",
+        "type": "batch-response",
+        "entry": entries,
     })
 }

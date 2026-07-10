@@ -515,6 +515,26 @@ fn http_metadata_and_lookup_round_trip() {
     let lookup: Value = serde_json::from_str(&get_with_retry(&url)).unwrap();
     assert_eq!(lookup["resourceType"], "Parameters");
     assert_eq!(param_str(&lookup, "display"), Some("Myocardial infarction"));
+
+    // A batch Bundle runs several operations in one POST to the base, returning
+    // a batch-response with a per-entry status (one entry deliberately fails).
+    let batch_body = r#"{"resourceType":"Bundle","type":"batch","entry":[
+        {"request":{"method":"GET","url":"CodeSystem/$lookup?system=http://snomed.info/sct&code=22298006"}},
+        {"request":{"method":"GET","url":"CodeSystem/$lookup?system=http://snomed.info/sct&code=99999999"}}
+    ]}"#;
+    let resp = ureq::post(&format!("{base}/"))
+        .header("Content-Type", "application/fhir+json")
+        .send(batch_body)
+        .unwrap()
+        .into_body()
+        .read_to_string()
+        .unwrap();
+    let br: Value = serde_json::from_str(&resp).unwrap();
+    assert_eq!(br["type"], "batch-response");
+    assert_eq!(br["entry"].as_array().unwrap().len(), 2);
+    assert_eq!(br["entry"][0]["response"]["status"], "200");
+    assert_eq!(br["entry"][0]["resource"]["resourceType"], "Parameters");
+    assert_eq!(br["entry"][1]["response"]["status"], "404"); // unknown code
 }
 
 /// GET with a short retry loop while the background server starts accepting.

@@ -69,8 +69,23 @@ reference - see [Get your own terminology server](../deploy/index.md).
 | `GET /ValueSet/{id}` | The stored ValueSet resource (with `compose`) |
 | `GET /ValueSet/{id}/$expand` | Expand a stored ValueSet by id |
 | `ConceptMap/$translate` | Map a code across terminologies when the loaded database has `crossmaps` data (SNOMED CT ↔ ICD-10 / OPCS-4 / CTV3 / Read v2) |
+| `POST /` (batch) | A FHIR `batch` Bundle of the above operations, executed in one request |
 
 GET and POST are both accepted; parameters are read from the query string.
+
+## Batch requests
+
+`POST` a FHIR `batch` (or `transaction`) `Bundle` to the base path to run many operations in one round trip - handy for a client that would otherwise fire dozens of sequential `$lookup` / `$validate-code` / `$translate` calls. Each entry's `request.url` is a GET operation URL; the response is a `batch-response` Bundle with one entry per request (in order), each carrying an HTTP `response.status` and the result resource (or an `OperationOutcome` for that entry). Entries succeed or fail independently. The server is read-only, so entries must use `GET`.
+
+```bash
+curl -X POST 'http://localhost:8080/fhir' -H 'Content-Type: application/fhir+json' -d '{
+  "resourceType": "Bundle", "type": "batch",
+  "entry": [
+    { "request": { "method": "GET", "url": "CodeSystem/$lookup?system=http://snomed.info/sct&code=22298006" } },
+    { "request": { "method": "GET", "url": "CodeSystem/$subsumes?system=http://snomed.info/sct&codeA=46635009&codeB=73211009" } }
+  ]
+}'
+```
 
 ### `$expand` and ECL
 
