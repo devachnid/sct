@@ -6,7 +6,7 @@ Each work item carries a stable `R##` identifier (e.g. `R42`) so it can be refer
 
 ## Open issues
 
-Bugs and smaller enhancements are tracked on the **[GitHub issue tracker](https://github.com/pacharanero/sct/issues)** - the authoritative, always-current list (refresh a snapshot here with `gh issue list --state open`).
+Bugs and smaller enhancements are tracked on the **[GitHub issue tracker](https://github.com/pacharanero/sct/issues)** - the authoritative, always-current list (refresh a snapshot here with `gh issue list --state open`). Longer-horizon and exploratory ideas live there too, under the **[`idea` label](https://github.com/pacharanero/sct/issues?q=is%3Aissue+is%3Aopen+label%3Aidea)**, so others can weigh in (see the foot of this file); this roadmap stays focused on near-term, actively-built work.
 
 At the time of writing the tracker is **clear** - #30-#37 have all been resolved: batch Bundle (#37), TerminologyCapabilities (#35), undotted-ICD-10 tolerance (#31), the conformance translate-check fix (#30), and the `mcp --embeddings` / `codelist export` help-text corrections (#34, #33) all shipped; `ConceptMap/$closure` (#36) was deferred as a poor fit for the stateless read-only server. `rf2` codelist export remains as decision-gated item `R24` under Features.
 
@@ -160,94 +160,6 @@ A mature hobbyist Python toolchain (`cheethame2017/sct` on Bitbucket, Apache-2.0
 
 - [ ] `R47` **MRCM constraint diagrams** - render Machine-Readable Concept Model domain/attribute /range constraints as diagrams, for content authors validating post-coordination. Niche but unserved by any local tool. *Low; specialist.*
 
-## Exploration & data-science surfaces
+## Exploratory ideas and integrations (now GitHub issues)
 
-With the RF2 → NDJSON → SQLite/Parquet/Arrow pipeline and MCP server in place, `sct` is positioned to become the ontology backend for a much wider set of surfaces than a single CLI. The items below sketch what a "richer than a SNOMED browser, flexible like the CLI" middle ground could look like - roughly in priority order, with the first two being the next concrete pieces of work.
-
-### Next up (chosen targets)
-
-- [ ] `R48` **DuckDB integration** - ship a `sct duckdb` subcommand (or a documented recipe) that exposes the SQLite DB as a set of DuckDB views plus helper macros. DuckDB is where the data-science ecosystem is converging (Python/R/JS bindings, zero-install, Parquet-native) and this is the single highest-leverage integration for analytical users.
-
-      Concretely:
-      - `ATTACH 'snomed.db' AS sct (TYPE SQLITE)` gets us raw access; the goal is a layer of views/macros that hide the RF2-ism of the schema.
-      - Macros to implement: `sct_is_a(child, ancestor)`, `sct_descendants(id)`, `sct_ancestors(id)`, `sct_fsn(id)`, `sct_pt(id)`, `sct_in_refset(id, refset_id)`. These should be thin wrappers over the existing `concept_isa` / `refset_members` tables. Once `tct` (transitive closure) is built, `sct_descendants` becomes a single indexed lookup instead of a recursive CTE.
-      - Also expose the Parquet artefact directly via `read_parquet()` - no attach needed, great for Colab/Kaggle where the user just downloads the `.parquet`.
-      - Constraint: DuckDB's SQLite scanner is read-only and doesn't see FTS5 virtual tables; lexical search must either go through `sct` CLI, or we materialise a plain `concepts_text` table alongside FTS5 at `sqlite` build time.
-      - Pointer: <https://duckdb.org/docs/extensions/sqlite>
-
-- [ ] `R49` **Notebook entrypoints - marimo + Jupyter, layered over a `.sql` bootstrap**
-
-      Rather than pick one notebook system, ship the real artefact as plain SQL and put veneers over it. DuckDB is the interop layer; every notebook system and every language binding can host it, so "polyglot notebook" is a red herring - the SQL itself is the same everywhere.
-
-      Three pieces, cheapest first:
-
-      1. **`examples/duckdb/bootstrap.sql`** - the lingua franca. Raw `ATTACH` + view + macro definitions (see DuckDB item above). Works from any notebook, any language binding, or a bare `duckdb` CLI. This is the real committed artefact; the notebooks below are thin wrappers.
-
-      2. **`examples/marimo/snomed_explorer.py`** - the flagship interactive authoring surface. Reactive DAG is the core win: change a refset picker and the codelist preview re-renders automatically. Stored as plain `.py`, so it diffs cleanly, reviews cleanly, and `ruff`/`mypy` just work. `marimo run` also serves it as a standalone web app, which makes it *more* accessible to non-Python users than a Jupyter kernel they'd have to install.
-         - Widgets: `mo.ui.text` for FTS search, `mo.ui.dropdown` over `snomed_refsets()`, `mo.ui.multiselect` for hierarchy top-levels, `altair`/`plotly` for a descendants sunburst.
-         - Output: every session ends with a `.codelist` file written to disk - authoring tool, not just a viewer.
-         - Constraint: marimo is young (v0.9 as of Apr 2026); verify current release before pinning, and check its SQL-cell story since raw DuckDB queries need to feel first-class.
-         - Pointer: <https://marimo.io/>
-
-      3. **`examples/jupyter/quickstart.ipynb`** - the polyglot on-ramp. A thin notebook showing `ATTACH 'snomed.db'` plus a handful of queries, with an "Open in Colab" button in the README. Jupyter's strengths (kernels for R/Julia/JS, Colab/Kaggle ubiquity, `.ipynb` rendering on GitHub) make it the right choice for the demo surface; its weaknesses (non-reactive, ugly diffs, hidden state) make it the wrong choice for the authoring tool. Splitting the roles lets both shine.
-
-      **Why not Jupyter for the authoring tool:** `.ipynb` is JSON-with-embedded-outputs so diffs and PR review are painful; cells aren't reactive so the "filter upstream, codelist downstream" UX requires manual re-runs; hidden state from out-of-order execution is a real hazard when the output is a committed codelist.
-
-      **Why not marimo for the demo:** Python-only cells; younger ecosystem; less familiar to the average clinical-data-science user arriving from Colab.
-
-### Further exploration surfaces
-
-- [ ] `R50` **JupyterLab magic + IPython reprs** - `%sct` magic wrapping the CLI, plus `_repr_html_` on a `ConceptId` type so `8517006` renders as a rich card (FSN, parents, children, refset memberships) inline. Pandas accessor: `series.sct.describe()` on any Series of SCTIDs. Lower-ceiling than marimo but meets users where they are.
-
-- [ ] `R51` **NetworkX / igraph adapter** over the IS-A closure. Enables centrality, community detection, shortest-path queries ("semantic distance between asthma and COPD"). Probably just a helper function `sct.to_networkx(db_path, root=...)` that materialises a subgraph - the full 4.5M-edge graph is too large for interactive NetworkX use.
-
-- [ ] `R52` **Kuzu graph export** - embedded, Cypher, no server. Better fit than Neo4j for a local-first tool. Export the full relationship graph (not just IS-A) so users can run `MATCH (d:Disorder)-[:FINDING_SITE]->(b:BodyStructure) WHERE ...`. Constraint: the current NDJSON schema captures relationships; need to confirm the Kuzu DDL generation story.
-
-- [ ] `R53` **HuggingFace datasets card** publishing the embeddings + concept metadata as a reusable dataset. Instant reach into clinical-NLP / LLM-eval repos. Licence implication: only publishable for the IPS Free Set or user-ingested content, not the UK release.
-
-- [ ] `R54` **LangChain / LlamaIndex retriever** - a `SnomedRetriever` class that RAG apps can import. Turns `sct` into infrastructure for clinical agents rather than a standalone tool. Thin wrapper over `sct semantic` + `sct lexical`.
-
-- [ ] `R55` **DSPy recipe for concept normalisation** - free-text symptom → candidate SCTID with confidence, as a reusable DSPy signature. Good demo of the embeddings + FTS combo and a natural "ship a notebook" artefact.
-
-- [ ] `R56` **UMAP / HDBSCAN embedding dashboard** - drop concepts on a 2D canvas, lasso-select, export the selection as a codelist. "SNOMED microscope." Likely implemented inside the marimo notebook rather than as a separate surface.
-
-- [ ] `R57` **Observable / D3 hierarchical viewer** served by a local `sct serve --ui` - radial tree of descendants, zoomable, with refset overlay colouring. Complements the notebook story for users who want a GUI without installing Python.
-
-### Editor & desktop integrations (AEHRC interop)
-
-AEHRC (the CSIRO team behind Ontoserver) ships two open-source tools that are natural front-ends for `sct`'s local engine, precisely because they speak standard FHIR R4 terminology operations - exactly what `sct serve` already implements. Both reinforce the payoff of `sct serve` being genuinely FHIR-conformant: existing terminology tooling can adopt it as a fast, offline, local backend with zero code changes. Researched July 2026.
-
-- [ ] `R58` **`aehrc/ecl-lsp` as an editor front-end for the ECL engine.** A Language Server Protocol implementation for SNOMED CT ECL, with plugins for VSCode, IntelliJ, Eclipse, Neovim, Sublime, and Emacs: real-time ECL diagnostics, completion, hover, formatting, eight refactoring actions, and an inline concept-count code lens. It resolves concepts and evaluates ECL through a **configurable FHIR terminology server** (`ValueSet/$expand`, `CodeSystem/$validate-code`, `$lookup`, under the `ecl.*` settings namespace). Since [`sct serve`](../docs/commands/serve.md) implements exactly those operations with a full ECL-aware `$expand`, it should be a drop-in **offline, local** backend - editor-integrated ECL authoring with no Ontoserver/Snowstorm and no network round-trip.
-  - **Near-term:** verify and document pointing ecl-lsp at `sct serve` (a docs recipe plus a conformance check over the specific operations/parameters ecl-lsp actually calls).
-  - **Larger:** a native `sct lsp` mode so no server process is needed at all - `sct` already owns the ECL engine, so the work is the LSP plumbing (stdio JSON-RPC, which the MCP server already frames) rather than any new terminology logic.
-  - Source: <https://github.com/aehrc/ecl-lsp>
-- [ ] `R59` **`aehrc/codeagogo` - system-wide code lookup backed by `sct`.** A macOS menu-bar utility for clinical-terminology lookup/search/annotation from any application via global hotkeys; it auto-detects SNOMED codes with Verhoeff check-digit validation and validates concepts against a terminology server in the background, warning on inactive or unknown concepts. Two angles: (1) point codeagogo at a local `sct serve` instead of a remote Ontoserver, for offline system-wide lookup over the exact release the user licenses; (2) harvest the ideas into `sct` itself - Verhoeff check-digit auto-detection in `sct lookup`, and the inactive-concept warning, which dovetails directly with the concept-history/inactivation feature above. Source: <https://github.com/aehrc/codeagogo>
-
-### Clinical-data interoperability
-
-- [ ] `R60` **MIMIC / eICU crosswalk notebook** - joins the public MIT ICU datasets to SCT via existing ICD-10 / dm+d maps, produces prevalence heatmaps by hierarchy top-level. Strong Colab/Kaggle demo because the ICU data is already on those platforms. Constraint: MIMIC requires PhysioNet credentialled access; the notebook should work against the demo subset for unauthenticated users. Pointer: <https://physionet.org/content/mimiciv-demo/>
-
-- [ ] `R61` **SNOMED CT AI Benchmark - entity-linking normalisation backend** - SNOMED International, with DrivenData and Veratai, has turned its 2023-24 *Entity Linking Challenge* into a **continuous AI Benchmark** that scores how well models code free-text clinical notes to SNOMED CT (podcast "Measuring AI against SNOMED CT", introduced June 2026). The task decomposes into two stages:
-      1. **Clinical entity recognition (span detection)** - find the spans of text that name a clinical concept. This is genuinely an ML/NER problem (the baseline used a fine-tuned DeBERTa BIO token classifier) and is **out of scope for `sct`** - we have no custom model and don't intend to ship one.
-      2. **Entity linking / normalisation** - map each detected span to a specific SCTID. This is candidate generation + disambiguation against the terminology, and it is **exactly what `sct` already is**: a fast, local, zero-server lookup engine over every SNOMED description. The winning "KIRI" team used a *dictionary-based* method; `sct lexical` (FTS5), `sct fst` (sub-ms prefix/fuzzy), and `sct semantic` (embeddings) together are a dictionary-based normaliser with a fuzzy and a semantic tier on top.
-
-      Why this is worth doing:
-      - **A drop-in normalisation library/service for anyone building an entity-linking pipeline.** They bring the NER (or an LLM span extractor); `sct` answers "span text → ranked SCTID candidates" in microseconds, offline, over the exact release they license. Natural fit for the planned live/stdio search component and the `SnomedRetriever` (LangChain/LlamaIndex) and DSPy normalisation items above.
-      - **A published dictionary-only baseline on the benchmark.** Run `sct` as the linker stage against gold spans and report the score - a concrete, reproducible "how far does pure fast lexical/fuzzy/semantic matching get you" number, and a compelling demo of the search backends.
-      - **Data + metric are already in our orbit.** Ground truth is MIMIC-IV-Note discharge summaries on PhysioNet (the same corpus as the MIMIC crosswalk item below); scoring is macro-averaged **character-level IoU**. Both are tractable to wire into `benchmarks/`. Constraint: MIMIC needs PhysioNet credentialled access, and the annotated challenge set has its own DUA - do not redistribute either in `sct`.
-
-      Pointers: podcast/announcement <https://forums.snomed.org/t/podcast-measuring-ai-against-snomed-ct-introducing-the-snomed-ct-ai-benchmark/1427>; benchmark write-up <https://drivendata.co/blog/snomed-ct-entity-linking-benchmark>; winners <https://drivendata.co/blog/snomed-ct-entity-linking-challenge-winners>; dataset <https://physionet.org/content/snomed-ct-entity-challenge/>; winning code <https://github.com/drivendataorg/snomed-ct-entity-linking>; JAMIA paper <https://doi.org/10.1093/jamia/ocaf104>.
-
-- [ ] `R62` **OMOP CDM bridge** - bidirectional mapping between OMOP `concept_id` / vocabulary IDs and SCTIDs. Would land `sct` inside the OHDSI workflow. Needs ingestion of the OMOP vocabulary CSVs (Athena download) and a `concept_maps` extension. Pointer: <https://athena.ohdsi.org/>
-
-- [ ] `R63` **FHIR ValueSet / ConceptMap round-trip** - emit a `.codelist` as a FHIR `ValueSet` resource and re-ingest the result of a terminology server `$expand`. Makes `sct codelist` interoperable with Ontoserver, Snowstorm, and the NHS FHIR Terminology Server. Natural pairing with the in-progress `sct serve` work - same data model, opposite direction.
-
-### LLM-assisted authoring
-
-- [ ] `R64` **"Explain this refset" agent** - an MCP client + small model prompt that writes plain-English rationale for every member of a refset, flagging outliers ("this concept sits under X, unlike the other 27 members which sit under Y - intentional?"). Run nightly on curated refsets; commit diffs as a form of continuous review. Uses: detecting refset drift, onboarding new curators, sanity-checking imports.
-
-- [ ] `R65` **Semantic drift summariser** - layer on top of `sct diff`. Raw row counts become an LLM-summarised narrative: "Release added 412 concepts, mostly under Pharmaceutical/biologic product (COVID-19 boosters); 37 concepts inactivated in Clinical finding, of which 31 replaced by more specific children." Much higher signal-to-noise than the current diff output.
-
-### The too-wild one
-
-- [ ] `R66` **`sct mud` - SNOMED as a text adventure.** Rooms are concepts, exits are relationships. `> go finding-site` walks from *Myocardial infarction* into *Heart structure*; `> look` shows FSN, synonyms, and sibling concepts as "other travellers here"; `> inventory` is your in-progress codelist. An optional LLM dungeon-master narrates the clinical picture as you wander. Absurd on the surface, but it's the first interface that would make a medical student *play* with the ontology, and the traversal patterns discovered during play are genuinely useful codelist seeds. Ship as a subcommand; minimal dependencies; pure terminal UX.
+The longer-horizon, debatable, and community-facing items - data-science surfaces (DuckDB, notebooks, NetworkX / Kuzu graph adapters, embedding dashboards, an Observable viewer), editor and desktop integrations (AEHRC's `ecl-lsp` and `codeagogo`), clinical-data interoperability (MIMIC crosswalks, the SNOMED CT AI Benchmark, an OMOP CDM bridge, FHIR ValueSet / ConceptMap round-trip), LLM-assisted authoring, and the deliberately-absurd `sct mud` - have moved to the tracker as **[issues labelled `idea`](https://github.com/pacharanero/sct/issues?q=is%3Aissue+is%3Aopen+label%3Aidea)** (#41-#59), where anyone can comment and add views. This file stays focused on near-term, actively-built work.
