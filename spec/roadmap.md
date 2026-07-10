@@ -38,7 +38,7 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 - [ ] `R12` Windows Authenticode signing (requires cert from CA) so SmartScreen doesn't block. Guide: <https://ngrok.com/blog/so-you-want-to-sign-for-windows>
 - [ ] `R13` Submit to `homebrew-core` once project hits 30+ stars and has stable release cadence (would enable `brew install sct` without the tap)
 - [ ] `R14` Submit to `winget` after Windows signing is in place
-- [x] `R15` **Nix flake.** `flake.nix` packages `sct` via `rustPlatform.buildRustPackage` (version single-sourced from `Cargo.toml`; no system libraries, since SQLite is vendored and TLS is rustls), exposing `packages.default` / `apps.default` (`nix run github:pacharanero/sct`) plus a `devShells.default` carrying the Rust toolchain, across the four released-binary platforms. Not verifiable in the authoring environment (no `nix` present); wants a `nix build` smoke-check - a small CI job would keep it from bit-rotting.
+- [x] `R15` **Nix flake.** `flake.nix` packages `sct` via `rustPlatform.buildRustPackage` (version single-sourced from `Cargo.toml`; no system libraries, since SQLite is vendored and TLS is rustls), exposing `packages.default` / `apps.default` (`nix run github:pacharanero/sct`) plus a `devShells.default` carrying the Rust toolchain, across the four released-binary platforms. Not verifiable in the authoring environment (no `nix` present), so a `nix.yml` CI job (`nix build .#sct` + `nix flake check` + a `--version` smoke test, path-filtered to build-relevant changes) is its first real proof and keeps it from bit-rotting.
 
 ### Quality
 
