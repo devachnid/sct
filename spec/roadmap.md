@@ -2,6 +2,18 @@
 
 Outstanding work and next steps. Completed work is removed; see git log for history.
 
+## Open issues
+
+Bugs and smaller enhancements are tracked on the **[GitHub issue tracker](https://github.com/pacharanero/sct/issues)** - the authoritative, always-current list. Snapshot at the time of writing (refresh with `gh issue list --state open`):
+
+- [#37](https://github.com/pacharanero/sct/issues/37) - batch terminology operations in one request (`$validate-code` / `$lookup` / `$translate`)
+- [#36](https://github.com/pacharanero/sct/issues/36) - `ConceptMap/$closure` for incremental subsumption closure maintenance
+- [#35](https://github.com/pacharanero/sct/issues/35) - serve a `TerminologyCapabilities` statement for `GET /metadata?mode=terminology`
+- [#34](https://github.com/pacharanero/sct/issues/34) - `sct mcp --embeddings` help text claims auto-discovery that does not happen
+- [#33](https://github.com/pacharanero/sct/issues/33) - `sct codelist export --format rf2` (fhir-json shipped; rf2 is decision-gated, see Features)
+- [#31](https://github.com/pacharanero/sct/issues/31) - tolerate undotted ICD-10 codes as `$translate` input (e.g. `I219` as well as `I21.9`)
+- [#30](https://github.com/pacharanero/sct/issues/30) - `conformance.sh` translate check only inspects the last result; stale `asthma-no-map` fixture
+
 ---
 
 ### TODO
@@ -97,29 +109,15 @@ Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validat
       (same: `--from opencodelists/csv/rf2/fhir-json` is a real, validated flag, but the
       handler stubs out. Low-hanging alongside `search` above.)
 
-### Interactive "search as you type"
+### Interactive "search as you type" (SAYT)
 
-- [ ] **Live incremental search mode** - an interactive terminal mode where results
-      update on every keystroke. A genuinely compelling CLI demo (terminology lookup
-      feels instant), and the basis for an embeddable search component later.
-  - **Pluggable backends.** The same UI over a selectable backend: `--backend fts5`
-        ([`sct lexical`](../docs/commands/lexical.md) / SQLite), `--backend fst`
-        ([`sct fst`](commands/fst.md) - its sub-millisecond prefix/fuzzy lookup is *ideal*
-        for per-keystroke latency), later `semantic`, or a blended ranker. Backends share
-        one trait (query string → ranked hits) so adding one is cheap.
-  - **Parameters.** `--limit` (live results shown), `--min-chars` (threshold before
-        results appear), plus natural extensions: debounce interval, fuzzy distance,
-        hierarchy/semantic-tag filter, and which display fields to show.
-  - **Embeddable, not just a CLI.** A later cut should expose the same engine as a
-        component another program can drive - e.g. a webapp talking to it via a backend
-        process. A **line-oriented stdio protocol** (query line in → JSON-lines results
-        out, cancellable on the next query) is the obvious shape, and could reuse the
-        MCP server's stdio framing. That keeps one search core behind both the
-        interactive TUI and a programmatic transport.
-  - **Implementation still open.** Terminal UI via the existing `--features tui`
-        (ratatui/crossterm) or a lighter readline-style redraw; whether the interactive
-        mode and the stdio component are one binary mode with two front-ends or separate.
-        Decide once a backend trait and the result shape are pinned down.
+**One search core, three front-ends.** The same `query string → ranked hits` engine - the mmap'd [FST index](commands/fst.md), sub-millisecond prefix + typo-tolerant fuzzy, *ideal* for per-keystroke latency - exposed three ways, so it is simultaneously a compelling demo and a reusable building block for anyone who needs SAYT over SNOMED. Build the core + a backend trait once; each surface below is a thin front-end. Start with (1) - it proves the core and is the marketing - then expose (2) and (3).
+
+- [ ] **1. Interactive TUI - the demo.** A full-screen mode (`sct sayt`, or `sct fst search --interactive`) where results update on every keystroke: type `myoc` → *Myocardial infarction* et al. appear instantly. A live per-keystroke latency readout ("0.3 ms"), a backend toggle (FST / FTS5 / fuzzy), hierarchy / semantic-tag filters, and select-to-act (print the SCTID, append to a `.codelist`, or open the concept). Sells "838k concepts, offline, instant, no server" viscerally. Terminal UI via the existing `--features tui` (ratatui/crossterm), or a lighter readline-style redraw.
+- [ ] **2. stdio line protocol - embed in a native app.** The same engine as a subprocess: one query per line on stdin, ranked results as JSON-lines on stdout, the in-flight query cancelled when the next arrives. Zero HTTP overhead, reuses the MCP server's stdio framing. The right shape for desktop / editor integrations (Tauri, Electron, Vim, VS Code) that want local, offline autocomplete they drive as a child process.
+- [ ] **3. HTTP autocomplete endpoint - the web-native surface.** An FST-backed `GET /autocomplete?q=…` on [`sct serve`](commands/serve.md) returning ranked completions as JSON, so a browser front-end can hit it per keystroke (debounced). `sct serve` today answers `ValueSet/$expand?filter=` over FTS5 - word-based full-text, fine for search but not built for *prefix + typo-tolerant* per-keystroke completion; the FST is the right engine for that. This is the drop-in **"autocomplete for 838k SNOMED concepts, sub-ms, offline, no Elasticsearch"** that web app builders actually want.
+
+Shared design: all three sit behind one backend trait (`query → ranked hits`) with selectable backends (`fst` default, `fts5`, later `semantic` or a blended ranker) and common parameters (`--limit`, `--min-chars`, debounce, fuzzy distance, hierarchy/semantic-tag filter, display fields). The result shape (SCTID + display + score + optional hierarchy/FSN) is shared across the TUI rows, the JSON-lines, and the HTTP JSON, so pinning it down once unlocks all three.
 
 ### Concept history & inactivation storytelling
 
