@@ -10,6 +10,7 @@
 
 pub mod fhir;
 pub mod ops;
+pub mod pool;
 pub mod valuesets;
 
 use anyhow::{Context, Result};
@@ -27,7 +28,14 @@ use std::sync::Arc;
 
 use crate::index::query::Index;
 use fhir::FhirError;
+use pool::ConnectionPool;
 use valuesets::ValueSetRegistry;
+
+/// Private page cache per pooled connection (KiB). Modest on purpose: with
+/// `mmap_size` set in `open_db_readonly`, reads come from the shared
+/// memory-mapped file, so a large per-connection cache would just multiply
+/// resident memory across the pool for little benefit.
+const POOL_CACHE_KIB: u32 = 8192;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -62,11 +70,19 @@ pub struct Args {
     /// Refuse write operations (always true; the server is read-only).
     #[arg(long, default_value_t = true)]
     pub read_only: bool,
+
+    /// Size of the read-only SQLite connection pool. Each request borrows a warm
+    /// connection instead of opening a fresh one, so this also bounds how many
+    /// queries run concurrently. `0` auto-sizes to 2x the logical CPU count
+    /// (clamped to 4..64).
+    #[arg(long, default_value_t = 0)]
+    pub pool_size: usize,
 }
 
 #[derive(Clone)]
 struct AppState {
-    db: Arc<PathBuf>,
+    /// Warm pool of read-only connections shared by every DB-backed operation.
+    pool: Arc<ConnectionPool>,
     impl_url: Arc<String>,
     registry: Arc<ValueSetRegistry>,
     translate_available: bool,
@@ -93,7 +109,26 @@ pub fn run(args: Args) -> Result<()> {
     );
     let codelists = crate::paths::codelist_registry(args.codelists.as_deref());
     let fst = resolve_fst(args.fst.as_deref(), &db);
-    serve_listener(db, &args.fhir_base, Some(codelists), fst, listener)
+    serve_listener(
+        db,
+        &args.fhir_base,
+        Some(codelists),
+        fst,
+        args.pool_size,
+        listener,
+    )
+}
+
+/// Resolve the connection-pool size: an explicit non-zero request, else 2x the
+/// logical CPU count clamped to a sane 4..=64.
+fn resolve_pool_size(requested: usize) -> usize {
+    if requested > 0 {
+        return requested;
+    }
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+    (cores * 2).clamp(4, 64)
 }
 
 /// Resolve the FST index for `/autocomplete`: an explicit `--fst` path, else a
@@ -116,6 +151,7 @@ pub fn serve_listener(
     fhir_base: &str,
     codelists: Option<PathBuf>,
     fst: Option<PathBuf>,
+    pool_size: usize,
     listener: std::net::TcpListener,
 ) -> Result<()> {
     let base = normalise_base(fhir_base);
@@ -153,9 +189,14 @@ pub fn serve_listener(
         }
     });
 
+    let translate_available = table_exists(&db, "crossmaps")?;
+    let pool_size = resolve_pool_size(pool_size);
+    let pool = ConnectionPool::open(&db, pool_size, POOL_CACHE_KIB)
+        .with_context(|| format!("opening connection pool for {}", db.display()))?;
+    eprintln!("  connection pool: {pool_size} warm read-only connection(s)");
     let state = AppState {
-        translate_available: table_exists(&db, "crossmaps")?,
-        db: Arc::new(db),
+        translate_available,
+        pool: Arc::new(pool),
         impl_url: Arc::new(impl_url),
         registry: Arc::new(registry),
         fst: fst_index,
@@ -525,24 +566,24 @@ async fn batch(State(st): State<AppState>, headers: HeaderMap, body: String) -> 
         )));
     }
     let entries = bundle["entry"].as_array().cloned().unwrap_or_default();
-    let db = st.db.clone();
+    let pool = st.pool.clone();
     let registry = st.registry.clone();
     let joined = tokio::task::spawn_blocking(move || -> Result<serde_json::Value, FhirError> {
-        let conn = crate::commands::open_db_readonly(db.as_path(), None)
-            .map_err(|e| FhirError::exception(format!("opening database: {e}")))?;
-        let responses: Vec<serde_json::Value> = entries
-            .iter()
-            .map(|entry| {
-                let method = entry["request"]["method"].as_str().unwrap_or("GET");
-                let url = entry["request"]["url"].as_str().unwrap_or("");
-                let (status, resource) = run_operation(&conn, &registry, method, url);
-                serde_json::json!({
-                    "response": { "status": status.to_string() },
-                    "resource": resource,
+        pool.with(|conn| {
+            let responses: Vec<serde_json::Value> = entries
+                .iter()
+                .map(|entry| {
+                    let method = entry["request"]["method"].as_str().unwrap_or("GET");
+                    let url = entry["request"]["url"].as_str().unwrap_or("");
+                    let (status, resource) = run_operation(conn, &registry, method, url);
+                    serde_json::json!({
+                        "response": { "status": status.to_string() },
+                        "resource": resource,
+                    })
                 })
-            })
-            .collect();
-        Ok(fhir::bundle_batch_response(responses))
+                .collect();
+            Ok(fhir::bundle_batch_response(responses))
+        })
     })
     .await;
     match joined {
@@ -652,13 +693,8 @@ async fn run_db<F>(st: &AppState, f: F) -> Response
 where
     F: FnOnce(&Connection) -> Result<serde_json::Value, FhirError> + Send + 'static,
 {
-    let db = st.db.clone();
-    let joined = tokio::task::spawn_blocking(move || {
-        let conn = crate::commands::open_db_readonly(db.as_path(), None)
-            .map_err(|e| FhirError::exception(format!("opening database: {e}")))?;
-        f(&conn)
-    })
-    .await;
+    let pool = st.pool.clone();
+    let joined = tokio::task::spawn_blocking(move || pool.with(|conn| f(conn))).await;
     match joined {
         Ok(Ok(value)) => fhir_ok(value),
         Ok(Err(e)) => fhir_err(e),
