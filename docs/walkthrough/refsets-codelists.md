@@ -206,6 +206,17 @@ sct codelist export codelists/asthma-diagnosis.codelist --format opencodelists-c
 sct codelist export codelists/asthma-diagnosis.codelist --format markdown --output asthma.md
 ```
 
+### Import
+
+Create a new draft codelist from a CSV or an explicit-concept FHIR R4 ValueSet:
+
+```bash
+sct codelist import codelists/asthma-import.codelist --from csv asthma.csv
+sct codelist import codelists/asthma-fhir.codelist --from fhir-json asthma.valueset.json
+```
+
+Imports never overwrite an existing file and always require local review: source status is recorded as provenance, not treated as clinical sign-off. Validate the result against your intended SNOMED CT database. RF2 reference-set import/export is deferred pending the namespace and identity decisions tracked in [issue #60](https://github.com/pacharanero/sct/issues/60).
+
 ### Typical git workflow
 
 ```bash

@@ -8,7 +8,7 @@ Each work item carries a stable `R##` identifier (e.g. `R42`) so it can be refer
 
 Bugs and smaller enhancements are tracked on the **[GitHub issue tracker](https://github.com/pacharanero/sct/issues)** - the authoritative, always-current list (refresh a snapshot here with `gh issue list --state open`). Longer-horizon and exploratory ideas live there too, under the **[`idea` label](https://github.com/pacharanero/sct/issues?q=is%3Aissue+is%3Aopen+label%3Aidea)**, so others can weigh in (see the foot of this file); this roadmap stays focused on near-term, actively-built work.
 
-At the time of writing the tracker is **clear** - #30-#37 have all been resolved: batch Bundle (#37), TerminologyCapabilities (#35), undotted-ICD-10 tolerance (#31), the conformance translate-check fix (#30), and the `mcp --embeddings` / `codelist export` help-text corrections (#34, #33) all shipped; `ConceptMap/$closure` (#36) was deferred as a poor fit for the stateless read-only server. `rf2` codelist export is decision-gated and now tracked on the issue tracker ([#60](https://github.com/pacharanero/sct/issues/60)).
+The previous implementation run (#30-#37) is resolved: batch Bundle (#37), TerminologyCapabilities (#35), undotted-ICD-10 tolerance (#31), the conformance translate-check fix (#30), and the `mcp --embeddings` / `codelist export` help-text corrections (#34, #33) all shipped; `ConceptMap/$closure` (#36) was deferred as a poor fit for the stateless read-only server. RF2 codelist import/export is decision-gated and tracked on the issue tracker ([#60](https://github.com/pacharanero/sct/issues/60)).
 
 ---
 
@@ -50,10 +50,9 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 
 ### `sct codelist` - clinical code list management
 
-Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, and `export` to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks) / **fhir-json** (a FHIR R4 ValueSet, via the same shared builder `sct serve` uses, so exported and served forms are identical; `--url` sets the canonical base). See [`docs/commands/codelist.md`](../docs/commands/codelist.md). Outstanding:
+Core shipped: `new`, `add` (including `--ecl` and stdin `-`), `remove`, `validate`, `stats`, `diff`, `search`, import from csv / opencodelists-csv / explicit-concept FHIR ValueSet, and export to csv / opencodelists-csv / markdown (with `--include-maps` crosswalks) / **fhir-json** (a FHIR R4 ValueSet, via the same shared builder `sct serve` uses, so exported and served forms are identical; `--url` sets the canonical base). See [`docs/commands/codelist.md`](../docs/commands/codelist.md). Outstanding:
 
 - [ ] `R25` **Multi-terminology codelists (format v2)** - future extension now that the terminology workspace can contain SNOMED CT, CTV3, Read v2, ICD-10, and OPCS-4. Would allow first-class non-SNOMED source codes in a codelist, e.g. historical Read v2 codes with no modern SNOMED equivalent, instead of treating SNOMED as the canonical pivot for every list. The `--include-maps` export is the interim solution for SNOMED-canonical lists; v2 is for genuinely cross-terminology source artefacts.
-- [ ] `R27` `sct codelist import --from <source>` - OCL, CSV, RF2, FHIR import (same: `--from opencodelists/csv/rf2/fhir-json` is a real, validated flag, but the handler stubs out. Low-hanging alongside `search` above.)
 
 ### Interactive "search as you type" (SAYT)
 

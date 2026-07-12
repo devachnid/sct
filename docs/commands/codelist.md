@@ -255,6 +255,37 @@ Reports added, removed, moved-to-excluded, and preferred-term-changed concepts.
 
 > Note: this compares two `.codelist` files. [`sct diff`](diff.md) compares two SNOMED releases.
 
+### `sct codelist import <file> --from <format> <source>`
+
+Create a new draft codelist from an exported CSV or an extensional FHIR R4 ValueSet. The source can be a local file, an `http(s)` URL, or `-` for stdin. Import never overwrites an existing target file.
+
+```bash
+# sct's own CSV schema
+sct codelist import codelists/asthma.codelist --from csv asthma.csv
+
+# OpenCodelists-compatible code,term CSV (local file or direct CSV URL)
+sct codelist import codelists/asthma.codelist --from opencodelists-csv asthma-ocl.csv
+
+# Explicit-concept FHIR R4 ValueSet
+sct codelist import codelists/asthma.codelist --from fhir-json asthma.valueset.json
+
+# Pipe an exported ValueSet over stdin
+curl -fsSL https://example.org/ValueSet/asthma.json \
+  | sct codelist import codelists/asthma.codelist --from fhir-json -
+```
+
+| Format | Required source shape |
+|---|---|
+| `csv` | Header columns `sctid,preferred_term`; additional columns are ignored |
+| `opencodelists-csv` / `opencodelists` | Header columns `code,term`; use a downloaded file or direct CSV URL, not an OpenCodelists HTML page |
+| `fhir-json` / `fhir` | FHIR R4 `ValueSet` with explicit SNOMED CT concepts in `compose.include[].concept[]`; explicit `compose.exclude[].concept[]` entries become codelist exclusions |
+
+FHIR filters, nested/imported ValueSets, expansion-only resources, and non-SNOMED code systems are rejected rather than silently flattened or assigned different semantics. Expand and review an intensional ValueSet before importing it.
+
+Every imported codelist starts at local version 1 with `status: draft`, `licence: NOASSERTION`, source details in `methodology`, and an `imported-needs-review` warning. Source publication status does not count as local clinical sign-off. Review the metadata, set the correct licence and intended-use fields, then run `sct codelist validate` against the SNOMED CT release you intend to use.
+
+RF2 reference-set import is deliberately unavailable because valid RF2 identity and namespace handling remains undecided. See [issue #60](https://github.com/pacharanero/sct/issues/60) for the design questions, to add requirements, or to request that the feature be expedited.
+
 ### `sct codelist export <file> --format <fmt>`
 
 ```bash
@@ -290,7 +321,7 @@ sct codelist export codelists/asthma.codelist --format fhir-json \
   --url https://tx.example.nhs.uk/fhir --output asthma.valueset.json
 ```
 
-An `rf2` format (SNOMED CT Simple Reference Set) is planned but not yet implemented: producing a valid RF2 refset needs a real SNOMED CT namespace (a `refsetId`, `moduleId`, and member-row UUIDs) that a codelist does not carry, so it cannot be generated correctly without that input. Use `fhir-json` for a portable, standards-based export today.
+RF2 export (SNOMED CT Simple Reference Set) is deferred: producing a valid refset needs a real SNOMED CT namespace plus `refsetId`, `moduleId`, and stable member identities that a codelist does not carry. See [issue #60](https://github.com/pacharanero/sct/issues/60) for the open design questions or to request that the feature be expedited. Use `fhir-json` for a portable, standards-based export today.
 
 ---
 

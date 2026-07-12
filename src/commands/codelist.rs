@@ -168,7 +168,7 @@ pub struct ExportArgs {
     #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
     /// Output format: csv (default), opencodelists-csv, markdown, or fhir-json
-    /// (a FHIR R4 ValueSet resource). `rf2` is planned but not yet implemented.
+    /// (a FHIR R4 ValueSet resource). RF2 is deferred; see issue #60.
     #[arg(long, default_value = "csv")]
     pub format: String,
     /// Write to file instead of stdout.
@@ -243,13 +243,13 @@ pub struct SearchArgs {
 
 #[derive(Parser, Debug)]
 pub struct ImportArgs {
-    /// Path for the new or target .codelist file.
+    /// Path for the new .codelist file (must not already exist).
     #[arg(value_parser = crate::paths::tilde_pathbuf)]
     pub file: PathBuf,
-    /// Source type: opencodelists, csv, rf2, fhir-json.
+    /// Source type: csv, opencodelists-csv (or opencodelists), fhir-json, or rf2.
     #[arg(long)]
     pub from: String,
-    /// URL or file path of the source.
+    /// URL or file path of the source. Use `-` to read from stdin.
     pub source: String,
 }
 
@@ -265,7 +265,7 @@ pub fn run(args: Args) -> Result<()> {
         Verb::Include(a) => cmd_include(a),
         Verb::Resolve(a) => cmd_resolve(a),
         Verb::Search(a) => cmd_search(a),
-        Verb::Import(_) => bail!("`sct codelist import` is not yet implemented."),
+        Verb::Import(a) => cmd_import(a),
     }
 }
 
@@ -1196,6 +1196,398 @@ fn set_snomed_release_if_missing(codelist: &mut CodelistFile, conn: &Connection)
     }
 }
 
+#[derive(Debug, Default)]
+struct ImportPayload {
+    included: Vec<(String, String)>,
+    excluded: Vec<(String, String)>,
+    title: Option<String>,
+    description: Option<String>,
+    copyright: Option<String>,
+    source_url: Option<String>,
+    source_version: Option<String>,
+    source_status: Option<String>,
+}
+
+fn cmd_import(args: ImportArgs) -> Result<()> {
+    if args.file.exists() {
+        bail!(
+            "{} already exists; import creates a new codelist and will not overwrite it",
+            args.file.display()
+        );
+    }
+
+    let format = args.from.trim().to_ascii_lowercase();
+    if format == "rf2" {
+        bail!(
+            "`rf2` codelist import is not implemented. RF2 reference sets need namespace, refsetId, moduleId, and member-identity decisions that are still open. See https://github.com/pacharanero/sct/issues/60 to follow the design or request that it be expedited. Supported today: csv, opencodelists-csv, fhir-json."
+        );
+    }
+
+    let source_text = read_import_source(&args.source)?;
+    let payload = match format.as_str() {
+        "csv" => parse_import_csv(&source_text, "sctid", "preferred_term")?,
+        "opencodelists" | "opencodelists-csv" => {
+            parse_import_csv(&source_text, "code", "term")?
+        }
+        "fhir" | "fhir-json" => parse_import_fhir(&source_text)?,
+        other => bail!(
+            "unsupported import format: {other}\nSupported: csv, opencodelists-csv, fhir-json. RF2 is deferred; see https://github.com/pacharanero/sct/issues/60"
+        ),
+    };
+
+    if payload.included.is_empty() && payload.excluded.is_empty() {
+        bail!("the source contains no explicit SNOMED CT concepts");
+    }
+
+    let codelist = build_imported_codelist(&args.file, &args.source, &format, payload)?;
+    if let Some(parent) = args.file.parent().filter(|p| !p.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating directory {}", parent.display()))?;
+    }
+    let included = codelist.body.iter().filter(|line| line.is_active()).count();
+    let excluded = codelist
+        .body
+        .iter()
+        .filter(|line| matches!(line, ConceptLine::Excluded { .. }))
+        .count();
+    write_codelist(&codelist, &args.file)?;
+    println!(
+        "Imported {included} included and {excluded} excluded concept(s) to {}",
+        args.file.display()
+    );
+    Ok(())
+}
+
+fn read_import_source(source: &str) -> Result<String> {
+    if source == "-" {
+        use std::io::Read;
+        let mut text = String::new();
+        std::io::stdin()
+            .read_to_string(&mut text)
+            .context("reading import source from stdin")?;
+        return Ok(text);
+    }
+    if source.starts_with("http://") || source.starts_with("https://") {
+        let public_source = source_for_provenance(source);
+        return ureq::get(source)
+            .call()
+            .with_context(|| format!("fetching {public_source}"))?
+            .into_body()
+            .read_to_string()
+            .with_context(|| format!("reading body of {public_source}"));
+    }
+    let path = crate::paths::expand_tilde(source);
+    std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))
+}
+
+fn parse_import_csv(text: &str, code_header: &str, term_header: &str) -> Result<ImportPayload> {
+    let mut reader = csv::ReaderBuilder::new()
+        .flexible(true)
+        .from_reader(text.as_bytes());
+    let headers = reader.headers().context("reading CSV header")?.clone();
+    let find_header = |wanted: &str| {
+        headers.iter().position(|header| {
+            header
+                .trim_start_matches('\u{feff}')
+                .trim()
+                .eq_ignore_ascii_case(wanted)
+        })
+    };
+    let code_index = find_header(code_header).with_context(|| {
+        format!(
+            "CSV is missing required `{code_header}` column (headers: {})",
+            headers.iter().collect::<Vec<_>>().join(", ")
+        )
+    })?;
+    let term_index = find_header(term_header).with_context(|| {
+        format!(
+            "CSV is missing required `{term_header}` column (headers: {})",
+            headers.iter().collect::<Vec<_>>().join(", ")
+        )
+    })?;
+
+    let mut concepts = indexmap::IndexMap::new();
+    for (row_index, record) in reader.records().enumerate() {
+        let record = record.with_context(|| format!("reading CSV row {}", row_index + 2))?;
+        let code = record.get(code_index).unwrap_or("").trim();
+        let term = record.get(term_index).unwrap_or("").trim();
+        insert_import_concept(
+            &mut concepts,
+            code,
+            term,
+            &format!("CSV row {}", row_index + 2),
+        )?;
+    }
+    Ok(ImportPayload {
+        included: concepts.into_iter().collect(),
+        ..ImportPayload::default()
+    })
+}
+
+fn parse_import_fhir(text: &str) -> Result<ImportPayload> {
+    let value: Value = serde_json::from_str(text).context("parsing FHIR ValueSet JSON")?;
+    if value.get("resourceType").and_then(Value::as_str) != Some("ValueSet") {
+        bail!("FHIR import requires a ValueSet resource (`resourceType`: `ValueSet`)");
+    }
+    let compose = value.get("compose").and_then(Value::as_object).context(
+        "FHIR ValueSet has no `compose` object; expansion-only resources cannot be imported",
+    )?;
+
+    let mut included = parse_fhir_compose_groups(compose.get("include"), "include")?;
+    let excluded = parse_fhir_compose_groups(compose.get("exclude"), "exclude")?;
+    for code in excluded.keys() {
+        included.shift_remove(code);
+    }
+
+    Ok(ImportPayload {
+        included: included.into_iter().collect(),
+        excluded: excluded.into_iter().collect(),
+        title: value
+            .get("title")
+            .or_else(|| value.get("name"))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        description: value
+            .get("description")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        copyright: value
+            .get("copyright")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        source_url: value.get("url").and_then(Value::as_str).map(str::to_string),
+        source_version: value
+            .get("version")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        source_status: value
+            .get("status")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    })
+}
+
+fn parse_fhir_compose_groups(
+    groups: Option<&Value>,
+    group_name: &str,
+) -> Result<indexmap::IndexMap<String, String>> {
+    let mut concepts = indexmap::IndexMap::new();
+    let Some(groups) = groups else {
+        return Ok(concepts);
+    };
+    let groups = groups
+        .as_array()
+        .with_context(|| format!("FHIR `compose.{group_name}` must be an array"))?;
+    for (group_index, group) in groups.iter().enumerate() {
+        let group = group.as_object().with_context(|| {
+            format!("FHIR `compose.{group_name}[{group_index}]` must be an object")
+        })?;
+        if group.get("filter").is_some_and(value_is_nonempty)
+            || group.get("valueSet").is_some_and(value_is_nonempty)
+        {
+            bail!(
+                "FHIR `compose.{group_name}[{group_index}]` uses filters or imported ValueSets. Only explicit SNOMED CT `concept` entries can be converted without changing meaning. Expand the ValueSet first, review it, then import an extensional ValueSet."
+            );
+        }
+        let system = group
+            .get("system")
+            .and_then(Value::as_str)
+            .with_context(|| {
+                format!("FHIR `compose.{group_name}[{group_index}]` has no code system")
+            })?;
+        if system != SNOMED_SYSTEM {
+            bail!(
+                "FHIR `compose.{group_name}[{group_index}]` uses unsupported system `{system}`; codelist format v1 accepts SNOMED CT only"
+            );
+        }
+        let entries = group
+            .get("concept")
+            .and_then(Value::as_array)
+            .with_context(|| {
+                format!(
+                    "FHIR `compose.{group_name}[{group_index}]` has no explicit `concept` array"
+                )
+            })?;
+        for (concept_index, concept) in entries.iter().enumerate() {
+            let code = concept.get("code").and_then(Value::as_str).unwrap_or("");
+            let term = concept
+                .get("display")
+                .and_then(Value::as_str)
+                .unwrap_or(code);
+            insert_import_concept(
+                &mut concepts,
+                code,
+                term,
+                &format!("FHIR compose.{group_name}[{group_index}].concept[{concept_index}]"),
+            )?;
+        }
+    }
+    Ok(concepts)
+}
+
+fn value_is_nonempty(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Array(items) => !items.is_empty(),
+        Value::Object(items) => !items.is_empty(),
+        Value::String(item) => !item.is_empty(),
+        _ => true,
+    }
+}
+
+fn insert_import_concept(
+    concepts: &mut indexmap::IndexMap<String, String>,
+    code: &str,
+    term: &str,
+    location: &str,
+) -> Result<()> {
+    if code.is_empty() || !code.chars().all(|character| character.is_ascii_digit()) {
+        bail!("{location}: expected a numeric SNOMED CT code, got {code:?}");
+    }
+    if term.is_empty() {
+        bail!("{location}: concept {code} has no term/display");
+    }
+    if let Some(existing) = concepts.get(code) {
+        if existing != term {
+            bail!("{location}: concept {code} has conflicting terms {existing:?} and {term:?}");
+        }
+        return Ok(());
+    }
+    concepts.insert(code.to_string(), term.to_string());
+    Ok(())
+}
+
+fn build_imported_codelist(
+    target: &Path,
+    source: &str,
+    format: &str,
+    payload: ImportPayload,
+) -> Result<CodelistFile> {
+    let id = target
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .filter(|stem| !stem.is_empty())
+        .context("import target must have a filename")?
+        .to_string();
+    let default_title = id.replace(['-', '_'], " ");
+    let title = payload.title.unwrap_or(default_title);
+    let today = today();
+    let public_source = source_for_provenance(source);
+    let mut methodology =
+        format!("Imported from {public_source} using sct codelist import --from {format}.");
+    if let Some(url) = &payload.source_url {
+        methodology.push_str(&format!(
+            " Source canonical URL: {}.",
+            source_for_provenance(url)
+        ));
+    }
+    if let Some(version) = &payload.source_version {
+        methodology.push_str(&format!(" Source version: {version}."));
+    }
+    if let Some(status) = &payload.source_status {
+        methodology.push_str(&format!(" Source status: {status}."));
+    }
+    let mut body = vec![
+        ConceptLine::Blank,
+        ConceptLine::Comment("# concepts".to_string()),
+        ConceptLine::Blank,
+    ];
+    body.extend(
+        payload
+            .included
+            .into_iter()
+            .map(|(id, term)| ConceptLine::Active {
+                id,
+                term,
+                comment: None,
+            }),
+    );
+    if !payload.excluded.is_empty() {
+        body.push(ConceptLine::Blank);
+        body.push(ConceptLine::Comment("# excluded in source".to_string()));
+        body.push(ConceptLine::Blank);
+        body.extend(
+            payload
+                .excluded
+                .into_iter()
+                .map(|(id, term)| ConceptLine::Excluded {
+                    id,
+                    term,
+                    comment: Some("excluded in imported source".to_string()),
+                }),
+        );
+    }
+
+    Ok(CodelistFile {
+        front_matter: FrontMatter {
+            id,
+            title: title.clone(),
+            description: payload
+                .description
+                .unwrap_or_else(|| format!("Imported {title} codelist.")),
+            terminology: "SNOMED CT".to_string(),
+            created: today.clone(),
+            updated: today,
+            version: 1,
+            status: "draft".to_string(),
+            licence: "NOASSERTION".to_string(),
+            copyright: payload.copyright.unwrap_or_else(|| {
+                "Source copyright not supplied. SNOMED CT content © IHTSDO.".to_string()
+            }),
+            appropriate_use: "Review and describe appropriate use before publishing.".to_string(),
+            misuse: "Do not use clinically until the imported concepts and source provenance have been reviewed.".to_string(),
+            includes: None,
+            snomed_release: None,
+            authors: None,
+            organisation: None,
+            methodology: Some(methodology),
+            signoffs: None,
+            warnings: Some(vec![
+                Warning {
+                    code: "imported-needs-review".to_string(),
+                    severity: "warning".to_string(),
+                    message: "Imported concepts and metadata have not been clinically reviewed in this repository.".to_string(),
+                },
+                Warning {
+                    code: "not-universal-definition".to_string(),
+                    severity: "info".to_string(),
+                    message: "This codelist may have been developed for a specific purpose and may not meet the needs of other studies.".to_string(),
+                },
+                Warning {
+                    code: "snomed-release-age".to_string(),
+                    severity: "caution".to_string(),
+                    message: "Validate imported SCTIDs and terms against the intended SNOMED CT release.".to_string(),
+                },
+            ]),
+            population: None,
+            care_setting: None,
+            tags: Some(vec!["imported".to_string()]),
+            opencodelists_id: None,
+            opencodelists_url: None,
+        },
+        body,
+    })
+}
+
+fn source_for_provenance(source: &str) -> String {
+    if !source.starts_with("http://") && !source.starts_with("https://") {
+        return source.to_string();
+    }
+    let end = source.find(['?', '#']).unwrap_or(source.len());
+    let mut public = source[..end].to_string();
+    if let Some(scheme_end) = public.find("://") {
+        let authority_start = scheme_end + 3;
+        let authority_end = public[authority_start..]
+            .find('/')
+            .map(|offset| authority_start + offset)
+            .unwrap_or(public.len());
+        if let Some(at) = public[authority_start..authority_end].rfind('@') {
+            public.replace_range(authority_start..authority_start + at + 1, "***@");
+        }
+    }
+    public
+}
+
 /// Read newline-delimited SCTIDs from stdin (for `sct codelist add <file> -`).
 fn read_sctids_from_stdin() -> Result<Vec<String>> {
     use std::io::Read;
@@ -1275,7 +1667,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
         ("misuse", fm.misuse.as_str()),
         ("licence", fm.licence.as_str()),
     ] {
-        if val.trim().is_empty() || val.starts_with("Describe") {
+        if val.trim().is_empty() || val.starts_with("Describe") || val == "NOASSERTION" {
             if fm.status == "published" {
                 errors.push(format!(
                     "published codelist must have a non-empty `{field}`"
@@ -1715,12 +2107,14 @@ fn cmd_export(args: ExportArgs) -> Result<()> {
              Emitting a codelist as an RF2 Simple Reference Set needs a real SNOMED CT \
              namespace - a refsetId and moduleId (and member row UUIDs) that a codelist \
              does not carry - so it cannot be produced correctly without that input. \
-             Tracked in spec/roadmap.md. Use `--format fhir-json` for a portable, \
+             See https://github.com/pacharanero/sct/issues/60 to follow the design or \
+             request that it be expedited. Use `--format fhir-json` for a portable, \
              standards-based export today."
         ),
         other => bail!(
             "unsupported export format: {other}\n\
-             Supported: csv, opencodelists-csv, markdown, fhir-json (rf2 is planned)."
+             Supported: csv, opencodelists-csv, markdown, fhir-json (RF2 is deferred; \
+             see https://github.com/pacharanero/sct/issues/60)."
         ),
     };
 
@@ -2422,6 +2816,127 @@ misuse: Not for clinical decision support.
                 .find(|line| line.sctid() == Some("999")),
             Some(ConceptLine::Excluded { .. })
         ));
+    }
+
+    #[test]
+    fn import_csv_reads_export_schema_and_ignores_extra_columns() {
+        let csv = "\u{feff}sctid,preferred_term,icd10\n22298006,Myocardial infarction,I219\n195967001,\"Asthma, unspecified\",J45\n";
+        let payload = parse_import_csv(csv, "sctid", "preferred_term").unwrap();
+        assert_eq!(
+            payload.included,
+            vec![
+                ("22298006".into(), "Myocardial infarction".into()),
+                ("195967001".into(), "Asthma, unspecified".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn import_csv_rejects_wrong_schema_and_conflicting_duplicates() {
+        assert!(parse_import_csv("code,term\n123,One\n", "sctid", "preferred_term").is_err());
+        assert!(parse_import_csv(
+            "sctid,preferred_term\n123,One\n123,Two\n",
+            "sctid",
+            "preferred_term"
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn import_fhir_reads_explicit_includes_exclusions_and_metadata() {
+        let value_set = r#"{
+          "resourceType":"ValueSet",
+          "url":"https://example.org/ValueSet/asthma",
+          "version":"3.2",
+          "title":"Asthma codes",
+          "status":"active",
+          "description":"Imported test",
+          "copyright":"Example copyright",
+          "compose":{
+            "include":[{"system":"http://snomed.info/sct","concept":[
+              {"code":"195967001","display":"Asthma"},
+              {"code":"41553006","display":"Occupational asthma"}
+            ]}],
+            "exclude":[{"system":"http://snomed.info/sct","concept":[
+              {"code":"41553006","display":"Occupational asthma"}
+            ]}]
+          }
+        }"#;
+        let payload = parse_import_fhir(value_set).unwrap();
+        assert_eq!(
+            payload.included,
+            vec![("195967001".into(), "Asthma".into())]
+        );
+        assert_eq!(
+            payload.excluded,
+            vec![("41553006".into(), "Occupational asthma".into())]
+        );
+        assert_eq!(payload.title.as_deref(), Some("Asthma codes"));
+        assert_eq!(payload.source_version.as_deref(), Some("3.2"));
+        assert_eq!(payload.source_status.as_deref(), Some("active"));
+    }
+
+    #[test]
+    fn import_fhir_rejects_intensional_or_non_snomed_content() {
+        let filtered = r#"{
+          "resourceType":"ValueSet",
+          "compose":{"include":[{"system":"http://snomed.info/sct","filter":[
+            {"property":"concept","op":"is-a","value":"195967001"}
+          ]}]}
+        }"#;
+        assert!(parse_import_fhir(filtered)
+            .unwrap_err()
+            .to_string()
+            .contains("filters"));
+
+        let icd = r#"{
+          "resourceType":"ValueSet",
+          "compose":{"include":[{"system":"http://hl7.org/fhir/sid/icd-10","concept":[
+            {"code":"J45","display":"Asthma"}
+          ]}]}
+        }"#;
+        assert!(parse_import_fhir(icd)
+            .unwrap_err()
+            .to_string()
+            .contains("SNOMED CT only"));
+    }
+
+    #[test]
+    fn imported_codelist_is_draft_and_records_source_provenance() {
+        let payload = ImportPayload {
+            included: vec![("195967001".into(), "Asthma".into())],
+            title: Some("Asthma source".into()),
+            source_status: Some("active".into()),
+            ..ImportPayload::default()
+        };
+        let codelist = build_imported_codelist(
+            Path::new("reviewed-asthma.codelist"),
+            "source.valueset.json",
+            "fhir-json",
+            payload,
+        )
+        .unwrap();
+        assert_eq!(codelist.front_matter.id, "reviewed-asthma");
+        assert_eq!(codelist.front_matter.status, "draft");
+        assert_eq!(codelist.front_matter.licence, "NOASSERTION");
+        assert!(codelist
+            .front_matter
+            .methodology
+            .as_deref()
+            .unwrap()
+            .contains("Source status: active"));
+        assert!(
+            matches!(codelist.body.last(), Some(ConceptLine::Active { id, .. }) if id == "195967001")
+        );
+    }
+
+    #[test]
+    fn import_source_provenance_redacts_credentials_query_and_fragment() {
+        assert_eq!(
+            source_for_provenance("https://user:token@example.org/list.csv?signature=secret#part"),
+            "https://***@example.org/list.csv"
+        );
+        assert_eq!(source_for_provenance("/tmp/list.csv"), "/tmp/list.csv");
     }
 
     // -----------------------------------------------------------------------
