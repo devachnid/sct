@@ -236,6 +236,9 @@ pub struct SearchArgs {
     /// discovery order when this flag is omitted.
     #[arg(long, value_parser = crate::paths::tilde_pathbuf)]
     pub db: Option<PathBuf>,
+    /// Maximum number of matching concepts to show.
+    #[arg(long, short, default_value_t = 20)]
+    pub limit: u32,
 }
 
 #[derive(Parser, Debug)]
@@ -261,11 +264,7 @@ pub fn run(args: Args) -> Result<()> {
         Verb::Export(a) => cmd_export(a),
         Verb::Include(a) => cmd_include(a),
         Verb::Resolve(a) => cmd_resolve(a),
-        Verb::Search(_) => bail!(
-            "`sct codelist search` is not yet implemented.\n\
-             Use `sct lexical --db <db> --query <query>` for FTS5 search,\n\
-             then `sct codelist add <file> <sctid>` to add concepts."
-        ),
+        Verb::Search(a) => cmd_search(a),
         Verb::Import(_) => bail!("`sct codelist import` is not yet implemented."),
     }
 }
@@ -973,6 +972,228 @@ fn cmd_add(args: AddArgs) -> Result<()> {
     write_codelist(&cl, &args.file)?;
     println!("Added {added} concept(s) to {}", args.file.display());
     Ok(())
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct SearchResult {
+    id: String,
+    term: String,
+    hierarchy: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SearchChoice {
+    Include,
+    Exclude,
+}
+
+/// Search active concepts and record explicitly reviewed decisions. This is
+/// terminal-only so a stray stdin pipe cannot modify a clinical codelist.
+fn cmd_search(args: SearchArgs) -> Result<()> {
+    use std::io::{IsTerminal, Write};
+
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        bail!(
+            "`sct codelist search` requires an interactive terminal. Use `sct lexical --ids | sct codelist add` in scripts."
+        );
+    }
+
+    let db = crate::paths::resolve_db(args.db.as_deref())?.path;
+    let conn = open_db(&db)?;
+    let results = search_codelist_concepts(&conn, &args.query, args.limit)?;
+    if results.is_empty() {
+        println!("No results for {:?}.", args.query);
+        return Ok(());
+    }
+
+    println!("Results for {:?}:", args.query);
+    for (index, result) in results.iter().enumerate() {
+        println!(
+            "  {:>2}. {} | {} | {}",
+            index + 1,
+            result.id,
+            result.term,
+            result.hierarchy
+        );
+    }
+    print!("\nSelect numbers to include; prefix a number with - to exclude (for example, 1,3,-4). Press Enter to cancel: ");
+    std::io::stdout().flush()?;
+
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .context("reading selection")?;
+    let choices = parse_search_choices(&input, results.len())?;
+    if choices.is_empty() {
+        println!("No changes.");
+        return Ok(());
+    }
+
+    let mut codelist = read_codelist(&args.file)?;
+    let changed = apply_search_choices(&mut codelist, &results, &choices);
+    if changed == 0 {
+        println!("No changes (the selected decisions were already recorded).");
+        return Ok(());
+    }
+
+    set_snomed_release_if_missing(&mut codelist, &conn);
+    codelist.front_matter.updated = today();
+    codelist.front_matter.version += 1;
+    write_codelist(&codelist, &args.file)?;
+    println!(
+        "Recorded {changed} reviewed decision(s) in {}.",
+        args.file.display()
+    );
+    Ok(())
+}
+
+fn search_codelist_concepts(
+    conn: &Connection,
+    query: &str,
+    limit: u32,
+) -> Result<Vec<SearchResult>> {
+    let fts_query = sanitise_fts_query(query);
+    let mut stmt = conn.prepare(
+        "SELECT c.id, c.preferred_term, c.hierarchy
+         FROM concepts_fts
+         JOIN concepts c ON concepts_fts.rowid = c.rowid
+         WHERE concepts_fts MATCH ?1 AND c.active = 1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![fts_query, limit], |row| {
+        Ok(SearchResult {
+            id: row.get(0)?,
+            term: row.get(1)?,
+            hierarchy: row.get(2)?,
+        })
+    })?;
+    Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+}
+
+fn sanitise_fts_query(query: &str) -> String {
+    let has_operators = query.contains('"')
+        || query.contains('*')
+        || query.contains('^')
+        || query.to_uppercase().contains(" AND ")
+        || query.to_uppercase().contains(" OR ")
+        || query.to_uppercase().contains(" NOT ");
+    if has_operators {
+        query.to_string()
+    } else {
+        format!("\"{}\"", query.replace('"', "\"\""))
+    }
+}
+
+fn parse_search_choices(input: &str, result_count: usize) -> Result<Vec<(usize, SearchChoice)>> {
+    let mut choices = Vec::new();
+    let mut seen = HashSet::new();
+    for token in input.split(|c: char| c == ',' || c.is_whitespace()) {
+        if token.is_empty() {
+            continue;
+        }
+        let (choice, number) = match token.strip_prefix('-') {
+            Some(number) => (SearchChoice::Exclude, number),
+            None => (SearchChoice::Include, token),
+        };
+        let index = number.parse::<usize>().with_context(|| {
+            format!("invalid selection {token:?}; use a result number such as 1 or -2")
+        })?;
+        if index == 0 || index > result_count {
+            bail!("selection {token:?} is outside the displayed result range 1..={result_count}");
+        }
+        if !seen.insert(index) {
+            bail!("result {index} was selected more than once");
+        }
+        choices.push((index - 1, choice));
+    }
+    Ok(choices)
+}
+
+fn apply_search_choices(
+    codelist: &mut CodelistFile,
+    results: &[SearchResult],
+    choices: &[(usize, SearchChoice)],
+) -> usize {
+    let mut changed = 0;
+    for &(index, choice) in choices {
+        let result = &results[index];
+        let existing = codelist
+            .body
+            .iter()
+            .position(|line| line.sctid() == Some(result.id.as_str()));
+        match (existing, choice) {
+            (Some(position), SearchChoice::Include) => match &codelist.body[position] {
+                ConceptLine::Active { .. } => {}
+                ConceptLine::Excluded { comment, .. } => {
+                    let comment = comment.clone();
+                    codelist.body[position] = ConceptLine::Active {
+                        id: result.id.clone(),
+                        term: result.term.clone(),
+                        comment,
+                    };
+                    changed += 1;
+                }
+                ConceptLine::PendingReview { .. } => {
+                    codelist.body[position] = ConceptLine::Active {
+                        id: result.id.clone(),
+                        term: result.term.clone(),
+                        comment: None,
+                    };
+                    changed += 1;
+                }
+                _ => unreachable!("sctid-bearing lines are active, excluded, or pending"),
+            },
+            (Some(position), SearchChoice::Exclude) => match &codelist.body[position] {
+                ConceptLine::Excluded { .. } => {}
+                ConceptLine::Active { comment, .. } => {
+                    let comment = comment.clone();
+                    codelist.body[position] = ConceptLine::Excluded {
+                        id: result.id.clone(),
+                        term: result.term.clone(),
+                        comment,
+                    };
+                    changed += 1;
+                }
+                ConceptLine::PendingReview { .. } => {
+                    codelist.body[position] = ConceptLine::Excluded {
+                        id: result.id.clone(),
+                        term: result.term.clone(),
+                        comment: None,
+                    };
+                    changed += 1;
+                }
+                _ => unreachable!("sctid-bearing lines are active, excluded, or pending"),
+            },
+            (None, SearchChoice::Include) => {
+                codelist.body.push(ConceptLine::Active {
+                    id: result.id.clone(),
+                    term: result.term.clone(),
+                    comment: None,
+                });
+                changed += 1;
+            }
+            (None, SearchChoice::Exclude) => {
+                codelist.body.push(ConceptLine::Excluded {
+                    id: result.id.clone(),
+                    term: result.term.clone(),
+                    comment: None,
+                });
+                changed += 1;
+            }
+        }
+    }
+    changed
+}
+
+fn set_snomed_release_if_missing(codelist: &mut CodelistFile, conn: &Connection) {
+    if codelist.front_matter.snomed_release.is_none() {
+        if let Ok(Some(provenance)) = crate::provenance::read_sqlite(conn) {
+            if !provenance.release_date.is_empty() {
+                codelist.front_matter.snomed_release = Some(provenance.release_date);
+            }
+        }
+    }
 }
 
 /// Read newline-delimited SCTIDs from stdin (for `sct codelist add <file> -`).
@@ -2131,6 +2352,76 @@ misuse: Not for clinical decision support.
             vec!["73211009", "46635009", "44054006"]
         );
         assert!(parse_sctid_lines("\n  \n# only comments\n").is_empty());
+    }
+
+    #[test]
+    fn search_choices_parse_includes_and_exclusions() {
+        assert_eq!(
+            parse_search_choices("1, 3 -2", 3).unwrap(),
+            vec![
+                (0, SearchChoice::Include),
+                (2, SearchChoice::Include),
+                (1, SearchChoice::Exclude),
+            ]
+        );
+        assert!(parse_search_choices("0", 3).is_err());
+        assert!(parse_search_choices("4", 3).is_err());
+        assert!(parse_search_choices("1,1", 3).is_err());
+    }
+
+    #[test]
+    fn search_choices_update_existing_and_new_members() {
+        let mut codelist = parse_codelist(TEST_CODELIST).unwrap();
+        let results = vec![
+            SearchResult {
+                id: "195967001".into(),
+                term: "Asthma".into(),
+                hierarchy: "Clinical finding".into(),
+            },
+            SearchResult {
+                id: "41553006".into(),
+                term: "Extrinsic asthma".into(),
+                hierarchy: "Clinical finding".into(),
+            },
+            SearchResult {
+                id: "999".into(),
+                term: "New concept".into(),
+                hierarchy: "Clinical finding".into(),
+            },
+        ];
+
+        let changed = apply_search_choices(
+            &mut codelist,
+            &results,
+            &[
+                (0, SearchChoice::Exclude),
+                (1, SearchChoice::Include),
+                (2, SearchChoice::Exclude),
+            ],
+        );
+
+        assert_eq!(changed, 3);
+        assert!(matches!(
+            codelist
+                .body
+                .iter()
+                .find(|line| line.sctid() == Some("195967001")),
+            Some(ConceptLine::Excluded { .. })
+        ));
+        assert!(matches!(
+            codelist
+                .body
+                .iter()
+                .find(|line| line.sctid() == Some("41553006")),
+            Some(ConceptLine::Active { .. })
+        ));
+        assert!(matches!(
+            codelist
+                .body
+                .iter()
+                .find(|line| line.sctid() == Some("999")),
+            Some(ConceptLine::Excluded { .. })
+        ));
     }
 
     // -----------------------------------------------------------------------

@@ -199,6 +199,16 @@ Hierarchy and refset expressions work on any database built by `sct sqlite`. **A
 
 Not yet supported (clear error, never silent mis-evaluation): cardinality `[min..max]`, reverse `R` and dotted `.` attributes, and group-cardinality semantics. See [`spec/ecl.md`](https://github.com/pacharanero/sct/blob/main/spec/ecl.md).
 
+### `sct codelist search <file> <query>`
+
+Interactively search active concepts with FTS5 and record reviewed include/exclude decisions directly in a codelist. This command requires a terminal, preventing an accidental stdin pipe from modifying a clinical codelist.
+
+```bash
+sct codelist search codelists/asthma-diagnosis.codelist asthma --db snomed.db
+```
+
+The numbered results show SCTID, preferred term, and hierarchy. Enter `1,3` to include results 1 and 3, or prefix a number with `-` to record an explicit exclusion such as `1,3,-4`. Press Enter to leave the file unchanged. The command preserves an existing inline comment when switching an existing concept between included and excluded, sets the SNOMED release when absent, and increments the codelist version only when a decision changes.
+
 ### `sct codelist remove <file> <sctid>`
 
 Move a concept from active to explicitly excluded, preserving the audit trail.

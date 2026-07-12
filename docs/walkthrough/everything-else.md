@@ -130,7 +130,6 @@ flag selects GB English preferred terms from the UK language reference set.
 
 - `sct trud` - automated download from NHS TRUD API
 - `sct serve` - drop-in FHIR R4 terminology server backed by SQLite
-- `sct codelist search` - interactive FTS5 search → include/exclude (coming)
 - `sct codelist import` - import from OpenCodelists, CSV, RF2, or FHIR (coming)
 - `sct codelist publish` - publish back to OpenCodelists (coming)
 
