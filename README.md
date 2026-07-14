@@ -1,4 +1,6 @@
-# sct
+<p align="center">
+  <img src="docs/assets/logo/sct-logo.svg" width="288" alt="sct logo">
+</p>
 
 A local-first SNOMED CT toolchain that's 10-100x faster than IHTSDO Snowstorm. One binary - from raw RF2 release to NDJSON, then SQL, Parquet, Markdown, TUI, GUI, graphs and MCP/LLM tool use. All on your machine, no network calls, REST APIs, or external servers required.
 

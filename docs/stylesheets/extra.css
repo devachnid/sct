@@ -1,0 +1,36 @@
+/* SPDX-FileCopyrightText: 2026 Marcus Baw and Baw Medical Ltd */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/* The SVG follows the system light/dark preference, which also makes the README
+   logo legible on GitHub. Correct it when a visitor manually picks the opposite
+   docs palette, without maintaining a second logo asset. */
+:root {
+  --sct-logo-filter: none;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-md-color-scheme="slate"] {
+    --sct-logo-filter: invert(1);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-md-color-scheme="default"] {
+    --sct-logo-filter: invert(1);
+  }
+}
+
+img[src$="sct-logo.svg"] {
+  filter: var(--sct-logo-filter);
+}
+
+/* Give the square mark enough presence in the documentation header. */
+.md-logo img[src$="sct-logo.svg"] {
+  height: 2.4rem;
+  width: auto;
+}
+
+/* The wordmark is already part of the logo image. Keep the current page title. */
+.md-header__topic:not([data-md-component="header-topic"]) {
+  display: none;
+}

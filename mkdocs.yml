@@ -15,6 +15,8 @@ docs_dir: docs
 theme:
   name: zensical
   variant: modern
+  logo: assets/logo/sct-logo.svg
+  favicon: assets/logo/sct-logo.svg
   features:
     - content.code.copy # Copy code snippets
     - content.action.edit # Edit this page
@@ -133,3 +135,6 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:zensical.extensions.emoji.twemoji
       emoji_generator: !!python/name:zensical.extensions.emoji.to_svg
+
+extra_css:
+  - stylesheets/extra.css
