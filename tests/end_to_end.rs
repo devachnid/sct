@@ -11,6 +11,7 @@
 
 use rusqlite::Connection;
 use sct_rs::commands::ndjson::{self, RefsetMode};
+use sct_rs::commands::size;
 use sct_rs::commands::sqlite;
 use sct_rs::ecl;
 use sct_rs::schema::ConceptRecord;
@@ -376,4 +377,61 @@ fn sqlite_fts5_maps_relationships_and_tct() {
         .map(|r| r.unwrap())
         .collect();
     assert_eq!(members, ["44054006", "46635009"]);
+}
+
+#[test]
+fn size_estimate_for_root() {
+    let (_d, _ndjson, db) = build("en-GB");
+    let conn = Connection::open(&db).unwrap();
+
+    let est = size::estimate_sizes(&conn, "138875005", 50).unwrap();
+    assert_eq!(est.subtree_count, est.total_count);
+    assert_eq!(est.pct(), 100.0);
+    assert!(est.avg_ndjson_bytes > 0);
+    assert_eq!(est.sqlite_total, est.total_db_bytes);
+    assert!(est.ndjson_total > 0);
+}
+
+#[test]
+fn size_builds_tct_when_missing() {
+    use sct_rs::commands::size::{self, Args};
+    use sct_rs::output::OutputFormat;
+
+    let (_d, _ndjson, db) = build("en-GB");
+
+    // Drop the TCT to simulate a database without one.
+    {
+        let conn = Connection::open(&db).unwrap();
+        conn.execute("DROP TABLE concept_ancestors", []).unwrap();
+    }
+
+    // Run `sct size --build-tct`, which should rebuild the TCT and proceed.
+    let args = Args {
+        concept: None, // defaults to root (138875005)
+        sample: 50,
+        tree: false,
+        depth: 2,
+        format: OutputFormat::Text,
+        build_tct: true, // the flag under test
+        db: Some(db.clone()),
+    };
+    size::run(args).unwrap();
+
+    // Verify the TCT was rebuilt.
+    {
+        let conn = Connection::open(&db).unwrap();
+        let has_tct: bool = conn
+            .query_row(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='concept_ancestors'",
+                [],
+                |_| Ok(true),
+            )
+            .unwrap_or(false);
+        assert!(has_tct, "concept_ancestors table should have been rebuilt");
+
+        let row_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM concept_ancestors", [], |r| r.get(0))
+            .unwrap();
+        assert!(row_count > 0, "concept_ancestors should contain rows");
+    }
 }

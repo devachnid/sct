@@ -13,6 +13,7 @@
 //!   GET /api/children/:id     → immediate IS-A children (JSON)
 //!   GET /api/parents/:id      → direct parents (JSON)
 //!   GET /api/hierarchy        → list of top-level hierarchy names (JSON)
+//!   GET /api/size/:id         → size estimate for a concept (JSON)
 //!
 //! Requires the `gui` Cargo feature: `cargo build --features gui`
 
@@ -61,6 +62,7 @@ pub fn run(args: Args) -> Result<()> {
     // Validate we can open the database before starting the server
     {
         let conn = open_db(&db_path)?;
+        crate::ecl::warn_if_no_tct(&conn);
         drop(conn);
     }
 
@@ -101,6 +103,7 @@ async fn serve(
         .route("/api/parents/{id}", get(api_parents))
         .route("/api/hierarchy", get(api_hierarchy))
         .route("/api/graph/{id}", get(api_graph))
+        .route("/api/size/{id}", get(api_size))
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -213,6 +216,7 @@ fn inner_concept(db_path: &PathBuf, id: &str) -> Result<Value> {
             let parse_json = |s: Option<String>| -> Value {
                 serde_json::from_str(&s.unwrap_or_default()).unwrap_or(Value::Null)
             };
+            let descendants_count = crate::commands::get_subtree_size(&conn, id).unwrap_or(0);
             Ok(json!({
                 "id":             row.get::<_, String>(0)?,
                 "fsn":            row.get::<_, String>(1)?,
@@ -222,6 +226,7 @@ fn inner_concept(db_path: &PathBuf, id: &str) -> Result<Value> {
                 "hierarchy_path": parse_json(row.get::<_, Option<String>>(5)?),
                 "parents":        parse_json(row.get::<_, Option<String>>(6)?),
                 "children_count": row.get::<_, i64>(7)?,
+                "descendants_count": descendants_count,
                 "attributes":     parse_json(row.get::<_, Option<String>>(8)?)
             }))
         },
@@ -240,6 +245,32 @@ async fn api_children(State(state): State<AppState>, Path(id): Path<String>) -> 
         Ok(v) => Json(v),
         Err(e) => Json(json!({"error": e.to_string()})),
     }
+}
+
+/// GET /api/size/:id — returns NDJSON and SQLite file size estimates for a concept's subtree.
+async fn api_size(State(state): State<AppState>, Path(id): Path<String>) -> Json<Value> {
+    match inner_size(&state.db_path, &id) {
+        Ok(v) => Json(v),
+        Err(e) => Json(json!({"error": e.to_string()})),
+    }
+}
+
+fn inner_size(db_path: &PathBuf, id: &str) -> Result<Value> {
+    let conn = open_db(db_path)?;
+    let est =
+        crate::commands::size::estimate_sizes(&conn, id, crate::commands::size::DEFAULT_SAMPLE)?;
+    Ok(json!({
+        "id":               id,
+        "subtree_count":    est.subtree_count,
+        "total_count":      est.total_count,
+        "pct":              est.pct(),
+        "avg_ndjson_bytes": est.avg_ndjson_bytes,
+        "ndjson_total":     est.ndjson_total,
+        "ndjson_human":     crate::commands::size::fmt_bytes(est.ndjson_total),
+        "total_db_bytes":   est.total_db_bytes,
+        "sqlite_total":     est.sqlite_total,
+        "sqlite_human":     crate::commands::size::fmt_bytes(est.sqlite_total)
+    }))
 }
 
 fn inner_children(db_path: &PathBuf, id: &str) -> Result<Value> {
@@ -295,15 +326,21 @@ async fn api_hierarchy(State(state): State<AppState>) -> Json<Value> {
 fn inner_hierarchy(db_path: &PathBuf) -> Result<Value> {
     let conn = open_db(db_path)?;
     let mut stmt = conn.prepare(
-        "SELECT DISTINCT hierarchy FROM concepts \
+        "SELECT hierarchy, COUNT(*) FROM concepts \
          WHERE hierarchy IS NOT NULL AND hierarchy != '' \
+         GROUP BY hierarchy \
          ORDER BY hierarchy",
     )?;
-    let hierarchies: Vec<String> = stmt
-        .query_map([], |row| row.get(0))?
+    let rows: Vec<Value> = stmt
+        .query_map([], |row| {
+            Ok(json!({
+                "name": row.get::<_, String>(0)?,
+                "count": row.get::<_, i64>(1)?
+            }))
+        })?
         .filter_map(|r| r.ok())
         .collect();
-    Ok(json!({"hierarchies": hierarchies}))
+    Ok(json!({"hierarchies": rows}))
 }
 
 async fn api_graph(State(state): State<AppState>, Path(id): Path<String>) -> Json<Value> {

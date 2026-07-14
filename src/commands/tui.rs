@@ -27,6 +27,8 @@ use rusqlite::{params, Connection, OpenFlags};
 use serde_json::Value;
 use std::{io, path::PathBuf, time::Duration};
 
+use crate::commands::size::{estimate_sizes, fmt_bytes, fmt_count, SizeEstimate, DEFAULT_SAMPLE};
+
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to the SNOMED CT SQLite database produced by `sct sqlite`.
@@ -43,6 +45,7 @@ pub fn run(args: Args) -> Result<()> {
     )
     .with_context(|| format!("opening database {}", db_path.display()))?;
     conn.execute_batch("PRAGMA cache_size = -32768;")?;
+    crate::ecl::warn_if_no_tct(&conn);
 
     let mut app = App::new(conn)?;
 
@@ -85,6 +88,8 @@ struct Concept {
     parents: Vec<(String, String)>, // (id, fsn)
     children_count: i64,
     attributes: Vec<(String, Vec<(String, String)>)>, // (attr_name, [(id, fsn)])
+    subtree_size: u64,
+    size_estimate: Option<SizeEstimate>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -97,7 +102,7 @@ enum Focus {
 struct App {
     conn: Connection,
     // Hierarchy panel
-    hierarchies: Vec<String>,
+    hierarchies: Vec<(String, u64)>,
     hierarchy_state: ListState,
     // Search panel
     search_query: String,
@@ -108,6 +113,7 @@ struct App {
     // Detail panel
     current_concept: Option<Concept>,
     detail_scroll: u16,
+    show_size: bool,
     // Navigation
     history: Vec<String>,
     focus: Focus,
@@ -128,6 +134,7 @@ impl App {
             last_queried: String::new(),
             current_concept: None,
             detail_scroll: 0,
+            show_size: false,
             history: Vec::new(),
             focus: Focus::Hierarchy,
             should_quit: false,
@@ -187,7 +194,12 @@ impl App {
             }
         }
         if let Ok(Some(c)) = fetch_concept(&self.conn, &id) {
-            self.current_concept = Some(c);
+            let size_estimate = if self.show_size {
+                estimate_sizes(&self.conn, &id, DEFAULT_SAMPLE).ok()
+            } else {
+                None
+            };
+            self.current_concept = Some(Concept { size_estimate, ..c });
             self.detail_scroll = 0;
         }
     }
@@ -206,17 +218,31 @@ impl App {
 // DB queries
 // ---------------------------------------------------------------------------
 
-fn load_hierarchies(conn: &Connection) -> Result<Vec<String>> {
+fn load_hierarchies(conn: &Connection) -> Result<Vec<(String, u64)>> {
     let mut stmt = conn.prepare(
-        "SELECT DISTINCT hierarchy FROM concepts \
+        "SELECT hierarchy, COUNT(*) FROM concepts \
          WHERE hierarchy IS NOT NULL AND hierarchy != '' \
+         GROUP BY hierarchy \
          ORDER BY hierarchy",
     )?;
-    let hierarchies = stmt
-        .query_map([], |row| row.get(0))?
+    let hierarchies: Vec<(String, u64)> = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)? as u64))
+        })?
         .filter_map(|r| r.ok())
         .collect();
-    Ok(hierarchies)
+
+    if hierarchies.is_empty() {
+        // Filtered/subset DB has no hierarchy labels — show a single catch-all entry
+        let total: u64 = conn
+            .query_row("SELECT COUNT(*) FROM concepts", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .unwrap_or(0) as u64;
+        Ok(vec![("(All concepts)".to_string(), total)])
+    } else {
+        Ok(hierarchies)
+    }
 }
 
 fn sanitise_fts(q: &str) -> String {
@@ -265,6 +291,22 @@ fn fetch_hierarchy_concepts(
     hierarchy: &str,
     limit: usize,
 ) -> Result<Vec<ConceptSummary>> {
+    // "(All concepts)" is a synthetic sentinel emitted when no hierarchy labels exist
+    if hierarchy == "(All concepts)" {
+        let mut stmt = conn
+            .prepare("SELECT id, preferred_term FROM concepts ORDER BY preferred_term LIMIT ?1")?;
+        let rows = stmt
+            .query_map(params![limit as i64], |row| {
+                Ok(ConceptSummary {
+                    id: row.get(0)?,
+                    preferred_term: row.get(1)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+        return Ok(rows);
+    }
+
     let mut stmt = conn.prepare(
         "SELECT id, preferred_term FROM concepts \
          WHERE hierarchy = ?1 ORDER BY preferred_term LIMIT ?2",
@@ -360,6 +402,8 @@ fn fetch_concept(conn: &Connection, id: &str) -> Result<Option<Concept>> {
                     vec![]
                 };
 
+            let subtree_size = crate::commands::get_subtree_size(conn, &id).unwrap_or(0);
+
             Ok(Some(Concept {
                 id,
                 fsn,
@@ -370,6 +414,8 @@ fn fetch_concept(conn: &Connection, id: &str) -> Result<Option<Concept>> {
                 parents,
                 children_count,
                 attributes,
+                subtree_size,
+                size_estimate: None,
             }))
         }
     }
@@ -477,7 +523,7 @@ fn handle_key(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Enter => match app.focus {
             Focus::Hierarchy => {
                 if let Some(i) = app.hierarchy_state.selected() {
-                    if let Some(h) = app.hierarchies.get(i).cloned() {
+                    if let Some((h, _)) = app.hierarchies.get(i).cloned() {
                         app.load_hierarchy_concepts(h);
                         app.focus = Focus::Search;
                     }
@@ -496,6 +542,12 @@ fn handle_key(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
 
         KeyCode::Char('b') => app.go_back(),
         KeyCode::Char('h') => app.focus = Focus::Hierarchy,
+        KeyCode::Char('s') => {
+            app.show_size = !app.show_size;
+            if let Some(id) = app.current_concept.as_ref().map(|c| c.id.clone()) {
+                app.load_concept(id);
+            }
+        }
 
         _ => {}
     }
@@ -548,7 +600,7 @@ fn render(frame: &mut Frame, app: &mut App) {
 
     // Title bar
     let title = Paragraph::new(
-        "  sct - SNOMED CT Explorer        [/] search  [Tab] switch panel  [q] quit",
+        "  sct - SNOMED CT Explorer        [/] search  [Tab] switch panel  [s] size  [q] quit",
     )
     .style(Style::default().fg(Color::White).bg(NHS_BLUE));
     frame.render_widget(title, outer[0]);
@@ -571,7 +623,7 @@ fn render(frame: &mut Frame, app: &mut App) {
 
     // Status bar
     let status = Paragraph::new(
-        " [/] search  [↑↓] navigate  [Enter] select  [Tab] panels  [b] back  [q] quit",
+        " [/] search  [↑↓] navigate  [Enter] select  [Tab] panels  [b] back  [s] size  [q] quit",
     )
     .style(Style::default().fg(DIM).bg(Color::Rgb(20, 20, 30)));
     frame.render_widget(status, outer[2]);
@@ -587,7 +639,7 @@ fn render_hierarchy(frame: &mut Frame, app: &mut App, area: Rect) {
     let items: Vec<ListItem> = app
         .hierarchies
         .iter()
-        .map(|h| ListItem::new(format!("  {}", h)))
+        .map(|(h, size)| ListItem::new(format!("  {} ({})", h, fmt_count(*size))))
         .collect();
 
     let list = List::new(items)
@@ -704,6 +756,17 @@ fn render_detail(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let width = inner.width as usize;
     let rule = "─".repeat(width.min(60));
+    let size_line = if app.show_size {
+        concept.size_estimate.as_ref().map(|size| {
+            format!(
+                "NDJSON {}  ·  SQLite {}",
+                fmt_bytes(size.ndjson_total),
+                fmt_bytes(size.sqlite_total)
+            )
+        })
+    } else {
+        None
+    };
 
     let mut lines: Vec<Line> = vec![
         Line::from(Span::styled(
@@ -733,6 +796,21 @@ fn render_detail(frame: &mut Frame, app: &mut App, area: Rect) {
             Span::styled("Children:  ", Style::default().fg(DIM)),
             Span::raw(concept.children_count.to_string()),
         ]),
+        Line::from(vec![
+            Span::styled("Subtree:   ", Style::default().fg(DIM)),
+            Span::raw(format!(
+                "{} descendants",
+                fmt_count(concept.subtree_size.saturating_sub(1))
+            )),
+        ]),
+        if let Some(size) = size_line {
+            Line::from(vec![
+                Span::styled("Size:      ", Style::default().fg(DIM)),
+                Span::raw(size),
+            ])
+        } else {
+            Line::from("")
+        },
         Line::from(""),
     ];
 
