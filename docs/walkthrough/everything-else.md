@@ -112,7 +112,7 @@ flag selects GB English preferred terms from the UK language reference set.
 | `sct semantic` | Semantic search via cosine similarity |
 | `sct diff` | Compare two NDJSON releases |
 | `sct info` | Inspect any sct-produced artefact |
-| `sct tui` | Terminal UI (requires `--features tui`) |
+| `sct tui` | Terminal UI (in the default build) |
 | `sct gui` | Browser UI (requires `--features gui`) |
 | `sct completions` | Generate shell completion scripts |
 | `sct codelist` | Build and validate code lists (alias: `sct valueset`) |

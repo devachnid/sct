@@ -6,7 +6,7 @@ Browse SNOMED CT concepts in a terminal UI or a local web GUI.
 
 ## Terminal UI  `experimental!` :lucide-test-tube:
 
-To reduce the size of the default `sct` binary, the interactive terminal UI is an optional feature that needs to be enabled at build time with the `tui` feature flag. If you built `sct` without it, you can rebuild with: `cargo install --path . --features tui`
+The interactive terminal UI is in the default build - the `tui` feature is on by default, so `sct tui` ships in the released binaries and in `cargo install sct-rs`. The same feature powers the live `sct sayt` view. It is only absent from a `--no-default-features` build (such as the headless Docker server image); to re-add it there, build with `--features tui`.
 
 > **Docs**: [`sct tui`](../commands/tui.md)
 

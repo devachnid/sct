@@ -125,19 +125,21 @@ nix develop github:pacharanero/sct
 ```bash
 git clone https://github.com/pacharanero/sct
 cd sct
-cargo install --path .                   # default build
-cargo install --path . --features tui    # with terminal UI
-cargo install --path . --features gui    # with browser UI
-cargo install --path . --features full   # both
+cargo install --path .                   # default build: core commands + sct serve + sct tui
+cargo install --path . --features gui    # add the browser UI (sct gui)
+cargo install --path . --features dmwb   # add the NHS DMWB .mdb reader (sct dmwb)
+cargo install --path . --features full   # everything: serve + tui + gui + dmwb
 ```
 
-| Feature | What it adds | Extra dependencies |
-|---|---|---|
-| (default) | All non-interactive subcommands, plus the FHIR R4 server (`sct serve`) | `axum`, `tokio` |
-| `tui` | Keyboard-driven terminal UI (`sct tui`) | `ratatui`, `crossterm` |
-| `gui` | Browser-based graph UI (`sct gui`) | `axum`, `tokio`, `open` |
-| `dmwb` | Read NHS Data Migration Workbench `.mdb` files (`sct dmwb`) | `jetdb` |
-| `full` | `tui` + `gui` (`serve` is already in the default build) | all of the above |
+| Feature | Default? | What it adds | Extra dependencies |
+|---|---|---|---|
+| `serve` | yes | FHIR R4 terminology server (`sct serve`) | `axum`, `tokio` |
+| `tui` | yes | Interactive terminal UI - powers both `sct tui` and the live `sct sayt` view | `ratatui`, `crossterm` |
+| `gui` | opt-in | Browser-based graph UI (`sct gui`) | `axum`, `tokio`, `open` |
+| `dmwb` | opt-in | Read NHS Data Migration Workbench `.mdb` files (`sct dmwb`) | `jetdb` |
+| `full` | opt-in | Everything: `serve` + `tui` + `gui` + `dmwb` | all of the above |
+
+Every other subcommand (RF2 conversion, SQLite/Parquet/Markdown/Arrow, search, ECL, maps, codelists, MCP, diff, info…) is always compiled in. Only a `--no-default-features` build - such as the headless Docker server image - drops `serve` and `tui`.
 
 ### Manual download
 
@@ -225,7 +227,7 @@ For all further information see the full documentation by either exploring the [
 * `sct diff --old <file> --new <file>` - compare two NDJSON releases and report what changed
 * `sct paths` - show where sct looks for databases, embeddings, and config files
 * [sct completions](docs/commands/completions.md) - print shell completion scripts (bash, zsh, fish, powershell, elvish)
-* [sct tui](docs/commands/tui.md) - keyboard-driven terminal UI for interactive SNOMED CT exploration *(optional feature)*
+* [sct tui](docs/commands/tui.md) - keyboard-driven terminal UI for interactive SNOMED CT exploration *(in the default build)*
 * [sct gui](docs/commands/gui.md) - browser-based UI served over localhost for point-and-click exploration *(optional feature)*
 
 Run any subcommand with `--help` for full option reference.
