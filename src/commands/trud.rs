@@ -39,6 +39,17 @@ const TRUD_ACCOUNT_URL: &str =
 /// host is reachable; only connection-level errors indicate the service is down.
 const TRUD_HEALTH_URL: &str = "https://isd.digital.nhs.uk/trud/users/guest/filters/0/home";
 
+/// TRUD API base URL. Overridable via `SCT_TRUD_API_BASE` so the network-layer
+/// tests can point the client at a local mock server; defaults to production.
+fn trud_api_base() -> String {
+    std::env::var("SCT_TRUD_API_BASE").unwrap_or_else(|_| TRUD_API_BASE.to_string())
+}
+
+/// TRUD health-check URL. Overridable via `SCT_TRUD_HEALTH_URL` (test seam).
+fn trud_health_url() -> String {
+    std::env::var("SCT_TRUD_HEALTH_URL").unwrap_or_else(|_| TRUD_HEALTH_URL.to_string())
+}
+
 // ---------------------------------------------------------------------------
 // sct directory layout
 // ---------------------------------------------------------------------------
@@ -976,11 +987,12 @@ fn load_config() -> Config {
 /// Called automatically at the start of every `fetch_releases` invocation so
 /// users get a clear, actionable message rather than a cryptic network error.
 fn ping_trud() -> Result<()> {
-    match ureq::get(TRUD_HEALTH_URL).call() {
+    let health = trud_health_url();
+    match ureq::get(&health).call() {
         // Any HTTP response - including 4xx/5xx - means we reached the server.
         Ok(_) | Err(ureq::Error::StatusCode(_)) => Ok(()),
         Err(e) => Err(anyhow::anyhow!(
-            "Cannot reach NHS TRUD ({TRUD_HEALTH_URL}).
+            "Cannot reach NHS TRUD ({health}).
 
 The service may be offline or undergoing scheduled maintenance.
 TRUD maintenance windows: weekdays 18:00–08:00 UK time, and midnight–06:00.
@@ -999,7 +1011,8 @@ Original error: {e}"
 ///
 /// The caller is responsible for calling `ping_trud()` first if needed.
 fn probe_edition(api_key: &str, item_id: u32) -> Result<Option<TrudRelease>> {
-    let url = format!("{TRUD_API_BASE}/keys/{api_key}/items/{item_id}/releases?latest");
+    let base = trud_api_base();
+    let url = format!("{base}/keys/{api_key}/items/{item_id}/releases?latest");
     match ureq::get(&url).call() {
         Ok(resp) => {
             let body: TrudListResponse = resp
@@ -1020,7 +1033,8 @@ fn probe_edition(api_key: &str, item_id: u32) -> Result<Option<TrudRelease>> {
 fn fetch_releases(api_key: &str, item_id: u32, latest_only: bool) -> Result<Vec<TrudRelease>> {
     ping_trud()?;
     let suffix = if latest_only { "?latest" } else { "" };
-    let url = format!("{TRUD_API_BASE}/keys/{api_key}/items/{item_id}/releases{suffix}");
+    let base = trud_api_base();
+    let url = format!("{base}/keys/{api_key}/items/{item_id}/releases{suffix}");
 
     let resp = ureq::get(&url).call().map_err(|e| {
         if let ureq::Error::StatusCode(code) = e {

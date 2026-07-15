@@ -146,6 +146,8 @@ libc = "0.2"
 assert_cmd = "2.2.2"
 criterion = "0.8"
 predicates = "3.1.4"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+wiremock = "0.6.5"
 
 [[bench]]
 name = "fst_bench"
