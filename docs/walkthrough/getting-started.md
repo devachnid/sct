@@ -54,6 +54,12 @@ Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Appl
     brew install sct
     ```
 
+    **Arch Linux (AUR)**
+
+    ```bash
+    yay -S sct-rs-bin
+    ```
+
     **Shell installer** - auto-detects your architecture, verifies the checksum, installs to `~/.local/bin`:
 
     ```bash

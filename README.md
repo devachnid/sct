@@ -81,6 +81,12 @@ brew tap pacharanero/tap
 brew install sct
 ```
 
+### Arch Linux (AUR)
+
+```bash
+yay -S sct-rs-bin
+```
+
 ### Scoop (Windows)
 
 ```powershell

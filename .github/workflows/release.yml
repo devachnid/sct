@@ -478,3 +478,10 @@ jobs:
               -c user.email="bot@sct.baw.medical" \
               commit -am "bump sct to v${{ steps.vars.outputs.version }}"
           git push
+
+  publish-aur:
+    name: Publish AUR package
+    needs: release
+    uses: ./.github/workflows/publish-aur.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
