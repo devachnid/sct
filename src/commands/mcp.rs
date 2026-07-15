@@ -329,6 +329,14 @@ fn handle_message(
     Some(serde_json::to_value(Response::ok(id, result)).unwrap())
 }
 
+/// Handle one JSON-RPC message against `conn` with no semantic-search config or
+/// provenance. Exposed so the end-to-end tests can drive the MCP tools over the
+/// committed synthetic fixture without spawning the stdio loop.
+#[doc(hidden)]
+pub fn handle_message_for_test(conn: &Connection, msg: &Value) -> Option<Value> {
+    handle_message(conn, msg, None, None)
+}
+
 fn handle_initialize(params: &Option<Value>, prov: Option<&Provenance>) -> Value {
     // Echo back the client's requested protocol version so that newer clients
     // (e.g. Claude Code ≥ 2.x using 2025-03-26) don't reject us.  We support

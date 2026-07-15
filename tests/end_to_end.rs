@@ -445,3 +445,198 @@ fn size_builds_tct_when_missing() {
         assert!(row_count > 0, "concept_ancestors should contain rows");
     }
 }
+
+// ---------------------------------------------------------------------------
+// R16: `sct mcp` tool handlers, driven through the JSON-RPC dispatcher over the
+// committed synthetic fixture (the same RF2 -> NDJSON -> SQLite DB the rest of
+// this file builds). Exercises the tool layer end-to-end, not just the SQL.
+// ---------------------------------------------------------------------------
+mod mcp_tools {
+    use super::{build, EXAMPLE_REFSET};
+    use rusqlite::Connection;
+    use sct_rs::commands::mcp;
+    use serde_json::json;
+
+    /// Call one tool via `tools/call` and return its text payload, asserting the
+    /// call succeeded (no JSON-RPC error, `isError: false`).
+    fn tool_text(conn: &Connection, name: &str, arguments: serde_json::Value) -> String {
+        let msg = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": { "name": name, "arguments": arguments },
+        });
+        let resp = mcp::handle_message_for_test(conn, &msg).expect("mcp produced a response");
+        assert!(
+            resp.get("error").is_none(),
+            "{name} returned an error: {resp}"
+        );
+        assert_eq!(
+            resp["result"]["isError"],
+            json!(false),
+            "{name} isError: {resp}"
+        );
+        resp["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{name} has no text payload: {resp}"))
+            .to_string()
+    }
+
+    #[test]
+    fn search_matches_preferred_terms_and_synonyms() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+
+        // Preferred-term / FSN match: "diabetes" -> the two diabetes children.
+        let out = tool_text(&conn, "snomed_search", json!({ "query": "diabetes" }));
+        assert!(
+            out.contains("46635009"),
+            "diabetes search missing type 1: {out}"
+        );
+        assert!(
+            out.contains("44054006"),
+            "diabetes search missing type 2: {out}"
+        );
+
+        // Synonym match: "heart" is only in MI's synonym "Heart attack".
+        let out = tool_text(&conn, "snomed_search", json!({ "query": "heart" }));
+        assert!(out.contains("22298006"), "synonym search missing MI: {out}");
+    }
+
+    #[test]
+    fn concept_returns_detail() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+        let out = tool_text(&conn, "snomed_concept", json!({ "id": "22298006" }));
+        assert!(out.contains("Myocardial infarction"), "{out}");
+        assert!(out.contains("Clinical finding"), "{out}");
+    }
+
+    #[test]
+    fn children_and_ancestors_walk_the_isa_graph() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+
+        // Diabetes mellitus (73211009) -> type 1 (46635009) + type 2 (44054006).
+        let kids = tool_text(&conn, "snomed_children", json!({ "id": "73211009" }));
+        assert!(
+            kids.contains("46635009") && kids.contains("44054006"),
+            "children: {kids}"
+        );
+
+        // Type 1 DM (46635009) -> ancestors include Diabetes mellitus (73211009).
+        let anc = tool_text(&conn, "snomed_ancestors", json!({ "id": "46635009" }));
+        assert!(anc.contains("73211009"), "ancestors: {anc}");
+    }
+
+    #[test]
+    fn hierarchy_lists_members() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+        let out = tool_text(
+            &conn,
+            "snomed_hierarchy",
+            json!({ "hierarchy": "Clinical finding" }),
+        );
+        assert!(out.contains("22298006"), "hierarchy members: {out}");
+    }
+
+    #[test]
+    fn map_ctv3_code_to_snomed() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+        let out = tool_text(
+            &conn,
+            "snomed_map",
+            json!({ "code": "X200", "terminology": "ctv3" }),
+        );
+        assert!(out.contains("22298006"), "ctv3 X200 -> MI: {out}");
+    }
+
+    #[test]
+    fn refsets_and_members() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+
+        let refsets = tool_text(&conn, "snomed_refsets", json!({}));
+        assert!(refsets.contains(EXAMPLE_REFSET), "refsets list: {refsets}");
+
+        let members = tool_text(
+            &conn,
+            "snomed_refset_members",
+            json!({ "refset_id": EXAMPLE_REFSET }),
+        );
+        assert!(
+            members.contains("46635009") && members.contains("44054006"),
+            "refset members: {members}"
+        );
+    }
+
+    #[test]
+    fn initialize_and_tools_list() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+
+        let init = mcp::handle_message_for_test(
+            &conn,
+            &json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {} }),
+        )
+        .unwrap();
+        assert_eq!(init["result"]["serverInfo"]["name"], "sct-mcp");
+
+        let list = mcp::handle_message_for_test(
+            &conn,
+            &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }),
+        )
+        .unwrap();
+        let names: Vec<&str> = list["result"]["tools"]
+            .as_array()
+            .expect("tools array")
+            .iter()
+            .filter_map(|t| t["name"].as_str())
+            .collect();
+        for expected in [
+            "snomed_search",
+            "snomed_concept",
+            "snomed_children",
+            "snomed_ancestors",
+            "snomed_hierarchy",
+            "snomed_map",
+            "snomed_refsets",
+            "snomed_refset_members",
+        ] {
+            assert!(
+                names.contains(&expected),
+                "tools/list missing {expected}: {names:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn bad_requests_become_jsonrpc_errors() {
+        let (_d, _n, db) = build("en-GB");
+        let conn = Connection::open(&db).unwrap();
+
+        // Unknown tool name -> JSON-RPC error (bubbled from handle_tools_call).
+        let resp = mcp::handle_message_for_test(
+            &conn,
+            &json!({
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": { "name": "no_such_tool", "arguments": {} }
+            }),
+        )
+        .unwrap();
+        assert!(
+            resp.get("error").is_some(),
+            "unknown tool should error: {resp}"
+        );
+
+        // Unknown method -> -32601 Method not found.
+        let resp = mcp::handle_message_for_test(
+            &conn,
+            &json!({ "jsonrpc": "2.0", "id": 2, "method": "bogus/method" }),
+        )
+        .unwrap();
+        assert_eq!(resp["error"]["code"], -32601, "method-not-found: {resp}");
+    }
+}

@@ -37,7 +37,7 @@ Shipped: multi-platform release binaries (including Windows x86_64 and Linux aar
 
 ### Quality
 
-- [ ] `R16` Extend the end-to-end test (`tests/end_to_end.rs`, over the committed synthetic `tests/fixtures/rf2/` snapshot) to also assert through the `sct mcp` server tools. The RF2 → NDJSON → SQLite → query path (lexical / lookup / ECL / refset / TCT) is now covered; the MCP tool handlers are not yet exercised end-to-end.
+- [x] `R16` Extend the end-to-end test (`tests/end_to_end.rs`, over the committed synthetic `tests/fixtures/rf2/` snapshot) to also assert through the `sct mcp` server tools. The RF2 → NDJSON → SQLite → query path (lexical / lookup / ECL / refset / TCT) is covered, and the MCP tool handlers (`snomed_search` / `snomed_concept` / `snomed_children` / `snomed_ancestors` / `snomed_hierarchy` / `snomed_map` / `snomed_refsets` / `snomed_refset_members`, plus `initialize`, `tools/list`, and the JSON-RPC error paths) are now exercised end-to-end via `mcp::handle_message_for_test`.
 - [ ] `R17` Smoke test for `sct embed`: embed a handful of concepts, query for "heart attack", assert myocardial infarction concepts appear in top results
 - [ ] `R18` **End-to-end CLI tests** with `assert_cmd` - run `sct` as a binary against tiny fixtures under `tests/fixtures/` and assert on exit codes, output files, and stdout. Would cover contract-level regressions (argument parsing, file naming, `sct trud check` exit-2 semantics, `sct codelist validate` exit codes) that inline unit tests cannot.
 - [ ] `R19` **Network-layer tests for `sct trud`** using `wiremock` to stand up a fake TRUD API. The current 41 trud tests are all pure helpers - `fetch_releases`, `probe_edition`, `run_download`, and the SHA-256 mismatch / re-download paths are entirely untested.
