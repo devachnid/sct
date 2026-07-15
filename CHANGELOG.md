@@ -5,6 +5,68 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.6] - 2026-07-15
+
+### Bug fixes
+
+- **ci**: Validate AUR binary version output ([f79602b](https://github.com/pacharanero/sct/commit/f79602bcecc865c1bcb0dac62e8455bfbb584e42))
+
+### CI
+
+- **release**: Publish sct-rs-bin to AUR ([e24f058](https://github.com/pacharanero/sct/commit/e24f0580bd652a47ed2b455437fbe5ee5df1327f))
+
+### Documentation
+
+- Add adaptive sct branding ([45bd295](https://github.com/pacharanero/sct/commit/45bd2959196b70592e8955e31dccbe129331b4ec))
+
+### Features
+
+- **diagram**: Complete R39 definition diagrams ([54da42a](https://github.com/pacharanero/sct/commit/54da42acfeffde3868030d2162e624f2a2bc10ad))
+
+### Other
+
+- Update Cargo.lock to 0.18.5 ([bcf2f8f](https://github.com/pacharanero/sct/commit/bcf2f8fbb17ff5edcb800988ad48cb335c368b1a))
+
+## [0.18.5] - 2026-07-14
+
+### Bug fixes
+
+- **ci**: Grant packages:write to auto-tag so the GHCR mirror validates ([6c6f60a](https://github.com/pacharanero/sct/commit/6c6f60a81ead6c35dc4cd911bbf5327306e5430a))
+
+### Build
+
+- Publish image to GHCR + add a Nix flake (R10, R15) ([32a3226](https://github.com/pacharanero/sct/commit/32a322683896f71058dbb13f016e61ab919d62f8))
+
+### CI
+
+- Add a Nix flake build check (keeps R15 honest) ([45ba53a](https://github.com/pacharanero/sct/commit/45ba53ac76905be0410d9b9ec24fe369d6d3266a))
+
+### Documentation
+
+- **roadmap**: Mark R4 (load harness + pool fix) done, split separated-run curves to R67 ([d603a34](https://github.com/pacharanero/sct/commit/d603a34bbd62ea25649eb3510fe9552f8fc99ada))
+
+- **lib**: Add tested doctests to the public library API (R22) ([f545d3b](https://github.com/pacharanero/sct/commit/f545d3bccedee8d4f0a2f811187530fd3c7eedc2))
+
+- **roadmap**: Remove completed items (R1/R2/R4/R10/R15/R22/R28-30), fold SAYT into R68 ([3859e35](https://github.com/pacharanero/sct/commit/3859e3574562b84385657cb2121b41de409780a8))
+
+- **roadmap**: Migrate exploratory ideas (R48-R66) to GitHub issues (#41-#59, label: idea) ([eb9b58d](https://github.com/pacharanero/sct/commit/eb9b58d1a905e6fb8e59e6aa0f1e080a0e402127))
+
+- Add SCT design conversation ([27f2dff](https://github.com/pacharanero/sct/commit/27f2dff6c189ed95d11f1a4fafab9d439a56a698))
+
+- **roadmap**: Add R69 dm+d GTIN barcode -> AMPP -> BNF/ATC drug-class capability ([bcda7b6](https://github.com/pacharanero/sct/commit/bcda7b6e5fd76e2d9e65ee61da2a63ca99db406a))
+
+### Features
+
+- **codelist**: Add interactive concept picker ([0633576](https://github.com/pacharanero/sct/commit/06335769b051ffdfee702b849aac822b90527ddf))
+
+- **codelist**: Import from CSV, OpenCodelists CSV, and FHIR ValueSet (R27) ([b6316b2](https://github.com/pacharanero/sct/commit/b6316b204fc6cd6bce67f587160e3e52b2e99c94))
+
+- Add size viewer ([#39](https://github.com/pacharanero/sct/issues/39)) ([508898f](https://github.com/pacharanero/sct/commit/508898f04b7d6fcf807c1ef41f0ebf94012891e5))
+
+### Other
+
+- Bump to 0.18.5 ([66d5ba9](https://github.com/pacharanero/sct/commit/66d5ba9c7da6cd8d7c8613013ea62241389df9b8))
+
 ## [0.18.4] - 2026-07-10
 
 ### Performance
