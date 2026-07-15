@@ -54,7 +54,7 @@ Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Appl
     brew install sct
     ```
 
-    **Arch Linux (AUR)**
+    **Arch Linux ([AUR](https://aur.archlinux.org/packages/sct-rs-bin))**
 
     ```bash
     yay -S sct-rs-bin

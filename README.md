@@ -81,7 +81,7 @@ brew tap pacharanero/tap
 brew install sct
 ```
 
-### Arch Linux (AUR)
+### Arch Linux ([AUR](https://aur.archlinux.org/packages/sct-rs-bin))
 
 ```bash
 yay -S sct-rs-bin
