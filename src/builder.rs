@@ -426,6 +426,7 @@ pub fn build_records(
             parents,
             children_count: *children_count.get(concept_id).unwrap_or(&0),
             active: concept.active,
+            definition_status: concept.definition_status_id.clone(),
             module: concept.module_id.clone(),
             effective_time: concept.effective_time.clone(),
             attributes: attr_map,

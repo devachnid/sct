@@ -19,7 +19,9 @@ use serde::{Deserialize, Serialize};
 /// ECL attribute refinement. Additive - older records parse with an empty list.
 /// v5: adds `crossmaps` (SNOMED CT → ICD-10 / OPCS-4 ExtendedMap targets).
 /// Additive - older records parse with an empty list.
-pub const SCHEMA_VERSION: u32 = 5;
+/// v6: adds `definition_status` (primitive / fully-defined) for definition
+/// diagrams. Additive - older records parse with an empty string.
+pub const SCHEMA_VERSION: u32 = 6;
 
 /// A lightweight reference to another concept (used in parents and attributes).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +102,10 @@ pub struct ConceptRecord {
     pub parents: Vec<ConceptRef>,
     pub children_count: usize,
     pub active: bool,
+    /// RF2 definition status SCTID: primitive (`900000000000074008`) or fully
+    /// defined (`900000000000073002`). Empty on records from schema v5 and earlier.
+    #[serde(default)]
+    pub definition_status: String,
     pub module: String,
     pub effective_time: String,
     pub attributes: IndexMap<String, Vec<ConceptRef>>,
@@ -142,6 +148,7 @@ mod tests {
             parents: vec![],
             children_count: 0,
             active: true,
+            definition_status: "900000000000073002".into(),
             module: "x".into(),
             effective_time: "20260101".into(),
             attributes: IndexMap::new(),
@@ -179,6 +186,7 @@ mod tests {
         assert_eq!(back.crossmaps.len(), 1);
         assert_eq!(back.crossmaps[0].system, "icd10");
         assert_eq!(back.crossmaps[0].code, "I219");
+        assert_eq!(back.definition_status, "900000000000073002");
         assert_eq!(back.schema_version, SCHEMA_VERSION);
     }
 
@@ -191,6 +199,7 @@ mod tests {
             "effective_time":"","attributes":{},"schema_version":3}"#;
         let rec: ConceptRecord = serde_json::from_str(v3).unwrap();
         assert!(rec.relationships.is_empty());
+        assert!(rec.definition_status.is_empty());
         assert_eq!(rec.schema_version, 3);
     }
 }

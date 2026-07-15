@@ -94,7 +94,7 @@ Prebuilt binaries are published for **Linux** (x86_64, aarch64), **macOS** (Appl
     cargo binstall sct-rs
     ```
 
-    Build from a clone. `sct serve` and `sct tui` are included by default; add optional extras (`gui`, `dmwb`, or `full`) as needed:
+    Build from a clone. `sct serve` and `sct tui` are included by default; add optional extras (`gui`, `dmwb`, `diagram-svg`, or `full`) as needed:
 
     ```bash
     git clone https://github.com/pacharanero/sct && cd sct

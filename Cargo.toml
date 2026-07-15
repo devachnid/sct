@@ -93,7 +93,8 @@ serve = ["dep:axum", "dep:tokio"]
 # via the pure-Rust jetdb Access reader. Optional: most users only need the
 # RF2-native maps from `sct ndjson --refsets all`.
 dmwb = ["dep:jetdb"]
-full = ["tui", "gui", "serve", "dmwb"]
+diagram-svg = ["dep:layout-rs"]
+full = ["tui", "gui", "serve", "dmwb", "diagram-svg"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -130,6 +131,9 @@ open = { version = "5", optional = true }
 
 # Optional: sct dmwb - pure-Rust Microsoft Access (.mdb) reader
 jetdb = { version = "0.3", optional = true }
+
+# Optional: built-in SVG renderer for sct diagram
+layout-rs = { version = "0.1.3", optional = true }
 
 # NOTE: keep this table LAST among dependency tables, and keep it to genuinely
 # unix-only deps. A TOML table runs until the next [header], so anything added

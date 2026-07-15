@@ -1,6 +1,6 @@
 # `sct diagram` - concept-definition and hierarchy diagrams
 
-**Status:** ✅ Shipped (slice 1: `tree` / `dot` / `mermaid` for all four views, on any current DB). Deferred: `definition_status` primitive/defined styling (§3.1), DOT attribute-group clusters, built-in `svg` via `layout-rs` (§7 slices 2-3).
+**Status:** ✅ Shipped (slices 1-3: `tree` / `dot` / `mermaid` for all four views, primitive/defined DOT styling, DOT attribute-group clusters, and optional built-in `svg` via `layout-rs`).
 **Scope:** Render a SNOMED CT concept's logical definition, or its ancestry / descendants, as a `tree`-style terminal view, Graphviz **DOT**, **Mermaid**, or **SVG** - all from the local `sct` SQLite database, with no server and (for `tree`/`dot`/`mermaid`) no external tools.
 **Audience:** A coding agent (and Marcus) implementing this in the `sct` repo.
 **Provenance:** Idea harvested from the prior-art Python toolchain `cheethame2017/sct` (Apache-2.0), which produces per-concept Graphviz "focus / ancestor / descendant" diagrams. This is a clean-room Rust reimplementation in `sct`'s local-first, file-based idiom - ideas only, no code.
@@ -48,11 +48,11 @@ Composability (per `spec/spec.md`): `tree`/`dot`/`mermaid`/`svg` all write plain
 | IS-A edges (ancestors/descendants/parents) | `concept_isa(child_id, parent_id)`; optional fast path via `concept_ancestors` (TCT) | **exists** |
 | Defining attribute edges | `concept_relationships(source_id, type_id, destination_id, group_num)` | **exists** (needs a DB built by the ECL-era pipeline; see `spec/ecl.md §4`) |
 | Node captions | `concepts(id, fsn, preferred_term, active)` | **exists** |
-| **Primitive vs fully-defined** styling | `definitionStatusId` (900000000000074008 primitive / …073002 defined) | **NOT persisted - prerequisite** |
+| **Primitive vs fully-defined** styling | `definition_status` in `concepts`, derived from RF2 `definitionStatusId` | **exists** (schema v6+) |
 
-**Prerequisite for high-fidelity `definition` view.** The `concepts` table stores no `definition_status`, and `concept_relationships` does not record `characteristicTypeId` (stated vs inferred). Consequences and the additive fix:
+**High-fidelity `definition` view.** The `concepts` table stores `definition_status` from schema v6 onward, while `concept_relationships` does not record `characteristicTypeId` (stated vs inferred). Consequences:
 
-1. **Definition status.** To draw primitive concepts differently from fully-defined ones (the standard convention: primitives with a distinct border/shape), add a `definition_status TEXT` column to `concepts`, populated from RF2 (already parsed; currently discarded, exactly like the pre-ECL relationship triples were). Schema-version bump, `#[serde(default)]` on the NDJSON field so older artefacts still load. Until then, `sct diagram` renders all nodes uniformly and prints a stderr note that primitive/defined styling needs a rebuilt DB.
+1. **Definition status.** `definition_status TEXT` is populated from RF2 `definitionStatusId`; the NDJSON field is additive with `#[serde(default)]`, so older artefacts still load. DOT renders primitive concepts with a dashed slate border and fully-defined concepts with a filled green node. Databases built before schema v6 render uniformly and print a rebuild note.
 2. **Stated vs inferred.** `concept_relationships` holds the RF2 Snapshot **inferred** relationships (the long normal form). That is the correct and sufficient substrate for a "what this concept means" diagram; the stated form / OWL axioms are a separate, later concern (see the SCG/OWL roadmap item). Document that the `definition` view shows the *inferred* definition.
 
 Neither prerequisite blocks the `ancestors`/`descendants`/`neighbourhood` views or the `tree` format - those work on any current database.
@@ -103,7 +103,7 @@ Emit a Mermaid `graph TD`. Renders natively in GitHub Markdown and the MkDocs si
 
 ### 4.4 `svg` - self-contained, no external tools
 
-Render SVG **in-process via the pure-Rust `layout-rs` crate** (`0.1.2` at time of writing; parses DOT / builds a graph and renders SVG with a Sugiyama layout, no Graphviz binary required). This keeps `sct`'s "no special tools required" promise for users who just want an image and don't have Graphviz installed.
+Render SVG **in-process via the pure-Rust `layout-rs` crate** (`0.1.3`; parses DOT / builds a graph and renders SVG with a Sugiyama layout, no Graphviz binary required). This keeps `sct`'s "no special tools required" promise for users who just want an image and don't have Graphviz installed.
 
 Honest caveat to document: `layout-rs` does **not** render nested-graph clusters or HTML labels, so the built-in SVG shows attribute groups via edge labelling/colour rather than cluster boxes, and its layout quality on large graphs is below Graphviz's. For best results on anything non-trivial, use `--format dot | dot -Tsvg`. Implement `svg` behind a `--features diagram-svg` cargo feature if the dependency weight is unwelcome in the default build; `dot`/`mermaid`/`tree` stay dependency-free and always on.
 
@@ -149,8 +149,8 @@ Guidance to include: use **PNG** for diagrams (sharp edges/text; lossless), rese
 ## 7. Sequencing
 
 1. **Slice 1** - graph builder + `tree` and `mermaid` formats for all four views; `--depth`, `--labels`, `--ascii`. Zero new dependencies, works on any current DB. Ships the demo value immediately.
-2. **Slice 2** - `dot` format with attribute-group clusters and IS-A/attribute edge styling; the `definition_status` schema addition (§3.1) so primitive/defined styling is correct; `docs/commands/diagram.md` with the §5 conversion recipes.
-3. **Slice 3** - built-in `svg` via `layout-rs` behind `--features diagram-svg`.
+2. **Slice 2** - ✅ `dot` format with attribute-group clusters and IS-A/attribute edge styling; the `definition_status` schema addition (§3.1) so primitive/defined styling is correct; `docs/commands/diagram.md` with the §5 conversion recipes.
+3. **Slice 3** - ✅ built-in `svg` via `layout-rs` behind `--features diagram-svg`.
 4. **Later** - MCP `snomed_diagram` tool returning DOT/Mermaid for a concept; wiring into `sct serve --ui`; through-time / MRCM diagram variants (separate roadmap items).
 
 ---

@@ -80,9 +80,9 @@ pub fn run(args: Args) -> Result<()> {
         let mut insert_concept = tx.prepare(
             "INSERT OR REPLACE INTO concepts
              (id, fsn, preferred_term, synonyms, hierarchy, hierarchy_path,
-              parents, children_count, attributes, active, module, effective_time,
-              ctv3_codes, read2_codes, schema_version)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+               parents, children_count, attributes, active, definition_status, module, effective_time,
+               ctv3_codes, read2_codes, schema_version)
+              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
         )?;
 
         let mut insert_isa =
@@ -151,6 +151,7 @@ pub fn run(args: Args) -> Result<()> {
                 record.children_count as i64,
                 attributes_json,
                 record.active as i32,
+                record.definition_status,
                 record.module,
                 record.effective_time,
                 ctv3_json,
@@ -308,6 +309,7 @@ fn create_schema(conn: &Connection) -> Result<()> {
             children_count INTEGER,
             attributes     TEXT,            -- JSON object
             active         INTEGER NOT NULL,
+            definition_status TEXT,          -- primitive / fully-defined RF2 SCTID
             module         TEXT,
             effective_time TEXT,
             ctv3_codes     TEXT,            -- JSON array of CTV3 code strings

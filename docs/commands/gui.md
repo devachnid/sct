@@ -149,7 +149,7 @@ The server binds exclusively to `127.0.0.1` - it is not accessible from other ma
 # Build with GUI support
 cargo install --path sct --features gui
 
-# Build everything (serve + tui + gui + dmwb)
+# Build everything (serve + tui + gui + dmwb + diagram SVG)
 cargo install --path sct --features full
 ```
 

@@ -397,6 +397,7 @@ mod tests {
             parents: vec![],
             children_count: 0,
             active,
+            definition_status: "900000000000074008".into(),
             module: "900000000000207008".into(),
             effective_time: "20260101".into(),
             attributes: IndexMap::new(),

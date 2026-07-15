@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! `sct diagram` - render a concept's logical definition, ancestry, or
-//! descendants as a `tree`-style terminal view, Graphviz DOT, or Mermaid.
+//! descendants as a `tree`-style terminal view, Graphviz DOT, Mermaid, or
+//! built-in SVG (with the `diagram-svg` feature).
 //! See `spec/commands/diagram.md`.
 //!
-//! All three formats are plain text on stdout (pipe `--format dot` into
+//! All formats are plain text on stdout (pipe `--format dot` into
 //! `dot -Tpng` for an image); the node/edge summary goes to stderr.
 
 use anyhow::{Context, Result};
@@ -71,6 +72,9 @@ enum Format {
     Tree,
     Dot,
     Mermaid,
+    /// SVG rendered in-process (requires the `diagram-svg` Cargo feature).
+    #[cfg(feature = "diagram-svg")]
+    Svg,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
@@ -128,6 +132,11 @@ pub fn run(args: Args) -> Result<()> {
              `sct sqlite`) to include them."
         );
     }
+    if args.format == Format::Dot && !labeler.has_definition_status {
+        eprintln!(
+            "note: this database has no 'definition_status' column, so primitive and fully-defined concepts use the same style. Rebuild with a current sct (`sct ndjson` then `sct sqlite`) to enable definition-status styling."
+        );
+    }
 
     let diagram = build(&conn, &concept, args.view, args.depth)?;
 
@@ -136,6 +145,8 @@ pub fn run(args: Args) -> Result<()> {
         Format::Tree => render_tree(&diagram, &labeler, args.ascii),
         Format::Dot => render_dot(&diagram, &labeler),
         Format::Mermaid => render_mermaid(&diagram, &labeler),
+        #[cfg(feature = "diagram-svg")]
+        Format::Svg => render_svg(&diagram, &labeler)?,
     };
 
     match &args.output {
@@ -299,6 +310,26 @@ struct Labeler<'a> {
     conn: &'a Connection,
     style: LabelStyle,
     cache: RefCell<HashMap<String, Option<(String, String)>>>,
+    has_definition_status: bool,
+    definition_status_cache: RefCell<HashMap<String, DefinitionStatus>>,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+enum DefinitionStatus {
+    Primitive,
+    Defined,
+    #[default]
+    Unknown,
+}
+
+impl DefinitionStatus {
+    fn from_sctid(id: &str) -> Self {
+        match id {
+            "900000000000074008" => Self::Primitive,
+            "900000000000073002" => Self::Defined,
+            _ => Self::Unknown,
+        }
+    }
 }
 
 impl<'a> Labeler<'a> {
@@ -307,6 +338,14 @@ impl<'a> Labeler<'a> {
             conn,
             style,
             cache: RefCell::new(HashMap::new()),
+            has_definition_status: conn
+                .query_row(
+                    "SELECT 1 FROM pragma_table_info('concepts') WHERE name = 'definition_status'",
+                    [],
+                    |_| Ok(()),
+                )
+                .is_ok(),
+            definition_status_cache: RefCell::new(HashMap::new()),
         }
     }
 
@@ -345,6 +384,28 @@ impl<'a> Labeler<'a> {
                 }
             }
         }
+    }
+
+    fn definition_status(&self, id: &str) -> DefinitionStatus {
+        if !self.has_definition_status {
+            return DefinitionStatus::Unknown;
+        }
+        if let Some(status) = self.definition_status_cache.borrow().get(id) {
+            return *status;
+        }
+        let status = self
+            .conn
+            .query_row(
+                "SELECT definition_status FROM concepts WHERE id = ?1",
+                [id],
+                |r| r.get::<_, String>(0),
+            )
+            .map(|id| DefinitionStatus::from_sctid(&id))
+            .unwrap_or_default();
+        self.definition_status_cache
+            .borrow_mut()
+            .insert(id.to_string(), status);
+        status
     }
 }
 
@@ -481,18 +542,52 @@ fn all_nodes(diagram: &Diagram) -> BTreeSet<String> {
 }
 
 fn render_dot(diagram: &Diagram, labeler: &Labeler) -> String {
-    let mut out = String::from("digraph sct {\n  rankdir=TB;\n  node [shape=box, fontsize=10];\n");
+    render_dot_with_clusters(diagram, labeler, true)
+}
+
+fn render_dot_with_clusters(
+    diagram: &Diagram,
+    labeler: &Labeler,
+    include_clusters: bool,
+) -> String {
+    let mut out = String::from(
+        "digraph sct {\n  rankdir=TB;\n  node [shape=box, fontsize=10, style=rounded];\n",
+    );
     for id in all_nodes(diagram) {
+        let style = match labeler.definition_status(&id) {
+            DefinitionStatus::Primitive => "style=\"rounded,dashed\", color=\"#64748b\"",
+            DefinitionStatus::Defined => {
+                "style=\"rounded,filled\", color=\"#166534\", fillcolor=\"#dcfce7\""
+            }
+            DefinitionStatus::Unknown => "",
+        };
+        let separator = if style.is_empty() { "" } else { ", " };
         out.push_str(&format!(
-            "  \"{id}\" [label=\"{}\"];\n",
+            "  \"{id}\" [label=\"{}\"{separator}{style}];\n",
             dot_escape(&labeler.caption(&id))
         ));
+    }
+    if include_clusters {
+        for ((source, group), ids) in dot_role_groups(diagram) {
+            out.push_str(&format!(
+                "  subgraph cluster_{source}_{group} {{\n    label=\"role group {group}\";\n    color=\"#94a3b8\";\n    style=\"rounded,dashed\";\n"
+            ));
+            for id in ids {
+                out.push_str(&format!("    \"{id}\";\n"));
+            }
+            out.push_str("  }\n");
+        }
     }
     for (from, kids) in &diagram.adj {
         for c in kids {
             match &c.edge {
-                Some(e) => out.push_str(&format!(
+                Some(e) if e == "is a" => out.push_str(&format!(
                     "  \"{from}\" -> \"{}\" [label=\"{}\"];\n",
+                    c.id,
+                    dot_escape(e)
+                )),
+                Some(e) => out.push_str(&format!(
+                    "  \"{from}\" -> \"{}\" [label=\"{}\", color=\"#0f766e\", fontcolor=\"#0f766e\", penwidth=1.5];\n",
                     c.id,
                     dot_escape(e)
                 )),
@@ -502,6 +597,45 @@ fn render_dot(diagram: &Diagram, labeler: &Labeler) -> String {
     }
     out.push_str("}\n");
     out
+}
+
+#[cfg(feature = "diagram-svg")]
+fn render_svg(diagram: &Diagram, labeler: &Labeler) -> Result<String> {
+    use layout::backends::svg::SVGWriter;
+    use layout::gv::parser::DotParser;
+    use layout::gv::GraphBuilder;
+
+    // layout-rs deliberately does not support Graphviz clusters, so preserve
+    // role-group information through the already-labelled coloured edges while
+    // omitting cluster subgraphs from this renderer's private DOT input.
+    let dot = render_dot_with_clusters(diagram, labeler, false);
+    let mut parser = DotParser::new(&dot);
+    let graph = parser
+        .process()
+        .map_err(|err| anyhow::anyhow!("parsing generated DOT for SVG: {err}"))?;
+    let mut builder = GraphBuilder::new();
+    builder.visit_graph(&graph);
+    let mut graph = builder.get();
+    let mut writer = SVGWriter::new();
+    graph.do_it(false, false, false, &mut writer);
+    Ok(writer.finalize())
+}
+
+/// Attribute relationship destinations grouped by their RF2 role group for DOT
+/// cluster boxes. A destination is emitted at most once per cluster.
+fn dot_role_groups(diagram: &Diagram) -> BTreeMap<(String, i64), BTreeSet<String>> {
+    let mut groups = BTreeMap::new();
+    for (source, kids) in &diagram.adj {
+        for child in kids {
+            if let Some(group) = child.group.filter(|group| *group > 0) {
+                groups
+                    .entry((source.clone(), group))
+                    .or_insert_with(BTreeSet::new)
+                    .insert(child.id.clone());
+            }
+        }
+    }
+    groups
 }
 
 fn render_mermaid(diagram: &Diagram, labeler: &Labeler) -> String {
@@ -538,6 +672,8 @@ fn format_name(f: Format) -> &'static str {
         Format::Tree => "tree",
         Format::Dot => "DOT",
         Format::Mermaid => "Mermaid",
+        #[cfg(feature = "diagram-svg")]
+        Format::Svg => "SVG",
     }
 }
 
@@ -550,24 +686,25 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
             "CREATE TABLE concepts (id TEXT PRIMARY KEY, preferred_term TEXT NOT NULL,
-                 fsn TEXT NOT NULL, active INTEGER NOT NULL);
+                 fsn TEXT NOT NULL, active INTEGER NOT NULL, definition_status TEXT);
              CREATE TABLE concept_isa (child_id TEXT NOT NULL, parent_id TEXT NOT NULL);
              CREATE TABLE concept_relationships (source_id TEXT NOT NULL, type_id TEXT NOT NULL,
                  destination_id TEXT NOT NULL, group_num INTEGER NOT NULL);",
         )
         .unwrap();
-        for (id, pt) in [
-            ("1", "Root"),
-            ("2", "Focus"),
-            ("4", "Child four"),
-            ("5", "Child five"),
-            ("116680003", "Is a"),
-            ("363698007", "Finding site"),
-            ("999", "Some site"),
+        for (id, pt, definition_status) in [
+            ("1", "Root", "900000000000074008"),
+            ("2", "Focus", "900000000000073002"),
+            ("4", "Child four", "900000000000074008"),
+            ("5", "Child five", "900000000000073002"),
+            ("116680003", "Is a", "900000000000074008"),
+            ("363698007", "Finding site", "900000000000074008"),
+            ("999", "Some site", "900000000000074008"),
         ] {
             conn.execute(
-                "INSERT INTO concepts (id, preferred_term, fsn, active) VALUES (?1, ?2, ?2, 1)",
-                [id, pt],
+                "INSERT INTO concepts (id, preferred_term, fsn, active, definition_status)
+                 VALUES (?1, ?2, ?2, 1, ?3)",
+                [id, pt, definition_status],
             )
             .unwrap();
         }
@@ -621,14 +758,29 @@ mod tests {
     #[test]
     fn dot_and_mermaid_are_wellformed() {
         let conn = fixture();
-        let d = build(&conn, "1", View::Descendants, Some(2)).unwrap();
+        let d = build(&conn, "2", View::Definition, None).unwrap();
         let labeler = Labeler::new(&conn, LabelStyle::Pt);
         let dot = render_dot(&d, &labeler);
         assert!(dot.starts_with("digraph sct {"));
         assert!(dot.trim_end().ends_with('}'));
-        assert!(dot.contains("\"1\" -> \"2\""));
+        assert!(dot.contains("style=\"rounded,filled\""));
+        assert!(dot.contains("style=\"rounded,dashed\""));
+        assert!(dot.contains("subgraph cluster_2_1"));
+        assert!(dot.contains("color=\"#0f766e\""));
         let mm = render_mermaid(&d, &labeler);
         assert!(mm.starts_with("graph TD"));
-        assert!(mm.contains("c1 --> c2"));
+        assert!(mm.contains("c2 -->|is a| c1"));
+    }
+
+    #[cfg(feature = "diagram-svg")]
+    #[test]
+    fn svg_is_wellformed_and_contains_focus_id() {
+        let conn = fixture();
+        let diagram = build(&conn, "2", View::Definition, None).unwrap();
+        let labeler = Labeler::new(&conn, LabelStyle::Pt);
+        let svg = render_svg(&diagram, &labeler).unwrap();
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("Focus (2)"));
+        assert!(svg.contains("</svg>"));
     }
 }

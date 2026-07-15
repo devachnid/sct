@@ -130,7 +130,7 @@ cd sct
 cargo install --path .                   # default build: core commands + sct serve + sct tui
 cargo install --path . --features gui    # add the browser UI (sct gui)
 cargo install --path . --features dmwb   # add the NHS DMWB .mdb reader (sct dmwb)
-cargo install --path . --features full   # everything: serve + tui + gui + dmwb
+cargo install --path . --features full   # everything: serve + tui + gui + dmwb + diagram SVG
 ```
 
 | Feature | Default? | What it adds | Extra dependencies |
@@ -139,7 +139,8 @@ cargo install --path . --features full   # everything: serve + tui + gui + dmwb
 | `tui` | yes | Interactive terminal UI - powers both `sct tui` and the live `sct sayt` view | `ratatui`, `crossterm` |
 | `gui` | opt-in | Browser-based graph UI (`sct gui`) | `axum`, `tokio`, `open` |
 | `dmwb` | opt-in | Read NHS Data Migration Workbench `.mdb` files (`sct dmwb`) | `jetdb` |
-| `full` | opt-in | Everything: `serve` + `tui` + `gui` + `dmwb` | all of the above |
+| `diagram-svg` | opt-in | Built-in SVG output for `sct diagram` | `layout-rs` |
+| `full` | opt-in | Everything: `serve` + `tui` + `gui` + `dmwb` + `diagram-svg` | all of the above |
 
 Every other subcommand (RF2 conversion, SQLite/Parquet/Markdown/Arrow, search, ECL, maps, codelists, MCP, diff, info…) is always compiled in. Only a `--no-default-features` build - such as the headless Docker server image - drops `serve` and `tui`.
 

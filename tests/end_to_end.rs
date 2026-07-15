@@ -322,6 +322,16 @@ fn sqlite_fts5_maps_relationships_and_tct() {
     let (_d, _ndjson, db) = build("en-GB");
     let conn = Connection::open(&db).unwrap();
 
+    // Definition status survives RF2 -> NDJSON -> SQLite (schema v6).
+    let definition_status: String = conn
+        .query_row(
+            "SELECT definition_status FROM concepts WHERE id = '22298006'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(definition_status, "900000000000074008");
+
     // FTS5 keyword search: "diabetes" hits the parent + both subtypes.
     let mut stmt = conn
         .prepare(

@@ -128,6 +128,15 @@ fn schema_version_is_current() {
 }
 
 #[test]
+fn definition_status_is_preserved_from_rf2() {
+    let ds = minimal_dataset();
+    let records = build_records(&ds, "en", false).unwrap();
+    assert!(records
+        .iter()
+        .all(|record| record.definition_status == "900000000000074008"));
+}
+
+#[test]
 fn locale_selects_dialect_preferred_term() {
     // One concept, two synonyms; GB English refset prefers "Appendicectomy",
     // US English refset prefers "Appendectomy". Both descriptions carry

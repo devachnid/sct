@@ -10,7 +10,8 @@
 # Add optional extra features (see Cargo.toml):
 #   --gui    sct gui  - browser UI
 #   --dmwb   sct dmwb - NHS Data Migration Workbench .mdb reader
-#   --full   both extras: gui + dmwb (serve + tui are already default)
+#   --diagram-svg     built-in SVG output for sct diagram
+#   --full   all extras (serve + tui are already default)
 #
 # --serve and --tui are accepted but unnecessary (already in the default
 # build). For a minimal build without the server or terminal UI, use
@@ -26,9 +27,10 @@ for arg in "$@"; do
     --tui)   echo "note: sct tui is included by default; --tui is unnecessary" >&2 ;;
     --gui)   features+=("gui") ;;
     --dmwb)  features+=("dmwb") ;;
-    --full)  features+=("gui" "dmwb") ;;
-    -h|--help) sed -n '5,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "Unknown option: $arg (try: --gui --dmwb --full)" >&2; exit 1 ;;
+    --diagram-svg) features+=("diagram-svg") ;;
+    --full)  features+=("gui" "dmwb" "diagram-svg") ;;
+    -h|--help) sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "Unknown option: $arg (try: --gui --dmwb --diagram-svg --full)" >&2; exit 1 ;;
   esac
 done
 
@@ -38,6 +40,6 @@ if [[ ${#features[@]} -gt 0 ]]; then
   echo "Installing sct with the default build (sct serve + sct tui) + extras: ${feature_list}" >&2
   exec cargo install --path . --features "$feature_list"
 else
-  echo "Installing sct with the default build (sct serve + sct tui); add --gui/--dmwb/--full for more" >&2
+  echo "Installing sct with the default build (sct serve + sct tui); add --gui/--dmwb/--diagram-svg/--full for more" >&2
   exec cargo install --path .
 fi

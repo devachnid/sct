@@ -1,6 +1,6 @@
 # sct diagram
 
-Draw a SNOMED CT concept - its logical definition, its ancestry, or its descendants - as a terminal `tree`, Graphviz **DOT**, or **Mermaid**. All output is plain text on stdout, so it pipes into an image with one more command (see [Turning a diagram into a PNG or JPG](#turning-a-diagram-into-a-png-or-jpg)).
+Draw a SNOMED CT concept - its logical definition, its ancestry, or its descendants - as a terminal `tree`, Graphviz **DOT**, **Mermaid**, or built-in **SVG**. All output is plain text on stdout, so it pipes cleanly into files and other tools.
 
 **When to use:** you want to *see* a concept's structure rather than read a table of relationships - to understand a definition, sanity-check a hierarchy, or drop a picture into docs, a slide, or a PR.
 
@@ -17,7 +17,7 @@ sct diagram <CONCEPT> [--view <VIEW>] [--format <FORMAT>]
 |---|---|---|
 | `<CONCEPT>` | *(required)* | Focus concept SCTID. Pass `-` to read a single id from stdin. |
 | `--view <VIEW>` | `definition` | `definition`, `ancestors`, `descendants`, or `neighbourhood` (see below). |
-| `--format <FORMAT>` | `tree` | `tree`, `dot`, or `mermaid`. |
+| `--format <FORMAT>` | `tree` | `tree`, `dot`, `mermaid`, or `svg` (`svg` requires the `diagram-svg` build feature). |
 | `--depth <N>` | view-dependent | Max hops for `ancestors` / `descendants` (default: ancestors to root, descendants 1). |
 | `--labels <STYLE>` | `pt` | Node captions: `pt`, `fsn`, `both`, or `id`. |
 | `--ascii` | off | Use 7-bit ASCII tree glyphs instead of Unicode box-drawing. |
@@ -33,7 +33,7 @@ The node/edge count is written to **stderr**, so it never pollutes a pipe.
 - **descendants** - subtypes downward (bounded by `--depth`).
 - **neighbourhood** - one hop each way: parents, children, and defining attributes.
 
-Attribute relationships (the `definition` and `neighbourhood` views) need a database built with schema v4+ (the `concept_relationships` table); without it the IS-A structure still renders and a note is printed.
+Attribute relationships (the `definition` and `neighbourhood` views) need a database built with schema v4+ (the `concept_relationships` table); without it the IS-A structure still renders and a note is printed. Databases built with schema v6+ also distinguish primitive concepts (dashed slate border) from fully-defined concepts (filled green) in DOT output. Older databases still render, with a note explaining how to rebuild.
 
 ---
 
@@ -60,6 +60,12 @@ sct diagram 73211009 --view neighbourhood --format mermaid
 
 # Graphviz DOT to a file
 sct diagram 404684003 --view descendants --format dot -o clinical.dot
+
+# Definition diagram with role-group boxes and primitive/defined node styling
+sct diagram 53084003 --view definition --format dot | dot -Tsvg -o pneumonia.svg
+
+# Built-in SVG (no Graphviz executable; requires --features diagram-svg)
+sct diagram 53084003 --view definition --format svg -o pneumonia.svg
 ```
 
 ---
@@ -85,7 +91,7 @@ sct diagram 53084003 --format dot | dot -Tsvg -o concept.svg
 
 ### Route 2 - convert an SVG
 
-If you produced an SVG (`… -Tsvg` above, or a future `--format svg`), convert it with whichever tool you already have:
+If you produced an SVG (`… -Tsvg` above or `--format svg`), convert it with whichever tool you already have:
 
 | Tool | Command | Notes |
 |---|---|---|
@@ -96,6 +102,10 @@ If you produced an SVG (`… -Tsvg` above, or a future `--format svg`), convert 
 | cairosvg | `cairosvg concept.svg -o out.png --output-width 1600` | Python |
 
 **Tips for slides:** use **PNG** for diagrams (sharp text and edges; JPG is for photos), render at **~200 dpi / 2× zoom** so it stays crisp on a projector, and add a **white background** (`-Gbgcolor=white` / `-background white`) so the default transparency doesn't vanish against a dark slide theme.
+
+### Enabling built-in SVG
+
+The SVG format is present in binaries built with the optional pure-Rust renderer: `cargo install --path . --features diagram-svg` (or `--features full`). Built-in SVG preserves node and attribute-edge styling, but `layout-rs` does not support Graphviz cluster boxes; use `--format dot | dot -Tsvg` when publication-quality role-group clusters or Graphviz's more mature layout are important.
 
 ---
 
