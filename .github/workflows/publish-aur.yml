@@ -181,7 +181,7 @@ jobs:
           printf '%s  %s\n' "$SHA_AARCH64" sct-linux-aarch64.tar.gz | sha256sum --check --strict
           mkdir smoke
           tar -xzf sct-linux-x86_64.tar.gz -C smoke
-          test "$(smoke/sct --version)" = "sct-rs $VERSION"
+          test "$(smoke/sct --version)" = "sct $VERSION"
           smoke/sct completions bash > /dev/null
           smoke/sct completions zsh > /dev/null
           smoke/sct completions fish > /dev/null
