@@ -5,6 +5,28 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.7] - 2026-07-16
+
+### Bug fixes
+
+- **ci**: Forward secrets to AUR workflow ([403529b](https://github.com/pacharanero/sct/commit/403529b4b42ff79aeda303ee51e3cd1ece641411))
+
+### Documentation
+
+- Link AUR package ([bfa9f67](https://github.com/pacharanero/sct/commit/bfa9f6726cc847d52dc26ebfee106ff6ceb91837))
+
+### Tests
+
+- **mcp**: Exercise sct mcp tool handlers end-to-end (R16) ([1a91500](https://github.com/pacharanero/sct/commit/1a91500f0a274b28914f5b5a058271664898e7d8))
+
+- **cli**: Add assert_cmd CLI contract tests (R18) ([94fd8e8](https://github.com/pacharanero/sct/commit/94fd8e8e351e4bc4f15baa9df871f1d978199dd8))
+
+- **trud**: Wiremock network-layer tests for sct trud (R19) ([ab96c0e](https://github.com/pacharanero/sct/commit/ab96c0e8306dd482690550f894b11b8eacf224ca))
+
+- **embed**: Hermetic embed+semantic smoke test via mocked Ollama (R17) ([56fb960](https://github.com/pacharanero/sct/commit/56fb960c6be493910f9624f1ff0dd614050d1dee))
+
+- **snapshots**: Insta snapshots for info/diff/trud list output (R21) ([ffde17a](https://github.com/pacharanero/sct/commit/ffde17ae78f4c9b96705619b620810d93dc841f7))
+
 ## [0.18.6] - 2026-07-15
 
 ### Bug fixes
