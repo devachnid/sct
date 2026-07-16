@@ -1,0 +1,7 @@
+---
+source: tests/snapshots.rs
+expression: stdout
+---
+File                                                  Released          Size  SHA-256 (first 12 chars)
+--------------------------------------------------------------------------------------------
+uk_monolith_20260101000001Z.zip                       2026-01-01    117.7 MB  abcdef012345

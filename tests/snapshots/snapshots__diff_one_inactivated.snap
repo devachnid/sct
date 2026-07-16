@@ -1,0 +1,17 @@
+---
+source: tests/snapshots.rs
+expression: value
+---
+# SNOMED CT diff summary
+
+Old artefact: 22 active concepts
+New artefact: 21 active concepts
+
+Changes:
+  Added:                   0
+  Inactivated:             1
+  Preferred term:          0
+  Hierarchy moved:         0
+
+## Inactivated (1 concepts)
+  - [22298006] Myocardial infarction  (Clinical finding)
