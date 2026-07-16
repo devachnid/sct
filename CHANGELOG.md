@@ -5,6 +5,20 @@ All notable changes to `sct` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases are grouped from commit messages by [git-cliff](https://git-cliff.org).
 
+## [0.18.8] - 2026-07-16
+
+### Bug fixes
+
+- **tests**: Make codelist CLI test hermetic + REUSE-annotate snapshots ([d851e7b](https://github.com/pacharanero/sct/commit/d851e7b7b9283f88662b2009af19a8bc9ac67aec))
+
+### CI
+
+- Add report-only coverage job via cargo-llvm-cov (R23) ([bd04c75](https://github.com/pacharanero/sct/commit/bd04c7509426128749b15d4f4424bc782ea4af22))
+
+### Chores
+
+- **release-tooling**: Harden s/version++ gate (reuse lint + isolated env) ([5501a5a](https://github.com/pacharanero/sct/commit/5501a5aa6a9733d404dd9e5db99e484ee2512710))
+
 ## [0.18.7] - 2026-07-16
 
 ### Bug fixes
