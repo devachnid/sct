@@ -21,6 +21,28 @@ fn rf2_fixture() -> PathBuf {
         .join("tests/fixtures/rf2/SnomedCT_SyntheticTest_PRODUCTION_20260101T120000Z")
 }
 
+/// Build a SNOMED CT SQLite database from the fixture (ndjson -> sqlite), for
+/// commands like `codelist validate` that resolve a database up front.
+fn build_db(dir: &std::path::Path) -> PathBuf {
+    let ndjson = dir.join("fixture.ndjson");
+    sct()
+        .args(["ndjson", "--rf2"])
+        .arg(rf2_fixture())
+        .args(["--locale", "en-GB", "--output"])
+        .arg(&ndjson)
+        .assert()
+        .success();
+    let db = dir.join("fixture.db");
+    sct()
+        .args(["sqlite", "--ndjson"])
+        .arg(&ndjson)
+        .arg("--output")
+        .arg(&db)
+        .assert()
+        .success();
+    db
+}
+
 // --- clap-level contracts ---------------------------------------------------
 
 #[test]
@@ -158,10 +180,15 @@ fn codelist_new_then_validate_ok() {
         .success();
     assert!(file.exists(), "codelist should be scaffolded");
 
-    // A fresh draft validates cleanly (no database required).
+    // `codelist validate` resolves a SNOMED CT database up front, so build one
+    // from the fixture and pass it explicitly (CI has no ambient database). A
+    // fresh draft has no concepts, so it validates cleanly.
+    let db = build_db(tmp.path());
     sct()
         .args(["codelist", "validate"])
         .arg(&file)
+        .arg("--db")
+        .arg(&db)
         .assert()
         .success();
 }
