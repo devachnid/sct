@@ -88,6 +88,7 @@ need() {
 }
 need cargo-set-version "cargo install cargo-edit --locked"
 need git-cliff "cargo install git-cliff --locked"
+need reuse "pipx install reuse   # or: pip install reuse (https://reuse.software)"
 
 # Keep main up to date before bumping (fast-forward only). Aborts if local main
 # has diverged from origin/main - resolve that before releasing.
@@ -118,13 +119,21 @@ echo "Release mode: $mode"
 # Run the same gate CI does, before anything is modified, so a failure aborts
 # cleanly with no version bump left behind. In --pr mode CI also runs on the PR
 # before merge; this is belt-and-braces, kept uniform across modes for safety.
-echo "Pre-release checks (mirror .github/workflows/ci.yml): fmt + clippy + tests..."
+echo "Pre-release checks (mirror .github/workflows/ci.yml): fmt + clippy + tests + REUSE..."
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo clippy --features serve --all-targets -- -D warnings
 cargo clippy --features dmwb --all-targets -- -D warnings
-cargo test
-cargo test --features serve
+# Run the suite in an isolated data home (with SCT_DB unset) so a maintainer's
+# ambient database or config cannot mask an environment-dependent failure that
+# CI - which runs clean - would hit. v0.18.7 shipped with a red CI exactly this
+# way: a codelist test resolved a local ~/.local/share/sct DB that CI lacked.
+gate_home="$(mktemp -d)"
+trap 'rm -rf "$gate_home"' EXIT
+env -u SCT_DB SCT_DATA_HOME="$gate_home" cargo test
+env -u SCT_DB SCT_DATA_HOME="$gate_home" cargo test --features serve
+# REUSE compliance (mirrors the reuse job in ci.yml).
+reuse lint
 
 # ── Bump ─────────────────────────────────────────────────────────────────────
 # cargo set-version updates both Cargo.toml and Cargo.lock's sct-rs version; it
